@@ -113,7 +113,7 @@ Alle Komponenten sind kostenlos und Open Source (MIT/Apache).
 
 | # | Ziel | Ergebnis |
 |---|---|---|
-| M0 | Projekt einrichten | Tauri + Phaser + TypeScript starten, leeres Fenster, Repo auf GitHub |
+| M0 | Projekt einrichten | Arbeitsmodus (Issues, Board, `AGENTS.md`), Tauri + Phaser + TypeScript starten, leeres Fenster, Tests, CI |
 | M1 | Kinderzimmer-Prototyp | Grundreihe, Laute lösen Reaktionen aus, Bildschirmtastatur, Fortschritt gespeichert – mit Platzhaltergrafik |
 | M2 | Haus | obere Reihe, „Benennen macht sichtbar“, adaptive Wortauswahl |
 | M3 | Garten | untere Reihe, erste Wortpaare, *mama*-Moment |
@@ -124,11 +124,15 @@ Alle Komponenten sind kostenlos und Open Source (MIT/Apache).
 
 Nach jedem Meilenstein: spielen, Rückmeldung, anpassen.
 
+Die einzelnen Aufgaben stehen als [GitHub Issues](https://github.com/TheRealKoller/typingame/issues) unter dem jeweiligen Milestone, der Stand auf dem [Project-Board](https://github.com/users/TheRealKoller/projects/9). Wie gearbeitet wird, beschreibt [`AGENTS.md`](../AGENTS.md).
+
 ## 9. Offene Fragen
 
-- Spielname
-- Grafikstil (siehe 6)
-- Gibt es eine Hauptfigur mit Namen, oder bleibt das Kind namenlos (der Spieler selbst)?
-- Rahmenerzählung ab Kapitel 5: Warum bricht man zur Expedition auf?
-- Wie greifen Expedition und Aufbauspiel ineinander (welche Rohstoffe, was wird gebaut)?
-- Lizenz bei Veröffentlichung (Vorschlag: MIT für Code, CC BY 4.0 oder CC0 für eigene Grafiken)
+Offene Fragen werden als Issues mit Label `idee` diskutiert. Entscheidungen fließen hier ins Dokument zurück.
+
+- Spielname – [#13](https://github.com/TheRealKoller/typingame/issues/13)
+- Grafikstil (siehe 6) – [#14](https://github.com/TheRealKoller/typingame/issues/14)
+- Gibt es eine Hauptfigur mit Namen, oder bleibt das Kind namenlos (der Spieler selbst)? – [#15](https://github.com/TheRealKoller/typingame/issues/15)
+- Rahmenerzählung ab Kapitel 5: Warum bricht man zur Expedition auf? – [#16](https://github.com/TheRealKoller/typingame/issues/16)
+- Wie greifen Expedition und Aufbauspiel ineinander (welche Rohstoffe, was wird gebaut)? – [#17](https://github.com/TheRealKoller/typingame/issues/17)
+- Lizenz bei Veröffentlichung (Vorschlag: MIT für Code, CC BY 4.0 oder CC0 für eigene Grafiken) – [#18](https://github.com/TheRealKoller/typingame/issues/18)
