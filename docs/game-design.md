@@ -78,7 +78,7 @@ Die Tasten-Reihenfolge folgt klassischen Zehnfinger-Kursen. **Groß-/Kleinschrei
 
 - **Bildschirmtastatur** mit Farben pro Finger (gleicher Finger beider Hände, gleiche Farbe; die Seite zeigt die Hand). Die nächste(n) Taste(n) und die passenden Finger pulsieren, darunter zwei Hände und der Name des Fingers (z. B. „D: linker Mittelfinger“). Gesperrte Tasten sind grau, eine gedrückte Taste leuchtet kurz auf – hell bei richtig, rosa bei falsch.
 - **Adaptive Wortauswahl:** Tasten mit hoher Fehlerquote oder langsamer Reaktion tauchen häufiger in angebotenen Wörtern auf.
-- **Freischalten neuer Tasten** nach erreichter Genauigkeit (z. B. ≥ 90 % über die letzten N Anschläge) – nicht nach Zeit.
+- **Freischalten neuer Tasten** nach erreichter Genauigkeit: mindestens 90 % richtige Anschläge unter den letzten 30 – nicht nach Zeit. Jeder Tastendruck zählt, auch einer auf eine gesperrte Taste. Ein angefangenes Wort wird noch zu Ende getippt, dann blendet der Raum über in den nächsten Abschnitt: Die neuen Dinge erwachen, ein ruhiger Hinweis nennt die neuen Tasten und ihre Finger (z. B. „G – linker Zeigefinger“). Werte in `src/progress/unlock.ts`.
 - **Statistik:** Anschläge pro Minute, Genauigkeit, Fehler pro Taste, Verlauf über Sitzungen.
 - **Wiederholen:** Bereits besuchte Orte bleiben erreichbar, um frei zu üben.
 
