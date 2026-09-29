@@ -1,5 +1,5 @@
 import * as Phaser from 'phaser';
-import { KeyboardPreviewScene } from './scenes/KeyboardPreviewScene';
+import { NurseryScene } from './scenes/NurseryScene';
 
 new Phaser.Game({
   type: Phaser.AUTO,
@@ -11,5 +11,7 @@ new Phaser.Game({
     width: 1280,
     height: 720,
   },
-  scene: [KeyboardPreviewScene],
+  // Scenes read typing from native keydown events.
+  input: { keyboard: false },
+  scene: [NurseryScene],
 });
