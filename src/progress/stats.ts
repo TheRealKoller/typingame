@@ -10,6 +10,12 @@ export interface KeyStats {
   readonly misses: number;
 }
 
+/** Share of misses among all keystrokes on a key. */
+export function errorRate({ hits, misses }: KeyStats): number {
+  const total = hits + misses;
+  return total === 0 ? 0 : misses / total;
+}
+
 /**
  * Typing statistics of one session. Times are milliseconds on any monotonic
  * clock (e.g. `KeyboardEvent.timeStamp`).
@@ -67,13 +73,6 @@ export class SessionStats {
   /** Hits and misses by character. */
   get perKey(): ReadonlyMap<string, KeyStats> {
     return this.#perKey;
-  }
-
-  /** Share of misses for `char`, or null if the key was never typed or expected. */
-  errorRate(char: string): number | null {
-    const stats = this.#perKey.get(char);
-    if (!stats) return null;
-    return stats.misses / (stats.hits + stats.misses);
   }
 
   #tick(time: number): void {

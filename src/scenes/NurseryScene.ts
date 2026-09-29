@@ -4,7 +4,8 @@ import type { Section } from '../content/types';
 import { FINGER_NAME } from '../keyboard/fingers';
 import { qwertzDe } from '../keyboard/qwertz-de';
 import { FLOOR_Y, nurseryObjects, type NurseryObject } from '../nursery/objects';
-import { SessionStats } from '../progress/stats';
+import type { Progress } from '../progress/progress';
+import { errorRate } from '../progress/stats';
 import { UnlockTracker } from '../progress/unlock';
 import { TypingEngine } from '../typing/engine';
 import { KeyboardView } from '../ui/KeyboardView';
@@ -18,12 +19,10 @@ const FADE_DURATION = 600;
 const HINT_DURATION = 5000;
 
 export interface NurserySceneData {
-  /** Index into the chapter 1 sections; defaults to the first. */
-  readonly section?: number;
+  /** Saved progress plus the running session; decides the section. */
+  readonly progress: Progress;
   /** Set when the section was just unlocked: the room wakes up and the new keys are introduced. */
   readonly announce?: boolean;
-  /** Statistics carried over from the previous section of this session. */
-  readonly stats?: SessionStats;
 }
 
 /** Chapter 1: the baby says sounds and the things in the nursery react. */
@@ -37,7 +36,7 @@ export class NurseryScene extends Phaser.Scene {
   #unlock: UnlockTracker | null = null;
   #unlockReached = false;
   #transitioning = false;
-  #stats!: SessionStats;
+  #progress!: Progress;
   #statsView!: StatsView;
 
   constructor() {
@@ -45,16 +44,21 @@ export class NurseryScene extends Phaser.Scene {
   }
 
   create(data: NurserySceneData): void {
-    const sectionIndex = data.section ?? 0;
+    // A save may name a section that no longer exists; start the chapter over then.
+    const sectionIndex = Math.max(
+      chapter1.sections.findIndex((s) => s.id === data.progress.section),
+      0,
+    );
     const sections = chapter1.sections.slice(0, sectionIndex + 1);
     const section = sections[sectionIndex];
-    if (!section) throw new Error(`chapter 1 has no section ${sectionIndex}`);
+    if (!section) throw new Error('chapter 1 has no sections');
     const sounds = sections.flatMap((s) => s.sounds);
+    this.#progress = data.progress;
+    this.#progress.section = section.id;
     this.#sectionIndex = sectionIndex;
     this.#unlock = sectionIndex + 1 < chapter1.sections.length ? new UnlockTracker() : null;
     this.#unlockReached = false;
     this.#transitioning = false;
-    this.#stats = data.stats ?? new SessionStats();
 
     this.add.rectangle(this.scale.width / 2, FLOOR_Y + 25, this.scale.width, 50, 0xe8dccb);
 
@@ -85,16 +89,21 @@ export class NurseryScene extends Phaser.Scene {
       .setUnlocked(sections.flatMap((section) => section.newKeys));
 
     this.#statsView = new StatsView(this, this.scale.width / 2, 200);
-    this.#statsView.update(this.#stats);
+    this.#statsView.update(this.#progress);
 
     // Native listeners: with fast typing, Phaser 4.2.1's keyboard plugin emitted keydown events more than once.
     window.addEventListener('keydown', this.#onKeyDown);
     window.addEventListener('keyup', this.#onKeyUp);
     window.addEventListener('blur', this.#hideOverview);
+    // Keystrokes since the last finished word are saved when the window is hidden or closed.
+    document.addEventListener('visibilitychange', this.#saveWhenHidden);
+    window.addEventListener('pagehide', this.#save);
     this.events.once(Phaser.Scenes.Events.SHUTDOWN, () => {
       window.removeEventListener('keydown', this.#onKeyDown);
       window.removeEventListener('keyup', this.#onKeyUp);
       window.removeEventListener('blur', this.#hideOverview);
+      document.removeEventListener('visibilitychange', this.#saveWhenHidden);
+      window.removeEventListener('pagehide', this.#save);
     });
 
     if (data.announce) {
@@ -117,13 +126,15 @@ export class NurseryScene extends Phaser.Scene {
 
     const events = this.#engine.type(event.key);
     const correct = events[0]?.type === 'correct';
-    this.#stats.record(events, event.timeStamp);
-    this.#statsView.update(this.#stats);
+    this.#progress.session.record(events, event.timeStamp);
+    this.#statsView.update(this.#progress);
     this.#keyboard.press(event.code, correct);
     for (const typingEvent of events) {
       if (typingEvent.type !== 'complete') continue;
       this.#objectsByWord.get(typingEvent.word)?.react();
       this.#labels.find((label) => label.word === typingEvent.word)?.celebrate();
+      this.#progress.discover(typingEvent.word);
+      void this.#progress.save();
     }
     this.#render();
     if (this.#unlock?.record(correct)) this.#unlockReached = true;
@@ -136,11 +147,7 @@ export class NurseryScene extends Phaser.Scene {
   };
 
   #showOverview(): void {
-    const rates = new Map<string, number>();
-    for (const char of this.#stats.perKey.keys()) {
-      const rate = this.#stats.errorRate(char);
-      if (rate !== null) rates.set(char, rate);
-    }
+    const rates = new Map(Object.entries(this.#progress.keys).map(([char, stats]) => [char, errorRate(stats)]));
     this.#keyboard.setErrorRates(rates);
     this.#statsView.setOverviewVisible(true);
   }
@@ -150,17 +157,25 @@ export class NurseryScene extends Phaser.Scene {
     this.#statsView.setOverviewVisible(false);
   };
 
+  readonly #save = (): void => {
+    void this.#progress.save();
+  };
+
+  readonly #saveWhenHidden = (): void => {
+    if (document.visibilityState === 'hidden') this.#save();
+  };
+
   /** Moves to the next section once the current reaction had time to play. */
   #advance(): void {
+    const next = chapter1.sections[this.#sectionIndex + 1];
+    if (!next) return;
     this.#transitioning = true;
+    this.#progress.section = next.id;
+    void this.#progress.save();
     this.time.delayedCall(UNLOCK_DELAY, () => {
       this.cameras.main.fadeOut(FADE_DURATION);
       this.cameras.main.once(Phaser.Cameras.Scene2D.Events.FADE_OUT_COMPLETE, () =>
-        this.scene.restart({
-          section: this.#sectionIndex + 1,
-          announce: true,
-          stats: this.#stats,
-        } satisfies NurserySceneData),
+        this.scene.restart({ progress: this.#progress, announce: true } satisfies NurserySceneData),
       );
     });
   }
