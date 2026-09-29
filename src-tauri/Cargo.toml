@@ -1,0 +1,20 @@
+[package]
+name = "typingame"
+version = "0.1.0"
+description = "A calm desktop game for learning touch typing (German QWERTZ)"
+authors = ["TheRealKoller"]
+repository = "https://github.com/TheRealKoller/typingame"
+edition = "2024"
+rust-version = "1.90"
+
+[lib]
+name = "typingame_lib"
+crate-type = ["staticlib", "cdylib", "rlib"]
+
+[build-dependencies]
+tauri-build = { version = "2.7.0", features = [] }
+
+[dependencies]
+log = "0.4"
+tauri = { version = "2.12.0", features = [] }
+tauri-plugin-log = "2"

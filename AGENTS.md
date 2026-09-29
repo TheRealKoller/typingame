@@ -7,6 +7,40 @@ Diese Datei gilt für jede KI-Sitzung in diesem Repository. Sie beschreibt, **wi
 Ein ruhiges Desktop-Spiel zum Lernen des Zehnfingersystems (Deutsch, QWERTZ). Man beginnt als Baby, das sprechen lernt; mit jeder neuen Taste wächst die Welt.
 Stack: Tauri 2, TypeScript, Phaser, Vite.
 
+## Entwicklung
+
+### Voraussetzungen
+
+- Node.js ≥ 22 mit npm
+- Rust (stabil, über [rustup](https://rustup.rs)) – nur für den Desktop-Modus
+- Systempakete für Tauri unter Linux (Fedora):
+
+  ```sh
+  sudo dnf install webkit2gtk4.1-devel openssl-devel curl wget file \
+    libappindicator-gtk3-devel librsvg2-devel libxdo-devel
+  sudo dnf group install "c-development"
+  ```
+
+  Andere Systeme: [Tauri-Voraussetzungen](https://v2.tauri.app/start/prerequisites/).
+
+### Befehle
+
+|Befehl|Zweck|
+|---|---|
+|`npm install`|Abhängigkeiten installieren (einmalig bzw. nach Änderungen an `package.json`)|
+|`npm run dev`|Entwicklungsserver, Spiel im Browser unter `http://localhost:1420`|
+|`npm run desktop`|Spiel im Tauri-Fenster (startet den Entwicklungsserver mit)|
+|`npm run typecheck`|Typprüfung|
+|`npm run build`|Typprüfung und Web-Build nach `dist/`|
+|`npm run desktop:build`|Desktop-Programm und Installationspakete nach `src-tauri/target/release/`|
+
+Automatische Tests folgen mit #3.
+
+### Aufbau
+
+- `src/` – Spiel (TypeScript, Phaser); Einstieg `src/main.ts`, Szenen in `src/scenes/`
+- `src-tauri/` – Desktop-Hülle (Rust, Tauri 2), Konfiguration in `src-tauri/tauri.conf.json`
+
 ## Zu Beginn jeder Sitzung
 
 1. Diese Datei und `docs/game-design.md` lesen.
