@@ -1,0 +1,23 @@
+{
+  "name": "typingame",
+  "private": true,
+  "version": "0.1.0",
+  "type": "module",
+  "scripts": {
+    "dev": "vite",
+    "build": "tsc && vite build",
+    "preview": "vite preview",
+    "typecheck": "tsc",
+    "tauri": "tauri",
+    "desktop": "tauri dev",
+    "desktop:build": "tauri build"
+  },
+  "dependencies": {
+    "phaser": "^4.2.1"
+  },
+  "devDependencies": {
+    "@tauri-apps/cli": "^2.12.0",
+    "typescript": "^7.0.2",
+    "vite": "^8.3.1"
+  }
+}
