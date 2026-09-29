@@ -28,7 +28,9 @@ Man beginnt als **Baby**, das sprechen lernt. Jede neu gelernte Taste erweitert,
 
 - Die Welt beginnt **unscharf, blass, verschwommen** – so wie ein Baby sie wahrnimmt.
 - An Dingen in der Szene erscheinen Wörter. Tippt man ein Wort, wird das Ding **entdeckt**: Es wird scharf und farbig, animiert sich, macht ein Geräusch.
-- Man wählt selbst, welches Wort man tippt. Das erste passende Zeichen wählt das Ziel aus.
+- Man wählt selbst, welches Wort man tippt. Alle sichtbaren Wörter, die mit dem bisher Getippten beginnen, bleiben im Spiel; mit jedem Zeichen wird eingegrenzt, bis nur noch eins übrig ist (*ha* passt zu *haha* und *hallo*, *hal* nur noch zu *hallo*).
+- Ein Wort ist fertig, sobald das Getippte ihm genau entspricht. Ist ein sichtbares Wort der Anfang eines anderen (*da* und *dada*), gewinnt deshalb das kürzere – solche Paare sollen nicht gleichzeitig sichtbar sein.
+- Ein angefangenes Wort wird zu Ende getippt; Abbrechen gibt es nicht.
 - Ist genug entdeckt, öffnet sich der nächste Abschnitt: eine neue Taste, ein neuer Raum, ein größerer Ausschnitt der Welt.
 
 ### 3.2 Laute lösen etwas aus (Kapitel 1)
@@ -44,7 +46,7 @@ So wird schon die Grundreihe bedeutungsvoll, bevor echte Wörter möglich sind.
 ### 3.3 Fehlerverhalten
 
 - Ein falscher Buchstabe wird sanft markiert (kein lauter Fehlerton, kein Punktabzug im Hauptspiel).
-- Das Wort wird erst weitergeführt, wenn der richtige Buchstabe getippt ist.
+- Das Wort wird erst weitergeführt, wenn der richtige Buchstabe getippt ist. Ein falscher Buchstabe wechselt nicht zu einem anderen Wort.
 - Fehler fließen in die Statistik und in die Auswahl der Übungswörter ein.
 
 ## 4. Progression
