@@ -127,3 +127,4 @@ Option-IDs: Ideen `65553881`, Geplant `27e16f78`, In Arbeit `bea1e159`, Zum Test
 - Spiellogik (Tipp-Engine, Statistik, Freischaltung, Inhaltsprüfung) ist ohne Phaser testbar und hat Tests.
 - Inhalte liegen als Daten vor. Jedes Wort darf nur Tasten verwenden, die an dieser Stelle freigeschaltet sind – ein Test prüft das.
 - Vor dem Öffnen eines PR: `npm run check` grün, Spiel gestartet und die Änderung selbst ausprobiert.
+- Die CI (`.github/workflows/ci.yml`) führt bei jedem PR und jedem Push auf `main` Installation, Typprüfung, Tests und Web-Build aus. Nach dem Öffnen eines PR prüfen, dass der Check grün ist (`gh pr checks <nr>`); ein roter Check wird vor der Übergabe an den Nutzer behoben.
