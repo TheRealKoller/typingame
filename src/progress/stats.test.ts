@@ -16,7 +16,7 @@ describe('SessionStats', () => {
 
     expect(stats.accuracy).toBe(0);
     expect(stats.strokesPerMinute).toBe(0);
-    expect(stats.errorRate('a')).toBeNull();
+    expect(stats.perKey.size).toBe(0);
   });
 
   it('counts correct keystrokes per minute of typing time', () => {
@@ -63,7 +63,6 @@ describe('SessionStats', () => {
     expect(stats.perKey.get('l')).toEqual({ hits: 2, misses: 1 });
     expect(stats.perKey.get('a')).toEqual({ hits: 2, misses: 0 });
     expect(stats.perKey.has('k')).toBe(false);
-    expect(stats.errorRate('l')).toBeCloseTo(1 / 3);
   });
 
   it('keeps an ambiguous mistake out of the per-key numbers', () => {

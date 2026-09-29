@@ -1,5 +1,5 @@
 import * as Phaser from 'phaser';
-import type { SessionStats } from '../progress/stats';
+import type { Progress } from '../progress/progress';
 
 const TEXT = '#4a4038';
 const QUIET_TEXT = '#9a8a7a';
@@ -34,18 +34,27 @@ export class StatsView {
       .setVisible(false);
   }
 
-  update(stats: SessionStats): void {
-    const strokes = stats.correctStrokes + stats.wrongStrokes;
-    const speed = Math.round(stats.strokesPerMinute);
-    const accuracy = Math.round(stats.accuracy * 100);
+  update(progress: Progress): void {
+    const { session } = progress;
+    const strokes = session.correctStrokes + session.wrongStrokes;
+    const speed = Math.round(session.strokesPerMinute);
+    const accuracy = Math.round(session.accuracy * 100);
     this.#line.setText(strokes === 0 ? '' : `${speed} Anschläge/min · ${accuracy} % richtig · Tab: Übersicht`);
+
+    const sessions = progress.snapshot().sessions;
+    const totalCorrect = sessions.reduce((sum, s) => sum + s.correct, 0);
+    const totalWrong = sessions.reduce((sum, s) => sum + s.wrong, 0);
+    const totalAccuracy = totalCorrect + totalWrong === 0 ? 0 : totalCorrect / (totalCorrect + totalWrong);
 
     this.#overviewText.setText([
       'Diese Sitzung',
       `Anschläge pro Minute: ${speed}`,
       `Genauigkeit: ${accuracy} %`,
-      `Anschläge: ${stats.correctStrokes} richtig, ${stats.wrongStrokes} falsch`,
-      `Tippzeit ohne Pausen: ${minutes(stats.activeMs)} min`,
+      `Anschläge: ${session.correctStrokes} richtig, ${session.wrongStrokes} falsch`,
+      `Tippzeit ohne Pausen: ${minutes(session.activeMs)} min`,
+      '',
+      `Insgesamt (${sessions.length} ${sessions.length === 1 ? 'Sitzung' : 'Sitzungen'})`,
+      `Anschläge: ${totalCorrect} richtig, ${totalWrong} falsch · ${Math.round(totalAccuracy * 100)} %`,
     ]);
     this.#panel.setSize(this.#overviewText.width + 64, this.#overviewText.height + 40);
   }

@@ -121,6 +121,10 @@ Alle Komponenten sind kostenlos und Open Source (MIT/Apache).
 
 - Fortschritt und Statistik lokal auf dem Rechner (Spielstand als JSON).
 - Zunächst ein Profil.
+- Inhalt: aktueller Abschnitt, entdeckte Laute/Wörter, Treffer und Fehler je Taste über alle Sitzungen, eine Zusammenfassung je Sitzung (Beginn, richtige/falsche Anschläge, Tippzeit).
+- Ablage: Desktop-App in `spielstand.json` im App-Datenordner (Linux: `~/.local/share/de.therealkoller.typingame/`), Browser im `localStorage` unter `typingame.spielstand`.
+- Gespeichert wird nach jedem fertigen Wort, beim Abschnittswechsel und wenn das Fenster verborgen oder geschlossen wird. Ein unlesbarer Spielstand wird ignoriert, das Spiel beginnt dann von vorn.
+- Neu beginnen: vorerst Datei löschen bzw. `localStorage` leeren; ein Menü dafür kommt später.
 
 ## 8. Meilensteine
 
