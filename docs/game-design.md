@@ -80,6 +80,10 @@ Die Tasten-Reihenfolge folgt klassischen Zehnfinger-Kursen. **Groß-/Kleinschrei
 - **Adaptive Wortauswahl:** Tasten mit hoher Fehlerquote oder langsamer Reaktion tauchen häufiger in angebotenen Wörtern auf.
 - **Freischalten neuer Tasten** nach erreichter Genauigkeit: mindestens 90 % richtige Anschläge unter den letzten 30 – nicht nach Zeit. Jeder Tastendruck zählt, auch einer auf eine gesperrte Taste. Ein angefangenes Wort wird noch zu Ende getippt, dann blendet der Raum über in den nächsten Abschnitt: Die neuen Dinge erwachen, ein ruhiger Hinweis nennt die neuen Tasten und ihre Finger (z. B. „G – linker Zeigefinger“). Werte in `src/progress/unlock.ts`.
 - **Statistik:** Anschläge pro Minute, Genauigkeit, Fehler pro Taste, Verlauf über Sitzungen.
+  - *Anschläge pro Minute* = richtige Anschläge je Minute Tippzeit; Lücken über 5 s zählen als Pause und nicht zur Tippzeit.
+  - *Genauigkeit* = Anteil richtiger an allen Anschlägen.
+  - *Fehler pro Taste* werden der Taste zugerechnet, die man hätte treffen sollen. War nicht eindeutig, welche gemeint war (mehrere Wörter möglich), zählt der Fehler nur in der Genauigkeit.
+  - Anzeige: dezente Zeile oben rechts; gedrückte Tab-Taste zeigt eine Übersicht und färbt die Bildschirmtastatur nach Fehlerquote (grün → rosa).
 - **Wiederholen:** Bereits besuchte Orte bleiben erreichbar, um frei zu üben.
 
 ## 6. Grafik und Ton

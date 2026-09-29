@@ -4,9 +4,11 @@ import type { Section } from '../content/types';
 import { FINGER_NAME } from '../keyboard/fingers';
 import { qwertzDe } from '../keyboard/qwertz-de';
 import { FLOOR_Y, nurseryObjects, type NurseryObject } from '../nursery/objects';
+import { SessionStats } from '../progress/stats';
 import { UnlockTracker } from '../progress/unlock';
 import { TypingEngine } from '../typing/engine';
 import { KeyboardView } from '../ui/KeyboardView';
+import { StatsView } from '../ui/StatsView';
 import { WordLabel } from '../ui/WordLabel';
 
 const LATER_ALPHA = 0.3;
@@ -20,6 +22,8 @@ export interface NurserySceneData {
   readonly section?: number;
   /** Set when the section was just unlocked: the room wakes up and the new keys are introduced. */
   readonly announce?: boolean;
+  /** Statistics carried over from the previous section of this session. */
+  readonly stats?: SessionStats;
 }
 
 /** Chapter 1: the baby says sounds and the things in the nursery react. */
@@ -33,6 +37,8 @@ export class NurseryScene extends Phaser.Scene {
   #unlock: UnlockTracker | null = null;
   #unlockReached = false;
   #transitioning = false;
+  #stats!: SessionStats;
+  #statsView!: StatsView;
 
   constructor() {
     super('NurseryScene');
@@ -48,6 +54,7 @@ export class NurseryScene extends Phaser.Scene {
     this.#unlock = sectionIndex + 1 < chapter1.sections.length ? new UnlockTracker() : null;
     this.#unlockReached = false;
     this.#transitioning = false;
+    this.#stats = data.stats ?? new SessionStats();
 
     this.add.rectangle(this.scale.width / 2, FLOOR_Y + 25, this.scale.width, 50, 0xe8dccb);
 
@@ -77,9 +84,18 @@ export class NurseryScene extends Phaser.Scene {
       .setScale(0.7)
       .setUnlocked(sections.flatMap((section) => section.newKeys));
 
-    // Native listener: with fast typing, Phaser 4.2.1's keyboard plugin emitted keydown events more than once.
+    this.#statsView = new StatsView(this, this.scale.width / 2, 200);
+    this.#statsView.update(this.#stats);
+
+    // Native listeners: with fast typing, Phaser 4.2.1's keyboard plugin emitted keydown events more than once.
     window.addEventListener('keydown', this.#onKeyDown);
-    this.events.once(Phaser.Scenes.Events.SHUTDOWN, () => window.removeEventListener('keydown', this.#onKeyDown));
+    window.addEventListener('keyup', this.#onKeyUp);
+    window.addEventListener('blur', this.#hideOverview);
+    this.events.once(Phaser.Scenes.Events.SHUTDOWN, () => {
+      window.removeEventListener('keydown', this.#onKeyDown);
+      window.removeEventListener('keyup', this.#onKeyUp);
+      window.removeEventListener('blur', this.#hideOverview);
+    });
 
     if (data.announce) {
       this.cameras.main.fadeIn(FADE_DURATION);
@@ -89,12 +105,20 @@ export class NurseryScene extends Phaser.Scene {
   }
 
   readonly #onKeyDown = (event: KeyboardEvent): void => {
+    if (event.key === 'Tab') {
+      // Holding Tab shows the overview; keep the browser from moving focus.
+      event.preventDefault();
+      this.#showOverview();
+      return;
+    }
     if (this.#transitioning) return;
     // Only printable single characters count as typing; shortcuts and named keys are ignored.
     if (event.repeat || event.ctrlKey || event.altKey || event.metaKey || [...event.key].length !== 1) return;
 
     const events = this.#engine.type(event.key);
     const correct = events[0]?.type === 'correct';
+    this.#stats.record(events, event.timeStamp);
+    this.#statsView.update(this.#stats);
     this.#keyboard.press(event.code, correct);
     for (const typingEvent of events) {
       if (typingEvent.type !== 'complete') continue;
@@ -107,13 +131,36 @@ export class NurseryScene extends Phaser.Scene {
     if (this.#unlockReached && this.#engine.typed === '') this.#advance();
   };
 
+  readonly #onKeyUp = (event: KeyboardEvent): void => {
+    if (event.key === 'Tab') this.#hideOverview();
+  };
+
+  #showOverview(): void {
+    const rates = new Map<string, number>();
+    for (const char of this.#stats.perKey.keys()) {
+      const rate = this.#stats.errorRate(char);
+      if (rate !== null) rates.set(char, rate);
+    }
+    this.#keyboard.setErrorRates(rates);
+    this.#statsView.setOverviewVisible(true);
+  }
+
+  readonly #hideOverview = (): void => {
+    this.#keyboard.setErrorRates(null);
+    this.#statsView.setOverviewVisible(false);
+  };
+
   /** Moves to the next section once the current reaction had time to play. */
   #advance(): void {
     this.#transitioning = true;
     this.time.delayedCall(UNLOCK_DELAY, () => {
       this.cameras.main.fadeOut(FADE_DURATION);
       this.cameras.main.once(Phaser.Cameras.Scene2D.Events.FADE_OUT_COMPLETE, () =>
-        this.scene.restart({ section: this.#sectionIndex + 1, announce: true } satisfies NurserySceneData),
+        this.scene.restart({
+          section: this.#sectionIndex + 1,
+          announce: true,
+          stats: this.#stats,
+        } satisfies NurserySceneData),
       );
     });
   }
@@ -138,7 +185,7 @@ export class NurseryScene extends Phaser.Scene {
       .setRounded(16)
       .setStrokeStyle(2, 0xd9c8b4);
     // Free wall space between the mobile and the night light.
-    const hint = this.add.container(820, 90, [panel, text]).setAlpha(0);
+    const hint = this.add.container(820, 115, [panel, text]).setAlpha(0);
     this.tweens.chain({
       targets: hint,
       tweens: [
