@@ -76,7 +76,7 @@ Die Tasten-Reihenfolge folgt klassischen Zehnfinger-Kursen. **Groß-/Kleinschrei
 
 ## 5. Lernsystem
 
-- **Bildschirmtastatur** mit Farben pro Finger. Die nächste Taste und der passende Finger werden hervorgehoben.
+- **Bildschirmtastatur** mit Farben pro Finger (gleicher Finger beider Hände, gleiche Farbe; die Seite zeigt die Hand). Die nächste(n) Taste(n) und die passenden Finger pulsieren, darunter zwei Hände und der Name des Fingers (z. B. „D: linker Mittelfinger“). Gesperrte Tasten sind grau, eine gedrückte Taste leuchtet kurz auf – hell bei richtig, rosa bei falsch.
 - **Adaptive Wortauswahl:** Tasten mit hoher Fehlerquote oder langsamer Reaktion tauchen häufiger in angebotenen Wörtern auf.
 - **Freischalten neuer Tasten** nach erreichter Genauigkeit (z. B. ≥ 90 % über die letzten N Anschläge) – nicht nach Zeit.
 - **Statistik:** Anschläge pro Minute, Genauigkeit, Fehler pro Taste, Verlauf über Sitzungen.

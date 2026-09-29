@@ -1,5 +1,5 @@
 import * as Phaser from 'phaser';
-import { EmptyScene } from './scenes/EmptyScene';
+import { KeyboardPreviewScene } from './scenes/KeyboardPreviewScene';
 
 new Phaser.Game({
   type: Phaser.AUTO,
@@ -11,5 +11,5 @@ new Phaser.Game({
     width: 1280,
     height: 720,
   },
-  scene: [EmptyScene],
+  scene: [KeyboardPreviewScene],
 });

@@ -43,6 +43,7 @@ Stack: Tauri 2, TypeScript, Phaser, Vite.
 - `src/keyboard/` – Tastaturlayouts als Daten (physische Taste → Zeichen, Reihe, Finger); zuerst `qwertz-de.ts`
 - `src/typing/` – Tipp-Engine: Zielauswahl per Präfix, Fehler, Wortabschluss (ohne Phaser)
 - `src/content/` – Spielinhalte als Daten: Kapitel, Abschnitte, freigeschaltete Tasten, Laute bzw. Wörter; `chapters.test.ts` prüft die Tastenregel
+- `src/ui/` – wiederverwendbare Phaser-Bausteine, z. B. `KeyboardView` (Bildschirmtastatur)
 - Tests liegen neben dem Code als `*.test.ts` unter `src/` und laufen mit [Vitest](https://vitest.dev) in Node, ohne Phaser.
 - `src-tauri/` – Desktop-Hülle (Rust, Tauri 2), Konfiguration in `src-tauri/tauri.conf.json`
 
