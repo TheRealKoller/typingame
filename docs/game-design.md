@@ -37,11 +37,18 @@ Man beginnt als **Baby**, das sprechen lernt. Jede neu gelernte Taste erweitert,
 
 Im Kinderzimmer gibt es noch kaum Wörter. Stattdessen lösen **Laute** Reaktionen aus:
 
-- *lala* → die Spieluhr beginnt zu spielen
-- *dada* → das Mobile über dem Bett dreht sich
-- *haha* → der Teddy wackelt
+| Abschnitt | Neue Tasten | Laut | Reaktion |
+|---|---|---|---|
+| 1a | `a s d f j k l` | *lala* | die Spieluhr beginnt zu spielen |
+| | | *dada* | das Mobile über dem Bett dreht sich |
+| | | *jaja* | das Bett schaukelt sanft |
+| 1b | `g h` | *haha* | der Teddy wackelt |
+| | | *gaga* | die Quietscheente quietscht |
+| | | *aha* | das Nachtlicht geht an |
 
-So wird schon die Grundreihe bedeutungsvoll, bevor echte Wörter möglich sind.
+Die Laute aus 1a bleiben in 1b erhalten. Die Daten stehen in `src/content/chapter1.ts`.
+
+So wird schon die Grundreihe bedeutungsvoll, bevor echte Wörter möglich sind. *da* und *ja* fehlen bewusst: Sie sind der Anfang von *dada* und *jaja* und würden diese unerreichbar machen (siehe 3.1).
 
 ### 3.3 Fehlerverhalten
 
@@ -55,7 +62,7 @@ Die Tasten-Reihenfolge folgt klassischen Zehnfinger-Kursen. **Groß-/Kleinschrei
 
 | Kapitel | Ort | Neue Tasten | Beispiele |
 |---|---|---|---|
-| 1 | Kinderzimmer | Grundreihe: `a s d f j k l`, dann `g h` | *da, ja, dada, jaja, lala, gaga, haha, aha* |
+| 1 | Kinderzimmer | Grundreihe: `a s d f j k l`, dann `g h` | *lala, dada, jaja, haha, gaga, aha* |
 | 2 | Haus | Obere Reihe: `e i`, `r u`, `t z`, `o p`, `w q` | *papa, opa, tee, hase, eis, katze, keks, puppe, tasse, topf, suppe, wasser* |
 | 3 | Garten | Untere Reihe: `n m`, `b v`, `c x y` | *mama, oma, ball, baum, blume, nase, mond, hund, ente, maus, milch, sonne* – erste Paare: *mama da, hund weg* |
 | 4 | Dorf / Schule | Umschalttaste (Großschreibung), `ä ö ü ß`, Satzzeichen `. , ? !` | *Der Hund bellt. Die Sonne scheint. Wo ist der Bäcker?* |
