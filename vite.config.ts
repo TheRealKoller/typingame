@@ -1,4 +1,4 @@
-import { defineConfig } from 'vite';
+import { defineConfig } from 'vitest/config';
 
 // Set by `tauri dev` when targeting a remote device; unset for local development.
 const tauriDevHost = process.env.TAURI_DEV_HOST;
@@ -19,5 +19,12 @@ export default defineConfig({
   build: {
     // Phaser alone exceeds Vite's default 500 kB warning threshold.
     chunkSizeWarningLimit: 2000,
+  },
+  test: {
+    // Game logic is tested without Phaser, so plain Node is enough.
+    environment: 'node',
+    include: ['src/**/*.test.ts'],
+    // Keeps `npm test` green until the first logic module ships its tests.
+    passWithNoTests: true,
   },
 });

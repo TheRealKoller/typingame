@@ -30,15 +30,17 @@ Stack: Tauri 2, TypeScript, Phaser, Vite.
 |`npm install`|Abhängigkeiten installieren (einmalig bzw. nach Änderungen an `package.json`)|
 |`npm run dev`|Entwicklungsserver, Spiel im Browser unter `http://localhost:1420`|
 |`npm run desktop`|Spiel im Tauri-Fenster (startet den Entwicklungsserver mit)|
-|`npm run typecheck`|Typprüfung|
+|`npm run check`|Typprüfung und Tests – vor jedem PR|
+|`npm run typecheck`|nur Typprüfung|
+|`npm test`|nur Tests (Vitest, einmaliger Lauf)|
+|`npm run test:watch`|Tests im Beobachtungsmodus|
 |`npm run build`|Typprüfung und Web-Build nach `dist/`|
 |`npm run desktop:build`|Desktop-Programm und Installationspakete nach `src-tauri/target/release/`|
-
-Automatische Tests folgen mit #3.
 
 ### Aufbau
 
 - `src/` – Spiel (TypeScript, Phaser); Einstieg `src/main.ts`, Szenen in `src/scenes/`
+- Tests liegen neben dem Code als `*.test.ts` unter `src/` und laufen mit [Vitest](https://vitest.dev) in Node, ohne Phaser.
 - `src-tauri/` – Desktop-Hülle (Rust, Tauri 2), Konfiguration in `src-tauri/tauri.conf.json`
 
 ## Zu Beginn jeder Sitzung
@@ -124,4 +126,4 @@ Option-IDs: Ideen `65553881`, Geplant `27e16f78`, In Arbeit `bea1e159`, Zum Test
 
 - Spiellogik (Tipp-Engine, Statistik, Freischaltung, Inhaltsprüfung) ist ohne Phaser testbar und hat Tests.
 - Inhalte liegen als Daten vor. Jedes Wort darf nur Tasten verwenden, die an dieser Stelle freigeschaltet sind – ein Test prüft das.
-- Vor dem Öffnen eines PR: Typprüfung und Tests grün, Spiel gestartet und die Änderung selbst ausprobiert.
+- Vor dem Öffnen eines PR: `npm run check` grün, Spiel gestartet und die Änderung selbst ausprobiert.
