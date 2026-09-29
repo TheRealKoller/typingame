@@ -1,0 +1,46 @@
+import type { KeyboardLayout } from './layout';
+
+/** German QWERTZ (ISO), letter rows only, unshifted characters. */
+export const qwertzDe: KeyboardLayout = {
+  id: 'qwertz-de',
+  name: 'Deutsch (QWERTZ)',
+  keys: [
+    { code: 'KeyQ', char: 'q', row: 'top', finger: 'leftPinky' },
+    { code: 'KeyW', char: 'w', row: 'top', finger: 'leftRing' },
+    { code: 'KeyE', char: 'e', row: 'top', finger: 'leftMiddle' },
+    { code: 'KeyR', char: 'r', row: 'top', finger: 'leftIndex' },
+    { code: 'KeyT', char: 't', row: 'top', finger: 'leftIndex' },
+    { code: 'KeyY', char: 'z', row: 'top', finger: 'rightIndex' },
+    { code: 'KeyU', char: 'u', row: 'top', finger: 'rightIndex' },
+    { code: 'KeyI', char: 'i', row: 'top', finger: 'rightMiddle' },
+    { code: 'KeyO', char: 'o', row: 'top', finger: 'rightRing' },
+    { code: 'KeyP', char: 'p', row: 'top', finger: 'rightPinky' },
+    { code: 'BracketLeft', char: 'ü', row: 'top', finger: 'rightPinky' },
+    { code: 'BracketRight', char: '+', row: 'top', finger: 'rightPinky' },
+
+    { code: 'KeyA', char: 'a', row: 'home', finger: 'leftPinky' },
+    { code: 'KeyS', char: 's', row: 'home', finger: 'leftRing' },
+    { code: 'KeyD', char: 'd', row: 'home', finger: 'leftMiddle' },
+    { code: 'KeyF', char: 'f', row: 'home', finger: 'leftIndex' },
+    { code: 'KeyG', char: 'g', row: 'home', finger: 'leftIndex' },
+    { code: 'KeyH', char: 'h', row: 'home', finger: 'rightIndex' },
+    { code: 'KeyJ', char: 'j', row: 'home', finger: 'rightIndex' },
+    { code: 'KeyK', char: 'k', row: 'home', finger: 'rightMiddle' },
+    { code: 'KeyL', char: 'l', row: 'home', finger: 'rightRing' },
+    { code: 'Semicolon', char: 'ö', row: 'home', finger: 'rightPinky' },
+    { code: 'Quote', char: 'ä', row: 'home', finger: 'rightPinky' },
+    { code: 'Backslash', char: '#', row: 'home', finger: 'rightPinky' },
+
+    { code: 'IntlBackslash', char: '<', row: 'bottom', finger: 'leftPinky' },
+    { code: 'KeyZ', char: 'y', row: 'bottom', finger: 'leftPinky' },
+    { code: 'KeyX', char: 'x', row: 'bottom', finger: 'leftRing' },
+    { code: 'KeyC', char: 'c', row: 'bottom', finger: 'leftMiddle' },
+    { code: 'KeyV', char: 'v', row: 'bottom', finger: 'leftIndex' },
+    { code: 'KeyB', char: 'b', row: 'bottom', finger: 'leftIndex' },
+    { code: 'KeyN', char: 'n', row: 'bottom', finger: 'rightIndex' },
+    { code: 'KeyM', char: 'm', row: 'bottom', finger: 'rightIndex' },
+    { code: 'Comma', char: ',', row: 'bottom', finger: 'rightMiddle' },
+    { code: 'Period', char: '.', row: 'bottom', finger: 'rightRing' },
+    { code: 'Slash', char: '-', row: 'bottom', finger: 'rightPinky' },
+  ],
+};
