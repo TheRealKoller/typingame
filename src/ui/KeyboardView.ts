@@ -1,5 +1,6 @@
 import * as Phaser from 'phaser';
 import type { Finger, KeyboardLayout, KeyDefinition, Row } from '../keyboard/layout';
+import { FINGER_NAME } from '../keyboard/fingers';
 
 const KEY_SIZE = 52;
 const KEY_PITCH = 58;
@@ -23,17 +24,6 @@ const FINGER_COLOR: Record<Finger, number> = {
   rightMiddle: 0xa9d4a0,
   rightRing: 0xf5c98f,
   rightPinky: 0xf2a7a7,
-};
-
-const FINGER_NAME: Record<Finger, string> = {
-  leftPinky: 'linker kleiner Finger',
-  leftRing: 'linker Ringfinger',
-  leftMiddle: 'linker Mittelfinger',
-  leftIndex: 'linker Zeigefinger',
-  rightIndex: 'rechter Zeigefinger',
-  rightMiddle: 'rechter Mittelfinger',
-  rightRing: 'rechter Ringfinger',
-  rightPinky: 'rechter kleiner Finger',
 };
 
 /** Hand diagram, left to right: finger (or thumb), height, and horizontal position. */
