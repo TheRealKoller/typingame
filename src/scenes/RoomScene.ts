@@ -7,6 +7,7 @@ import { qwertzDe } from '../keyboard/qwertz-de';
 import { rooms } from '../things/rooms';
 import type { Thing } from '../things/thing';
 import type { Progress } from '../progress/progress';
+import { chooseShown, replaceTyped } from '../progress/practice';
 import { errorRate } from '../progress/stats';
 import { UnlockTracker } from '../progress/unlock';
 import { TypingEngine } from '../typing/engine';
@@ -20,6 +21,8 @@ const LATER_ALPHA = 0.5;
 const UNLOCK_DELAY = 1200;
 const FADE_DURATION = 600;
 const HINT_DURATION = 5000;
+/** The typed word's hop plays before it gives way to the next word. */
+const WORD_OUT_DELAY = 350;
 
 export interface RoomSceneData {
   /** Saved progress plus the running session; decides the section and so the room. */
@@ -37,6 +40,9 @@ export class RoomScene extends Phaser.Scene {
   #engine!: TypingEngine;
   #keyboard!: KeyboardView;
   #labels: WordLabel[] = [];
+  /** Words of the visible sections of the room; `#shown` are the ones on screen now. */
+  #pool: string[] = [];
+  #shown: string[] = [];
   #things = new Map<string, { readonly thing: Thing; readonly discoverable: Discoverable }>();
   /** Index of the current section in the play order. */
   #position = 0;
@@ -73,6 +79,9 @@ export class RoomScene extends Phaser.Scene {
     room.backdrop(this);
 
     // Every thing of the room is there, blurred and pale until discovered; those of later sections are faint and silent.
+    // Only the shown words carry a label; the other things of the visible sections wait without one.
+    this.#pool = words.map((word) => word.text);
+    this.#shown = chooseShown(this.#pool, { discovered: this.#progress.discovered, keys: this.#progress.keys });
     this.#labels = [];
     this.#things.clear();
     for (const word of chapter.sections.filter((s) => s.room === section.room).flatMap((s) => s.words)) {
@@ -85,16 +94,17 @@ export class RoomScene extends Phaser.Scene {
         continue;
       }
       this.#things.set(word.text, { thing, discoverable });
-      const label = new WordLabel(this, thing.label.x, thing.label.y, word.text);
+      const shown = this.#shown.includes(word.text);
+      const label = new WordLabel(this, thing.label.x, thing.label.y, word.text).setAlpha(shown ? 1 : 0);
       this.#labels.push(label);
       if (data.announce && section.words.includes(word)) {
         thing.view.setAlpha(LATER_ALPHA);
         label.setAlpha(0);
-        this.tweens.add({ targets: [thing.view, label], alpha: 1, delay: FADE_DURATION, duration: 1500 });
+        this.tweens.add({ targets: shown ? [thing.view, label] : [thing.view], alpha: 1, delay: FADE_DURATION, duration: 1500 });
       }
     }
 
-    this.#engine = new TypingEngine(words.map((word) => word.text));
+    this.#engine = new TypingEngine(this.#shown);
     // Keys stay unlocked across rooms and chapters.
     this.#keyboard = new KeyboardView(this, this.scale.width / 2, 505, qwertzDe)
       .setScale(0.7)
@@ -149,6 +159,7 @@ export class RoomScene extends Phaser.Scene {
       this.#labels.find((label) => label.word === typingEvent.word)?.celebrate();
       this.#progress.discover(typingEvent.word);
       void this.#progress.save();
+      this.#rotate(typingEvent.word);
     }
     this.#render();
     if (this.#unlock?.record(correct)) this.#unlockReached = true;
@@ -159,6 +170,26 @@ export class RoomScene extends Phaser.Scene {
   readonly #onKeyUp = (event: KeyboardEvent): void => {
     if (event.key === 'Tab') this.#hideOverview();
   };
+
+  /** Lets another word of the room take the place of the one just typed, favouring weak keys. */
+  #rotate(typed: string): void {
+    const next = replaceTyped(this.#pool, this.#shown, typed, {
+      discovered: this.#progress.discovered,
+      keys: this.#progress.keys,
+    });
+    const incoming = next.find((word) => !this.#shown.includes(word));
+    this.#shown = next;
+    this.#engine.setWords(next);
+    if (incoming === undefined) return;
+    const outLabel = this.#labels.find((label) => label.word === typed);
+    const inLabel = this.#labels.find((label) => label.word === incoming);
+    // The typed word hops first, then gives way; the new word appears once it is gone.
+    if (outLabel) this.tweens.add({ targets: outLabel, alpha: 0, delay: WORD_OUT_DELAY, duration: 500 });
+    if (inLabel) {
+      this.tweens.killTweensOf(inLabel);
+      this.tweens.add({ targets: inLabel, alpha: 1, delay: WORD_OUT_DELAY + 300, duration: 800 });
+    }
+  }
 
   #showOverview(): void {
     const rates = new Map(Object.entries(this.#progress.keys).map(([char, stats]) => [char, errorRate(stats)]));
