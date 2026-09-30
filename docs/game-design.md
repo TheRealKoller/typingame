@@ -50,7 +50,21 @@ Die Laute aus 1a bleiben in 1b erhalten. Die Daten stehen in `src/content/chapte
 
 So wird schon die Grundreihe bedeutungsvoll, bevor echte Wörter möglich sind. *da* und *ja* fehlen bewusst: Sie sind der Anfang von *dada* und *jaja* und würden diese unerreichbar machen (siehe 3.1).
 
-### 3.3 Fehlerverhalten
+### 3.3 Dinge benennen (Kapitel 2)
+
+Im Haus sind die Wörter **Namen von Dingen**. Das Haus hat drei Räume; jeder Raum umfasst eine oder zwei Stufen der oberen Reihe:
+
+| Raum | Abschnitt | Neue Tasten | Wörter |
+|---|---|---|---|
+| Küche | 2a | `e i` | *eis, keks, kaffee, essig* |
+| | 2b | `r u` | *uhr, gurke, reis* |
+| Wohnzimmer | 2c | `t z` | *katze, stuhl, tee, tasse* |
+| | 2d | `o p` | *sofa, puppe, foto, radio, papagei* |
+| Bad | 2e | `w q` | *wasser, waage, seife, spiegel, qualle* |
+
+Sichtbar sind die Wörter des **aktuellen Raums** bis zum aktuellen Abschnitt; die Wörter eines verlassenen Raums bleiben dort. Die Abschnitte eines Raums folgen deshalb direkt aufeinander. Die Daten stehen in `src/content/chapter2.ts`.
+
+### 3.4 Fehlerverhalten
 
 - Ein falscher Buchstabe wird sanft markiert (kein lauter Fehlerton, kein Punktabzug im Hauptspiel).
 - Das Wort wird erst weitergeführt, wenn der richtige Buchstabe getippt ist. Ein falscher Buchstabe wechselt nicht zu einem anderen Wort.
@@ -63,7 +77,7 @@ Die Tasten-Reihenfolge folgt klassischen Zehnfinger-Kursen. **Groß-/Kleinschrei
 | Kapitel | Ort | Neue Tasten | Beispiele |
 |---|---|---|---|
 | 1 | Kinderzimmer | Grundreihe: `a s d f j k l`, dann `g h` | *lala, dada, jaja, haha, gaga, aha* |
-| 2 | Haus | Obere Reihe: `e i`, `r u`, `t z`, `o p`, `w q` | *papa, opa, tee, hase, eis, katze, keks, puppe, tasse, topf, suppe, wasser* |
+| 2 | Haus | Obere Reihe: `e i`, `r u`, `t z`, `o p`, `w q` | *eis, keks, uhr, gurke, katze, tee, tasse, sofa, puppe, wasser, seife, qualle* – Räume siehe 3.3 |
 | 3 | Garten | Untere Reihe: `n m`, `b v`, `c x y` | *mama, oma, ball, baum, blume, nase, mond, hund, ente, maus, milch, sonne* – erste Paare: *mama da, hund weg* |
 | 4 | Dorf / Schule | Umschalttaste (Großschreibung), `ä ö ü ß`, Satzzeichen `. , ? !` | *Der Hund bellt. Die Sonne scheint. Wo ist der Bäcker?* |
 | 5 | Umgebung / Expedition | Ziffern, Sonderzeichen | Logbuch: *Tag 3: Am Fluss wachsen 12 Birken.* |

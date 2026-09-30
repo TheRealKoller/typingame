@@ -1,12 +1,12 @@
 import { describe, expect, it } from 'vitest';
 import { qwertzDe } from '../keyboard/qwertz-de';
 import { chapters } from './chapters';
+import { visibleSections } from './rooms';
 
 const sections = chapters.flatMap((chapter) =>
   chapter.sections.map((section, index) => ({
     section,
-    /** Sounds visible in this section: its own plus those of earlier sections of the same chapter. */
-    visibleWords: chapter.sections.slice(0, index + 1).flatMap((s) => s.sounds.map((sound) => sound.word)),
+    visibleWords: visibleSections(chapter, index).flatMap((s) => s.words.map((word) => word.text)),
   })),
 );
 
@@ -16,10 +16,10 @@ describe('chapters', () => {
     const violations: string[] = [];
     for (const { section } of sections) {
       section.newKeys.forEach((key) => unlocked.add(key));
-      for (const { word } of section.sounds) {
-        const locked = [...new Set(word)].filter((char) => !unlocked.has(char));
+      for (const { text } of section.words) {
+        const locked = [...new Set(text)].filter((char) => !unlocked.has(char));
         if (locked.length > 0) {
-          violations.push(`${section.id}: "${word}" uses locked ${locked.join(', ')}`);
+          violations.push(`${section.id}: "${text}" uses locked ${locked.join(', ')}`);
         }
       }
     }
@@ -45,5 +45,20 @@ describe('chapters', () => {
       ),
     );
     expect(conflicts).toEqual([]);
+  });
+
+  // Words of a room left behind are no longer visible, so a room coming back later
+  // would lose the words of its first visit.
+  it('keeps the sections of a room together', () => {
+    const returning = chapters.flatMap((chapter) =>
+      chapter.sections
+        .filter((section, i) => {
+          const previous = chapter.sections[i - 1];
+          return previous !== undefined && previous.room !== section.room &&
+            chapter.sections.slice(0, i).some((s) => s.room === section.room);
+        })
+        .map((section) => `${section.id}: returns to ${section.room}`),
+    );
+    expect(returning).toEqual([]);
   });
 });
