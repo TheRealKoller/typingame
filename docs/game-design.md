@@ -27,7 +27,9 @@ Man beginnt als **Baby**, das sprechen lernt. Jede neu gelernte Taste erweitert,
 ### 3.1 Benennen macht sichtbar
 
 - Die Welt beginnt **unscharf, blass, verschwommen** – so wie ein Baby sie wahrnimmt.
-- An Dingen in der Szene erscheinen Wörter. Tippt man ein Wort, wird das Ding **entdeckt**: Es wird scharf und farbig, animiert sich, macht ein Geräusch.
+- An Dingen in der Szene erscheinen Wörter. Tippt man ein Wort zum ersten Mal, wird das Ding **entdeckt**: Es wird mit einem sanften Leuchten scharf und farbig, animiert sich, macht ein Geräusch.
+- Entdeckt bleibt entdeckt, auch nach einem Neustart (Spielstand, siehe 7.4). Entdeckte Dinge bleiben tippbar und reagieren jedes Mal.
+- Das gilt schon im Kinderzimmer: Seine Dinge beginnen blass und unscharf, der erste Laut macht sie sichtbar. Dinge späterer Abschnitte sind noch blasser und tragen kein Wort. Der Baustein dafür ist `src/ui/Discoverable.ts`.
 - Man wählt selbst, welches Wort man tippt. Alle sichtbaren Wörter, die mit dem bisher Getippten beginnen, bleiben im Spiel; mit jedem Zeichen wird eingegrenzt, bis nur noch eins übrig ist (*ha* passt zu *haha* und *hallo*, *hal* nur noch zu *hallo*).
 - Ein Wort ist fertig, sobald das Getippte ihm genau entspricht. Ist ein sichtbares Wort der Anfang eines anderen (*da* und *dada*), gewinnt deshalb das kürzere – solche Paare sollen nicht gleichzeitig sichtbar sein.
 - Ein angefangenes Wort wird zu Ende getippt; Abbrechen gibt es nicht.
