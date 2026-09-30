@@ -66,6 +66,8 @@ Im Haus sind die Wörter **Namen von Dingen**. Das Haus hat drei Räume; jeder R
 
 Sichtbar sind die Wörter des **aktuellen Raums** bis zum aktuellen Abschnitt; die Wörter eines verlassenen Raums bleiben dort. Die Abschnitte eines Raums folgen deshalb direkt aufeinander. Die Daten stehen in `src/content/chapter2.ts`.
 
+Ins Haus gelangt man aus dem Kinderzimmer: Ist in 1b die Genauigkeit erreicht (siehe 5), blendet das Kinderzimmer in die Küche über, und der Hinweis nennt die neuen Tasten `e i`. Jeder Raum füllt den Bildschirm. Wird die erste Stufe des nächsten Raums freigeschaltet, blendet das Spiel ruhig in diesen Raum über. Innerhalb eines Raums erwachen die Dinge der neuen Stufe an ihrem Platz. Freigeschaltete Tasten bleiben über Raum- und Kapitelgrenzen erhalten. Nach einem Neustart geht es im gespeicherten Abschnitt und damit im richtigen Raum weiter. Das Bad ist vorerst die letzte Stufe.
+
 ### 3.4 Fehlerverhalten
 
 - Ein falscher Buchstabe wird sanft markiert (kein lauter Fehlerton, kein Punktabzug im Hauptspiel).

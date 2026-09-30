@@ -1,14 +1,12 @@
 import { describe, expect, it } from 'vitest';
 import { qwertzDe } from '../keyboard/qwertz-de';
-import { chapters } from './chapters';
+import { chapters, playOrder } from './chapters';
 import { visibleSections } from './rooms';
 
-const sections = chapters.flatMap((chapter) =>
-  chapter.sections.map((section, index) => ({
-    section,
-    visibleWords: visibleSections(chapter, index).flatMap((s) => s.words.map((word) => word.text)),
-  })),
-);
+const sections = playOrder.map(({ chapter, index, section }) => ({
+  section,
+  visibleWords: visibleSections(chapter, index).flatMap((s) => s.words.map((word) => word.text)),
+}));
 
 describe('chapters', () => {
   it('uses only keys that are unlocked by the section a word appears in', () => {

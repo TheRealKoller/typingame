@@ -1,10 +1,11 @@
 import * as Phaser from 'phaser';
-import { chapter1 } from '../content/chapter1';
+import { playOrder } from '../content/chapters';
 import { visibleSections } from '../content/rooms';
 import type { Section } from '../content/types';
 import { FINGER_NAME } from '../keyboard/fingers';
 import { qwertzDe } from '../keyboard/qwertz-de';
-import { FLOOR_Y, nurseryObjects, type NurseryObject } from '../nursery/objects';
+import { rooms } from '../things/rooms';
+import type { Thing } from '../things/thing';
 import type { Progress } from '../progress/progress';
 import { errorRate } from '../progress/stats';
 import { UnlockTracker } from '../progress/unlock';
@@ -20,21 +21,26 @@ const UNLOCK_DELAY = 1200;
 const FADE_DURATION = 600;
 const HINT_DURATION = 5000;
 
-export interface NurserySceneData {
-  /** Saved progress plus the running session; decides the section. */
+export interface RoomSceneData {
+  /** Saved progress plus the running session; decides the section and so the room. */
   readonly progress: Progress;
   /** Set when the section was just unlocked: the room wakes up and the new keys are introduced. */
   readonly announce?: boolean;
 }
 
-/** Chapter 1: the baby says sounds; a thing is discovered when its sound is said first, and it reacts every time. */
-export class NurseryScene extends Phaser.Scene {
+/**
+ * One room of the game in the current section: the room's things wait blurred and pale
+ * until their word is typed first, and react every time. Enough accuracy moves on to the
+ * next section, into the next room or chapter.
+ */
+export class RoomScene extends Phaser.Scene {
   #engine!: TypingEngine;
   #keyboard!: KeyboardView;
   #labels: WordLabel[] = [];
-  #things = new Map<string, { readonly object: NurseryObject; readonly discoverable: Discoverable }>();
-  #sectionIndex = 0;
-  /** Null in the last section of the chapter. */
+  #things = new Map<string, { readonly thing: Thing; readonly discoverable: Discoverable }>();
+  /** Index of the current section in the play order. */
+  #position = 0;
+  /** Null in the last section of the game. */
   #unlock: UnlockTracker | null = null;
   #unlockReached = false;
   #transitioning = false;
@@ -42,53 +48,57 @@ export class NurseryScene extends Phaser.Scene {
   #statsView!: StatsView;
 
   constructor() {
-    super('NurseryScene');
+    super('RoomScene');
   }
 
-  create(data: NurserySceneData): void {
-    // A save may name a section that no longer exists; start the chapter over then.
-    const sectionIndex = Math.max(
-      chapter1.sections.findIndex((s) => s.id === data.progress.section),
+  create(data: RoomSceneData): void {
+    // A save may name a section that no longer exists; start the game over then.
+    const position = Math.max(
+      playOrder.findIndex((place) => place.section.id === data.progress.section),
       0,
     );
-    const section = chapter1.sections[sectionIndex];
-    if (!section) throw new Error('chapter 1 has no sections');
-    const words = visibleSections(chapter1, sectionIndex).flatMap((s) => s.words);
+    const place = playOrder[position];
+    if (!place) throw new Error('there are no sections');
+    const { chapter, index, section } = place;
+    const room = rooms[section.room];
+    if (!room) throw new Error(`no room "${section.room}" for section ${section.id}`);
+    const words = visibleSections(chapter, index).flatMap((s) => s.words);
     this.#progress = data.progress;
     this.#progress.section = section.id;
-    this.#sectionIndex = sectionIndex;
-    this.#unlock = sectionIndex + 1 < chapter1.sections.length ? new UnlockTracker() : null;
+    this.#position = position;
+    this.#unlock = position + 1 < playOrder.length ? new UnlockTracker() : null;
     this.#unlockReached = false;
     this.#transitioning = false;
 
-    this.add.rectangle(this.scale.width / 2, FLOOR_Y + 25, this.scale.width, 50, 0xe8dccb);
+    room.backdrop(this);
 
     // Every thing of the room is there, blurred and pale until discovered; those of later sections are faint and silent.
     this.#labels = [];
     this.#things.clear();
-    for (const word of chapter1.sections.filter((s) => s.room === section.room).flatMap((s) => s.words)) {
-      const factory = nurseryObjects[word.object];
-      if (!factory) throw new Error(`no nursery object "${word.object}" for "${word.text}"`);
-      const object = factory(this);
-      const discoverable = new Discoverable(object.view, this.#progress.discovered.has(word.text));
+    for (const word of chapter.sections.filter((s) => s.room === section.room).flatMap((s) => s.words)) {
+      const factory = room.things[word.object];
+      if (!factory) throw new Error(`no thing "${word.object}" in ${section.room} for "${word.text}"`);
+      const thing = factory(this);
+      const discoverable = new Discoverable(thing.view, this.#progress.discovered.has(word.text));
       if (!words.includes(word)) {
-        object.view.setAlpha(LATER_ALPHA);
+        thing.view.setAlpha(LATER_ALPHA);
         continue;
       }
-      this.#things.set(word.text, { object, discoverable });
-      const label = new WordLabel(this, object.label.x, object.label.y, word.text);
+      this.#things.set(word.text, { thing, discoverable });
+      const label = new WordLabel(this, thing.label.x, thing.label.y, word.text);
       this.#labels.push(label);
       if (data.announce && section.words.includes(word)) {
-        object.view.setAlpha(LATER_ALPHA);
+        thing.view.setAlpha(LATER_ALPHA);
         label.setAlpha(0);
-        this.tweens.add({ targets: [object.view, label], alpha: 1, delay: FADE_DURATION, duration: 1500 });
+        this.tweens.add({ targets: [thing.view, label], alpha: 1, delay: FADE_DURATION, duration: 1500 });
       }
     }
 
     this.#engine = new TypingEngine(words.map((word) => word.text));
+    // Keys stay unlocked across rooms and chapters.
     this.#keyboard = new KeyboardView(this, this.scale.width / 2, 505, qwertzDe)
       .setScale(0.7)
-      .setUnlocked(chapter1.sections.slice(0, sectionIndex + 1).flatMap((s) => s.newKeys));
+      .setUnlocked(playOrder.slice(0, position + 1).flatMap((p) => p.section.newKeys));
 
     this.#statsView = new StatsView(this, this.scale.width / 2, 200);
     this.#statsView.update(this.#progress);
@@ -110,7 +120,7 @@ export class NurseryScene extends Phaser.Scene {
 
     if (data.announce) {
       this.cameras.main.fadeIn(FADE_DURATION);
-      this.#showNewKeys(section);
+      this.#showNewKeys(section, room.hint);
     }
     this.#render();
   }
@@ -133,9 +143,9 @@ export class NurseryScene extends Phaser.Scene {
     this.#keyboard.press(event.code, correct);
     for (const typingEvent of events) {
       if (typingEvent.type !== 'complete') continue;
-      const thing = this.#things.get(typingEvent.word);
-      thing?.discoverable.discover();
-      thing?.object.react();
+      const entry = this.#things.get(typingEvent.word);
+      entry?.discoverable.discover();
+      entry?.thing.react();
       this.#labels.find((label) => label.word === typingEvent.word)?.celebrate();
       this.#progress.discover(typingEvent.word);
       void this.#progress.save();
@@ -171,21 +181,21 @@ export class NurseryScene extends Phaser.Scene {
 
   /** Moves to the next section once the current reaction had time to play. */
   #advance(): void {
-    const next = chapter1.sections[this.#sectionIndex + 1];
+    const next = playOrder[this.#position + 1];
     if (!next) return;
     this.#transitioning = true;
-    this.#progress.section = next.id;
+    this.#progress.section = next.section.id;
     void this.#progress.save();
     this.time.delayedCall(UNLOCK_DELAY, () => {
       this.cameras.main.fadeOut(FADE_DURATION);
       this.cameras.main.once(Phaser.Cameras.Scene2D.Events.FADE_OUT_COMPLETE, () =>
-        this.scene.restart({ progress: this.#progress, announce: true } satisfies NurserySceneData),
+        this.scene.restart({ progress: this.#progress, announce: true } satisfies RoomSceneData),
       );
     });
   }
 
   /** Calm hint naming the new keys and the fingers that press them. */
-  #showNewKeys(section: Section): void {
+  #showNewKeys(section: Section, at: { readonly x: number; readonly y: number }): void {
     const lines = section.newKeys.map((char) => {
       const key = qwertzDe.keys.find((k) => k.char === char);
       return key ? `${char.toUpperCase()} – ${FINGER_NAME[key.finger]}` : char.toUpperCase();
@@ -203,8 +213,7 @@ export class NurseryScene extends Phaser.Scene {
       .rectangle(0, 0, text.width + 64, text.height + 40, 0xfffaf2, 0.94)
       .setRounded(16)
       .setStrokeStyle(2, 0xd9c8b4);
-    // Free wall space between the mobile and the night light.
-    const hint = this.add.container(820, 115, [panel, text]).setAlpha(0);
+    const hint = this.add.container(at.x, at.y, [panel, text]).setAlpha(0);
     this.tweens.chain({
       targets: hint,
       tweens: [
