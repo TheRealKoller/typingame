@@ -39,13 +39,13 @@ Stack: Tauri 2, TypeScript, Phaser, Vite.
 
 ### Aufbau
 
-- `src/` – Spiel (TypeScript, Phaser); Einstieg `src/main.ts`, Szenen in `src/scenes/`
+- `src/` – Spiel (TypeScript, Phaser); Einstieg `src/main.ts`; `src/scenes/RoomScene.ts` spielt jeden Raum im aktuellen Abschnitt und wechselt über Raum- und Kapitelgrenzen
 - `src/keyboard/` – Tastaturlayouts als Daten (physische Taste → Zeichen, Reihe, Finger); zuerst `qwertz-de.ts`
 - `src/typing/` – Tipp-Engine: Zielauswahl per Präfix, Fehler, Wortabschluss (ohne Phaser)
 - `src/content/` – Spielinhalte als Daten: Kapitel, Räume, Abschnitte, freigeschaltete Tasten, Laute bzw. Wörter (`chapter1.ts`, `chapter2.ts`); `rooms.ts` legt fest, welche Wörter sichtbar sind; `chapters.test.ts` prüft Tastenregel, Präfix-Paare und zusammenhängende Räume
 - `src/progress/` – Fortschritt ohne Phaser: Freischaltung nach Genauigkeit (`unlock.ts`), Sitzungsstatistik (`stats.ts`), Spielstand (`save.ts` Format, `progress.ts` Laden/Speichern, `storage.ts` Datei bzw. localStorage)
 - `src/ui/` – wiederverwendbare Phaser-Bausteine, z. B. `KeyboardView` (Bildschirmtastatur), `Discoverable` (Ding blass und unscharf bis zum Entdecken)
-- `src/nursery/` – Platzhalter-Dinge des Kinderzimmers (Zeichnung, Wortposition, Reaktion), angesprochen über die `object`-IDs aus `src/content/chapter1.ts`
+- `src/things/` – Räume mit Platzhalter-Dingen (Hintergrund, Zeichnung, Wortposition, Reaktion): `nursery.ts`, `kitchen.ts`, `livingRoom.ts`, `bathroom.ts`; `rooms.ts` ordnet sie den Raumnamen der Inhalte zu, die Dinge werden über die `object`-IDs angesprochen; `thing.ts` enthält Vertrag und gemeinsame Animationen (Phaser nur als Typ, damit `rooms.test.ts` ohne Phaser läuft)
 - Tests liegen neben dem Code als `*.test.ts` unter `src/` und laufen mit [Vitest](https://vitest.dev) in Node, ohne Phaser.
 - `src-tauri/` – Desktop-Hülle (Rust, Tauri 2), Konfiguration in `src-tauri/tauri.conf.json`
 

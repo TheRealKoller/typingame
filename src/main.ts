@@ -1,13 +1,13 @@
 import * as Phaser from 'phaser';
-import { chapter1 } from './content/chapter1';
+import { playOrder } from './content/chapters';
 import { Progress } from './progress/progress';
 import { createStorage } from './progress/storage';
-import { NurseryScene, type NurserySceneData } from './scenes/NurseryScene';
+import { RoomScene, type RoomSceneData } from './scenes/RoomScene';
 
 async function start(): Promise<void> {
-  const firstSection = chapter1.sections[0];
-  if (!firstSection) throw new Error('chapter 1 has no sections');
-  const progress = await Progress.load(createStorage(), firstSection.id);
+  const first = playOrder[0];
+  if (!first) throw new Error('there are no sections');
+  const progress = await Progress.load(createStorage(), first.section.id);
 
   const game = new Phaser.Game({
     type: Phaser.AUTO,
@@ -22,7 +22,7 @@ async function start(): Promise<void> {
     // Scenes read typing from native keydown events.
     input: { keyboard: false },
   });
-  game.scene.add('NurseryScene', NurseryScene, true, { progress } satisfies NurserySceneData);
+  game.scene.add('RoomScene', RoomScene, true, { progress } satisfies RoomSceneData);
 }
 
 void start();

@@ -1,50 +1,7 @@
-import * as Phaser from 'phaser';
+import type * as Phaser from 'phaser';
+import { FLOOR_Y, floatText, LABEL_Y, OUTLINE, rock, type Room, type ThingFactory } from './thing';
 
-/** Placeholder object in the nursery: its drawing, where its word goes, and its reaction. */
-export interface NurseryObject {
-  readonly view: Phaser.GameObjects.Container;
-  readonly label: { readonly x: number; readonly y: number };
-  react(): void;
-}
-
-type Factory = (scene: Phaser.Scene) => NurseryObject;
-
-export const FLOOR_Y = 380;
-const LABEL_Y = FLOOR_Y + 26;
-const OUTLINE = 0x8a7a6a;
-
-/** Rocks a container a few times around its origin. */
-function rock(scene: Phaser.Scene, target: Phaser.GameObjects.Container, angle: number, times: number): void {
-  scene.tweens.killTweensOf(target);
-  target.setAngle(0);
-  scene.tweens.chain({
-    targets: target,
-    tweens: [
-      { angle: -angle, duration: 220, ease: 'Sine.easeInOut' },
-      { angle, duration: 440, ease: 'Sine.easeInOut', yoyo: true, repeat: times - 1 },
-      { angle: 0, duration: 220, ease: 'Sine.easeInOut' },
-    ],
-  });
-}
-
-/** A text that floats upwards and fades out. */
-function floatText(scene: Phaser.Scene, x: number, y: number, text: string, delay = 0): void {
-  const label = scene.add
-    .text(x, y, text, { fontFamily: 'sans-serif', fontSize: '28px', color: '#7a6a5a' })
-    .setOrigin(0.5)
-    .setAlpha(0);
-  scene.tweens.chain({
-    targets: label,
-    delay,
-    tweens: [
-      { alpha: 1, duration: 200 },
-      { y: y - 70, x: x + Phaser.Math.Between(-20, 20), alpha: 0, duration: 1400, ease: 'Sine.easeOut' },
-    ],
-    onComplete: () => label.destroy(),
-  });
-}
-
-const bed: Factory = (scene) => {
+const bed: ThingFactory = (scene) => {
   const x = 330;
   const frame = 0xd9b99b;
   const view = scene.add.container(x, FLOOR_Y, [
@@ -64,7 +21,7 @@ const bed: Factory = (scene) => {
   };
 };
 
-const mobile: Factory = (scene) => {
+const mobile: ThingFactory = (scene) => {
   const x = 330;
   const armY = 110;
   const hanging = (offset: number, length: number, shape: Phaser.GameObjects.Shape) =>
@@ -88,7 +45,7 @@ const mobile: Factory = (scene) => {
   };
 };
 
-const musicBox: Factory = (scene) => {
+const musicBox: ThingFactory = (scene) => {
   const x = 610;
   const lid = scene.add.rectangle(-45, -60, 90, 12, 0xc98f6b).setOrigin(0, 1).setStrokeStyle(2, OUTLINE);
   const view = scene.add.container(x, FLOOR_Y, [
@@ -115,7 +72,7 @@ const musicBox: Factory = (scene) => {
   };
 };
 
-const teddy: Factory = (scene) => {
+const teddy: ThingFactory = (scene) => {
   const x = 820;
   const fur = 0xc49a74;
   const view = scene.add.container(x, FLOOR_Y, [
@@ -136,7 +93,7 @@ const teddy: Factory = (scene) => {
   };
 };
 
-const duck: Factory = (scene) => {
+const duck: ThingFactory = (scene) => {
   const x = 980;
   const view = scene.add.container(x, FLOOR_Y, [
     scene.add.ellipse(0, -22, 76, 44, 0xf5d77a).setStrokeStyle(2, OUTLINE),
@@ -157,7 +114,7 @@ const duck: Factory = (scene) => {
   };
 };
 
-const nightLight: Factory = (scene) => {
+const nightLight: ThingFactory = (scene) => {
   const x = 1140;
   const y = 230;
   const off = 0xf1e6cf;
@@ -186,5 +143,12 @@ const nightLight: Factory = (scene) => {
   };
 };
 
-/** Placeholder objects by the ids used in the chapter 1 content. */
-export const nurseryObjects: Readonly<Record<string, Factory>> = { bed, mobile, musicBox, teddy, duck, nightLight };
+/** Chapter 1: the baby's room with the things that react to its first sounds. */
+export const nursery: Room = {
+  backdrop: (scene) => {
+    scene.add.rectangle(scene.scale.width / 2, FLOOR_Y + 25, scene.scale.width, 50, 0xe8dccb);
+  },
+  // Free wall space between the mobile and the night light.
+  hint: { x: 820, y: 115 },
+  things: { bed, mobile, musicBox, teddy, duck, nightLight },
+};
