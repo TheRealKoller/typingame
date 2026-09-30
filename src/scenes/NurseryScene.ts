@@ -1,5 +1,6 @@
 import * as Phaser from 'phaser';
 import { chapter1 } from '../content/chapter1';
+import { visibleSections } from '../content/rooms';
 import type { Section } from '../content/types';
 import { FINGER_NAME } from '../keyboard/fingers';
 import { qwertzDe } from '../keyboard/qwertz-de';
@@ -49,10 +50,9 @@ export class NurseryScene extends Phaser.Scene {
       chapter1.sections.findIndex((s) => s.id === data.progress.section),
       0,
     );
-    const sections = chapter1.sections.slice(0, sectionIndex + 1);
-    const section = sections[sectionIndex];
+    const section = chapter1.sections[sectionIndex];
     if (!section) throw new Error('chapter 1 has no sections');
-    const sounds = sections.flatMap((s) => s.sounds);
+    const words = visibleSections(chapter1, sectionIndex).flatMap((s) => s.words);
     this.#progress = data.progress;
     this.#progress.section = section.id;
     this.#sectionIndex = sectionIndex;
@@ -62,31 +62,31 @@ export class NurseryScene extends Phaser.Scene {
 
     this.add.rectangle(this.scale.width / 2, FLOOR_Y + 25, this.scale.width, 50, 0xe8dccb);
 
-    // Every thing of the chapter is in the room; those of later sections stay pale and silent.
+    // Every thing of the room is there; those of later sections stay pale and silent.
     this.#labels = [];
     this.#objectsByWord.clear();
-    for (const sound of chapter1.sections.flatMap((s) => s.sounds)) {
-      const factory = nurseryObjects[sound.object];
-      if (!factory) throw new Error(`no nursery object "${sound.object}" for "${sound.word}"`);
+    for (const word of chapter1.sections.filter((s) => s.room === section.room).flatMap((s) => s.words)) {
+      const factory = nurseryObjects[word.object];
+      if (!factory) throw new Error(`no nursery object "${word.object}" for "${word.text}"`);
       const object = factory(this);
-      if (!sounds.includes(sound)) {
+      if (!words.includes(word)) {
         object.view.setAlpha(LATER_ALPHA);
         continue;
       }
-      this.#objectsByWord.set(sound.word, object);
-      const label = new WordLabel(this, object.label.x, object.label.y, sound.word);
+      this.#objectsByWord.set(word.text, object);
+      const label = new WordLabel(this, object.label.x, object.label.y, word.text);
       this.#labels.push(label);
-      if (data.announce && section.sounds.includes(sound)) {
+      if (data.announce && section.words.includes(word)) {
         object.view.setAlpha(LATER_ALPHA);
         label.setAlpha(0);
         this.tweens.add({ targets: [object.view, label], alpha: 1, delay: FADE_DURATION, duration: 1500 });
       }
     }
 
-    this.#engine = new TypingEngine(sounds.map((sound) => sound.word));
+    this.#engine = new TypingEngine(words.map((word) => word.text));
     this.#keyboard = new KeyboardView(this, this.scale.width / 2, 505, qwertzDe)
       .setScale(0.7)
-      .setUnlocked(sections.flatMap((section) => section.newKeys));
+      .setUnlocked(chapter1.sections.slice(0, sectionIndex + 1).flatMap((s) => s.newKeys));
 
     this.#statsView = new StatsView(this, this.scale.width / 2, 200);
     this.#statsView.update(this.#progress);
