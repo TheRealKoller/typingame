@@ -9,11 +9,12 @@ import type { Progress } from '../progress/progress';
 import { errorRate } from '../progress/stats';
 import { UnlockTracker } from '../progress/unlock';
 import { TypingEngine } from '../typing/engine';
+import { Discoverable } from '../ui/Discoverable';
 import { KeyboardView } from '../ui/KeyboardView';
 import { StatsView } from '../ui/StatsView';
 import { WordLabel } from '../ui/WordLabel';
 
-const LATER_ALPHA = 0.3;
+const LATER_ALPHA = 0.5;
 /** Lets the reaction to the last word play before the room changes. */
 const UNLOCK_DELAY = 1200;
 const FADE_DURATION = 600;
@@ -26,12 +27,12 @@ export interface NurserySceneData {
   readonly announce?: boolean;
 }
 
-/** Chapter 1: the baby says sounds and the things in the nursery react. */
+/** Chapter 1: the baby says sounds; a thing is discovered when its sound is said first, and it reacts every time. */
 export class NurseryScene extends Phaser.Scene {
   #engine!: TypingEngine;
   #keyboard!: KeyboardView;
   #labels: WordLabel[] = [];
-  #objectsByWord = new Map<string, NurseryObject>();
+  #things = new Map<string, { readonly object: NurseryObject; readonly discoverable: Discoverable }>();
   #sectionIndex = 0;
   /** Null in the last section of the chapter. */
   #unlock: UnlockTracker | null = null;
@@ -62,18 +63,19 @@ export class NurseryScene extends Phaser.Scene {
 
     this.add.rectangle(this.scale.width / 2, FLOOR_Y + 25, this.scale.width, 50, 0xe8dccb);
 
-    // Every thing of the room is there; those of later sections stay pale and silent.
+    // Every thing of the room is there, blurred and pale until discovered; those of later sections are faint and silent.
     this.#labels = [];
-    this.#objectsByWord.clear();
+    this.#things.clear();
     for (const word of chapter1.sections.filter((s) => s.room === section.room).flatMap((s) => s.words)) {
       const factory = nurseryObjects[word.object];
       if (!factory) throw new Error(`no nursery object "${word.object}" for "${word.text}"`);
       const object = factory(this);
+      const discoverable = new Discoverable(object.view, this.#progress.discovered.has(word.text));
       if (!words.includes(word)) {
         object.view.setAlpha(LATER_ALPHA);
         continue;
       }
-      this.#objectsByWord.set(word.text, object);
+      this.#things.set(word.text, { object, discoverable });
       const label = new WordLabel(this, object.label.x, object.label.y, word.text);
       this.#labels.push(label);
       if (data.announce && section.words.includes(word)) {
@@ -131,7 +133,9 @@ export class NurseryScene extends Phaser.Scene {
     this.#keyboard.press(event.code, correct);
     for (const typingEvent of events) {
       if (typingEvent.type !== 'complete') continue;
-      this.#objectsByWord.get(typingEvent.word)?.react();
+      const thing = this.#things.get(typingEvent.word);
+      thing?.discoverable.discover();
+      thing?.object.react();
       this.#labels.find((label) => label.word === typingEvent.word)?.celebrate();
       this.#progress.discover(typingEvent.word);
       void this.#progress.save();
