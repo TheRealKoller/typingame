@@ -95,7 +95,12 @@ Die Tasten-Reihenfolge folgt klassischen Zehnfinger-Kursen. **Groß-/Kleinschrei
 ## 5. Lernsystem
 
 - **Bildschirmtastatur** mit Farben pro Finger (gleicher Finger beider Hände, gleiche Farbe; die Seite zeigt die Hand). Die nächste(n) Taste(n) und die passenden Finger pulsieren, darunter zwei Hände und der Name des Fingers (z. B. „D: linker Mittelfinger“). Gesperrte Tasten sind grau, eine gedrückte Taste leuchtet kurz auf – hell bei richtig, rosa bei falsch.
-- **Adaptive Wortauswahl:** Tasten mit hoher Fehlerquote oder langsamer Reaktion tauchen häufiger in angebotenen Wörtern auf.
+- **Adaptive Wortauswahl:** Tasten mit hoher Fehlerquote tauchen häufiger in angebotenen Wörtern auf.
+  - Höchstens 4 Wörter sind gleichzeitig sichtbar. Hat ein Raum mehr, warten die übrigen Dinge ohne Beschriftung.
+  - Nach jedem getippten Wort rückt ein anderes Wort des Raums nach, sofern es eins gibt. Mitten im Wort wechselt nichts, und Präfix-Paare sind nie gleichzeitig sichtbar.
+  - Noch unentdeckte Dinge rücken zuerst nach, damit jedes Ding einmal benannt wird.
+  - Danach entscheidet der Zufall, gewichtet: Jedes Wort hat Gewicht 1, dazu kommt für jede seiner Tasten 10 × Fehler / (Anschläge + 5), mit den Werten über alle Sitzungen. Die 5 gedachten richtigen Anschläge verhindern, dass ein einzelner früher Fehler die Auswahl beherrscht. Ohne Fehler ist die Auswahl gleich verteilt.
+  - Werte in `src/progress/practice.ts`. Die Reaktionszeit fließt noch nicht ein.
 - **Freischalten neuer Tasten** nach erreichter Genauigkeit: mindestens 90 % richtige Anschläge unter den letzten 30 – nicht nach Zeit. Jeder Tastendruck zählt, auch einer auf eine gesperrte Taste. Ein angefangenes Wort wird noch zu Ende getippt, dann blendet der Raum über in den nächsten Abschnitt: Die neuen Dinge erwachen, ein ruhiger Hinweis nennt die neuen Tasten und ihre Finger (z. B. „G – linker Zeigefinger“). Werte in `src/progress/unlock.ts`.
 - **Statistik:** Anschläge pro Minute, Genauigkeit, Fehler pro Taste, Verlauf über Sitzungen.
   - *Anschläge pro Minute* = richtige Anschläge je Minute Tippzeit; Lücken über 5 s zählen als Pause und nicht zur Tippzeit.
