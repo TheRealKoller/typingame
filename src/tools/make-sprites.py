@@ -17,14 +17,16 @@ sys.path.insert(0, os.path.dirname(os.path.abspath(__file__)))
 
 from pixel import contact_sheet  # noqa: E402
 
-OUT = Path(__file__).resolve().parent.parent / "assets" / "interior"
-# Modul -> Ordner unter src/assets/interior
+OUT = Path(__file__).resolve().parent.parent / "assets"
+# Modul -> Ordner unter src/assets
 GROUPS = [
-    ("shared_sprites", "shared"),
-    ("nursery", "nursery"),
-    ("kitchen", "kitchen"),
-    ("living_room", "living_room"),
-    ("bathroom", "bathroom"),
+    ("shared_sprites", "interior/shared"),
+    ("nursery", "interior/nursery"),
+    ("kitchen", "interior/kitchen"),
+    ("living_room", "interior/living_room"),
+    ("bathroom", "interior/bathroom"),
+    # Draufsicht: eigene Sprites liegen neben den Kacheln der CC0-Pakete.
+    ("garden", "world"),
 ]
 
 if __name__ == "__main__":
@@ -38,5 +40,5 @@ if __name__ == "__main__":
             continue
         for name, im in made:
             im.save(folder / f"{name}.png")
-        size = contact_sheet(made, f"/tmp/sprites-{folder_name}.png")
+        size = contact_sheet(made, f"/tmp/sprites-{folder_name.replace('/', '-')}.png")
         print(f"{module_name}: {len(made)} Sprites -> {folder_name}/, Kontaktbogen {size}")

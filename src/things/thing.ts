@@ -16,6 +16,13 @@ export interface RoomAsset {
   readonly url: string;
 }
 
+/** A figure the player walks with the arrow keys; only the top-down rooms have one. */
+export interface RoomAvatar {
+  readonly view: Phaser.GameObjects.Container;
+  /** Where the figure may walk, in screen px. */
+  readonly area: { readonly x0: number; readonly y0: number; readonly x1: number; readonly y1: number };
+}
+
 /** A room as the scene draws it; things are looked up by the `object` ids of the content. */
 export interface Room {
   /** Images the room draws; loaded before `backdrop` and the things run. */
@@ -25,6 +32,8 @@ export interface Room {
   /** Free wall space for the hint that names new keys. */
   readonly hint: { readonly x: number; readonly y: number };
   readonly things: Readonly<Record<string, ThingFactory>>;
+  /** The figure the arrow keys move, if the room has one. */
+  readonly avatar?: (scene: Phaser.Scene) => RoomAvatar;
 }
 
 /** The scene above the keyboard ends here; things usually stand on this line. */
@@ -116,6 +125,39 @@ export function squash(scene: Phaser.Scene, target: Phaser.GameObjects.Container
   scene.tweens.killTweensOf(target);
   target.setScale(1);
   scene.tweens.add({ targets: target, scaleX, scaleY, duration: 160, yoyo: true, repeat: 1, ease: 'Sine.easeInOut' });
+}
+
+/**
+ * Deterministic noise: ground is scattered instead of laid out in rows, and a room
+ * looks the same on every start.
+ */
+export function noise(x: number, y: number): number {
+  const value = Math.sin(x * 127.1 + y * 311.7) * 43758.5453;
+  return value - Math.floor(value);
+}
+
+/** Fills a rectangle with one of several 16 px tiles, picked by `noise` so nothing lines up. */
+export function scatterTiles(
+  scene: Phaser.Scene,
+  keys: readonly string[],
+  x0: number,
+  y0: number,
+  x1: number,
+  y1: number,
+  zoom: number,
+  chance = 1,
+): void {
+  const size = 16 * zoom;
+  for (let y = y0; y < y1; y += size) {
+    for (let x = x0; x < x1; x += size) {
+      const col = x / size;
+      const row = y / size;
+      // A different offset for the roll, so the choice and the scatter are not correlated.
+      if (chance < 1 && noise(col + 100, row + 100) > chance) continue;
+      const pick = keys[Math.floor(noise(col, row) * keys.length) % keys.length];
+      if (pick !== undefined) scene.add.image(x, y, pick).setOrigin(0).setScale(zoom);
+    }
+  }
 }
 
 /**
