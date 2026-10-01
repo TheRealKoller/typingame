@@ -10,7 +10,10 @@ export default defineConfig({
     // Tauri expects a fixed port and fails if it is taken.
     port: 1420,
     strictPort: true,
-    host: tauriDevHost || false,
+    // Always a concrete IPv4 address. With `false` (Vite's default) Node resolves `localhost`
+    // to whatever comes first – on Fedora that is `::1` – while the WebView's `localhost`
+    // can end up on `127.0.0.1`. Then nothing answers and the window stays empty.
+    host: tauriDevHost || '127.0.0.1',
     hmr: tauriDevHost ? { protocol: 'ws', host: tauriDevHost, port: 1421 } : undefined,
     watch: {
       ignored: ['**/src-tauri/**'],
