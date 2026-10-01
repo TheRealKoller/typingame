@@ -4,9 +4,9 @@ import { FINGER_NAME } from '../keyboard/fingers';
 
 const KEY_SIZE = 52;
 const KEY_PITCH = 58;
-/** Horizontal start of each row in key widths on an ISO keyboard (after Tab, Caps Lock, Shift). */
-const ROW_OFFSET: Record<Row, number> = { top: 1.5, home: 1.75, bottom: 1.25 };
-const ROW_INDEX: Record<Row, number> = { top: 0, home: 1, bottom: 2 };
+/** Horizontal start of each row in key widths on an ISO keyboard (after Tab, Caps Lock, Shift); the space bar sits centred below the letters. */
+const ROW_OFFSET: Record<Row, number> = { top: 1.5, home: 1.75, bottom: 1.25, space: 4.5 };
+const ROW_INDEX: Record<Row, number> = { top: 0, home: 1, bottom: 2, space: 3 };
 
 const TEXT_COLOR = 0x4a4038;
 const LOCKED_COLOR = 0xe6ddd2;
@@ -24,10 +24,11 @@ const FINGER_COLOR: Record<Finger, number> = {
   rightMiddle: 0xa9d4a0,
   rightRing: 0xf5c98f,
   rightPinky: 0xf2a7a7,
+  thumb: 0xd8b8e0,
 };
 
-/** Hand diagram, left to right: finger (or thumb), height, and horizontal position. */
-const HAND_FINGERS: readonly { finger: Finger | 'thumb'; height: number; x: number }[] = [
+/** Hand diagram, left to right: finger, height, and horizontal position. */
+const HAND_FINGERS: readonly { finger: Finger; height: number; x: number }[] = [
   { finger: 'leftPinky', height: 62, x: -250 },
   { finger: 'leftRing', height: 82, x: -214 },
   { finger: 'leftMiddle', height: 92, x: -178 },
@@ -72,7 +73,8 @@ function mix(from: number, to: number, t: number): number {
  */
 export class KeyboardView extends Phaser.GameObjects.Container {
   readonly #keys: KeyView[];
-  readonly #fingers = new Map<Finger, Phaser.GameObjects.Rectangle>();
+  /** The ten shapes of the hand diagram, in the order they are drawn. */
+  readonly #hands: { readonly finger: Finger; readonly shape: Phaser.GameObjects.Rectangle }[] = [];
   readonly #caption: Phaser.GameObjects.Text;
   #unlocked: ReadonlySet<string> = new Set();
   #next: readonly string[] = [];
@@ -81,23 +83,26 @@ export class KeyboardView extends Phaser.GameObjects.Container {
   constructor(scene: Phaser.Scene, x: number, y: number, layout: KeyboardLayout) {
     super(scene, x, y);
 
-    const rowLengths: Record<Row, number> = { top: 0, home: 0, bottom: 0 };
-    for (const key of layout.keys) rowLengths[key.row]++;
+    const rowLengths: Record<Row, number> = { top: 0, home: 0, bottom: 0, space: 0 };
+    for (const key of layout.keys) rowLengths[key.row] += key.width ?? 1;
     const rows = Object.keys(ROW_OFFSET) as Row[];
     const minOffset = Math.min(...rows.map((row) => ROW_OFFSET[row]));
     const maxEnd = Math.max(...rows.map((row) => ROW_OFFSET[row] + rowLengths[row]));
     const width = (maxEnd - minOffset) * KEY_PITCH;
 
-    const rowCounters: Record<Row, number> = { top: 0, home: 0, bottom: 0 };
+    const rowCounters: Record<Row, number> = { top: 0, home: 0, bottom: 0, space: 0 };
 
     this.#keys = layout.keys.map((key) => {
-      const column = rowCounters[key.row]++;
+      const units = key.width ?? 1;
+      const column = rowCounters[key.row];
+      rowCounters[key.row] += units;
       const left = (ROW_OFFSET[key.row] - minOffset + column) * KEY_PITCH - width / 2;
-      const container = scene.add.container(left + KEY_SIZE / 2, (ROW_INDEX[key.row] - 1) * KEY_PITCH);
-      const cap = scene.add.rectangle(0, 0, KEY_SIZE, KEY_SIZE).setRounded(8);
-      const flash = scene.add.rectangle(0, 0, KEY_SIZE, KEY_SIZE, RIGHT_FLASH).setRounded(8).setAlpha(0);
+      const capWidth = units * KEY_PITCH - (KEY_PITCH - KEY_SIZE);
+      const container = scene.add.container(left + capWidth / 2, (ROW_INDEX[key.row] - 1) * KEY_PITCH);
+      const cap = scene.add.rectangle(0, 0, capWidth, KEY_SIZE).setRounded(8);
+      const flash = scene.add.rectangle(0, 0, capWidth, KEY_SIZE, RIGHT_FLASH).setRounded(8).setAlpha(0);
       const label = scene.add
-        .text(0, 0, key.char.toUpperCase(), { fontFamily: 'sans-serif', fontSize: '22px' })
+        .text(0, 0, key.label ?? key.char.toUpperCase(), { fontFamily: 'sans-serif', fontSize: '22px' })
         .setOrigin(0.5);
       const rate = scene.add
         .text(0, 15, '', { fontFamily: 'sans-serif', fontSize: '13px', color: '#4a4038' })
@@ -107,17 +112,15 @@ export class KeyboardView extends Phaser.GameObjects.Container {
       return { key, container, cap, flash, label, rate };
     });
 
-    const handsTop = 2 * KEY_PITCH + 24;
+    // Hands and caption sit below the lowest key row; the space bar adds a row.
+    const lowestRow = Math.max(...layout.keys.map((key) => ROW_INDEX[key.row]));
+    const handsTop = lowestRow * KEY_PITCH + 24;
     for (const { finger, height, x: fingerX } of HAND_FINGERS) {
       const shape = scene.add
         .rectangle(fingerX, handsTop + 92 - height / 2 + (finger === 'thumb' ? 24 : 0), FINGER_WIDTH, height)
         .setRounded(FINGER_WIDTH / 2);
       this.add(shape);
-      if (finger === 'thumb') {
-        shape.setFillStyle(LOCKED_COLOR);
-      } else {
-        this.#fingers.set(finger, shape);
-      }
+      this.#hands.push({ finger, shape });
     }
 
     this.#caption = scene.add
@@ -189,7 +192,7 @@ export class KeyboardView extends Phaser.GameObjects.Container {
     }
 
     const nextFingers = new Set(nextKeys.map((key) => key.finger));
-    for (const [finger, shape] of this.#fingers) {
+    for (const { finger, shape } of this.#hands) {
       this.scene.tweens.killTweensOf(shape);
       shape.setScale(1);
       if (nextFingers.has(finger)) {
@@ -201,7 +204,7 @@ export class KeyboardView extends Phaser.GameObjects.Container {
     }
 
     this.#caption.setText(
-      nextKeys.map((key) => `${key.char.toUpperCase()}: ${FINGER_NAME[key.finger]}`).join('     '),
+      nextKeys.map((key) => `${key.label ?? key.char.toUpperCase()}: ${FINGER_NAME[key.finger]}`).join('     '),
     );
   }
 
@@ -221,7 +224,7 @@ export class KeyboardView extends Phaser.GameObjects.Container {
       label.setY(-7).setColor('#4a4038');
       rate.setText(`${Math.round(errorRate * 100)} %`);
     }
-    for (const [finger, shape] of this.#fingers) {
+    for (const { finger, shape } of this.#hands) {
       this.scene.tweens.killTweensOf(shape);
       shape.setScale(1).setFillStyle(FINGER_COLOR[finger], 0.35).setStrokeStyle();
     }

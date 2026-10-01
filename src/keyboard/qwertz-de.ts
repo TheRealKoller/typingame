@@ -42,5 +42,7 @@ export const qwertzDe: KeyboardLayout = {
     { code: 'Comma', char: ',', row: 'bottom', finger: 'rightMiddle' },
     { code: 'Period', char: '.', row: 'bottom', finger: 'rightRing' },
     { code: 'Slash', char: '-', row: 'bottom', finger: 'rightPinky' },
+
+    { code: 'Space', char: ' ', row: 'space', finger: 'thumb', width: 6, label: 'Leertaste' },
   ],
 };

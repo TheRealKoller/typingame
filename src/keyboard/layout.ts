@@ -1,5 +1,5 @@
-/** Rows of the main keyboard block that carry letters. */
-export type Row = 'top' | 'home' | 'bottom';
+/** Rows of the keyboard: the three letter rows and the space bar below them. */
+export type Row = 'top' | 'home' | 'bottom' | 'space';
 
 /** The finger that presses a key in touch typing. */
 export type Finger =
@@ -10,7 +10,8 @@ export type Finger =
   | 'rightIndex'
   | 'rightMiddle'
   | 'rightRing'
-  | 'rightPinky';
+  | 'rightPinky'
+  | 'thumb';
 
 export interface KeyDefinition {
   /** Physical key as reported by `KeyboardEvent.code`. */
@@ -19,6 +20,10 @@ export interface KeyDefinition {
   readonly char: string;
   readonly row: Row;
   readonly finger: Finger;
+  /** Width in key units; 1 unless the key is wider, like the space bar. */
+  readonly width?: number;
+  /** What the key is called on screen when its character alone is unclear, e.g. the space bar. */
+  readonly label?: string;
 }
 
 export interface KeyboardLayout {
