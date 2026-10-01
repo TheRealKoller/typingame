@@ -31,6 +31,21 @@ const SCENERY = [
   { key: 'sprout', url: sproutTile },
 ];
 
+/** The plain grass keys; the flower patch is placed separately. */
+const GRASS_KEYS = ['grass', 'grass2', 'grass3'] as const;
+
+/** Deterministic noise: scattered ground instead of a lattice, and the same meadow on every start. */
+function noise(x: number, y: number): number {
+  const value = Math.sin(x * 127.1 + y * 311.7) * 43758.5453;
+  return value - Math.floor(value);
+}
+
+/** Ground of one tile: a grass variant, or flowers in patches of about two by two tiles. */
+function groundKey(x: number, y: number): string {
+  if (noise(Math.floor(x / 2), Math.floor(y / 2)) > 0.7) return 'patch';
+  return GRASS_KEYS[Math.floor(noise(x, y) * GRASS_KEYS.length) % GRASS_KEYS.length] ?? 'grass';
+}
+
 const BUSHES = [
   [1, 1],
   [6, 2],
@@ -121,8 +136,7 @@ class PrototypeScene extends Phaser.Scene {
     const rows = HEIGHT / STEP;
     for (let y = 0; y < rows; y++) {
       for (let x = 0; x < cols; x++) {
-        const pick = GROUND[(x * 7 + y * 5) % GROUND.length];
-        if (pick) this.add.image(x * STEP, y * STEP, pick.key).setOrigin(0).setScale(STEP / 16);
+        this.add.image(x * STEP, y * STEP, groundKey(x, y)).setOrigin(0).setScale(STEP / 16);
       }
     }
   }
