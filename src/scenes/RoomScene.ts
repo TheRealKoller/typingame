@@ -5,7 +5,7 @@ import type { Section } from '../content/types';
 import { FINGER_NAME } from '../keyboard/fingers';
 import { qwertzDe } from '../keyboard/qwertz-de';
 import { rooms } from '../things/rooms';
-import type { Thing } from '../things/thing';
+import type { Room, Thing } from '../things/thing';
 import type { Progress } from '../progress/progress';
 import { chooseShown, replaceTyped } from '../progress/practice';
 import { errorRate } from '../progress/stats';
@@ -37,6 +37,12 @@ export interface RoomSceneData {
   readonly announce?: boolean;
 }
 
+/** The room of a saved section, or null if the section is unknown. */
+function roomFor(sectionId: string): Room | null {
+  const place = playOrder.find((entry) => entry.section.id === sectionId);
+  return place ? rooms[place.section.room] ?? null : null;
+}
+
 /**
  * One room of the game in the current section: the room's things wait blurred and pale
  * until their word is typed first, and react every time. Enough accuracy moves on to the
@@ -61,6 +67,17 @@ export class RoomScene extends Phaser.Scene {
 
   constructor() {
     super('RoomScene');
+  }
+
+  /** Resolved in `init`, so the room's images can be loaded before the scene is drawn. */
+  #room: Room | null = null;
+
+  init(data: RoomSceneData): void {
+    this.#room = roomFor(data.progress.section);
+  }
+
+  preload(): void {
+    for (const asset of this.#room?.assets ?? []) this.load.image(asset.key, asset.url);
   }
 
   create(data: RoomSceneData): void {
