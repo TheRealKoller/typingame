@@ -82,6 +82,8 @@ Die drei Bereiche sind Räume im selben Sinn wie die des Hauses; aus dem Bad (2e
 
 Eine Ausnahme unter den Wörtern ist *mama*: Ihr erstes Tippen ist der besondere Moment aus Abschnitt 4 und wird eigens inszeniert. Warmes Licht legt sich über die Szene, die Mama-Figur tritt hervor, während die übrigen Dinge und Wörter zurücktreten, und ihr Wort schwebt warm über dem Bild; das Tippen läuft dabei ruhig weiter. Jedes weitere *mama* reagiert wie ein gewöhnliches Ding. Dass der Moment stattgefunden hat, steht im Spielstand (`discovered`), also wird er nach einem Neustart nicht wiederholt.
 
+Der Hof hat einen zweiten Abschnitt (3d). Dort wird die **Leertaste** freigeschaltet, und aus den Tieren der Wiese werden die ersten **Wortpaare**: *hund weg* und *maus weg*. Ein Paar löst eine eigene Reaktion aus – der Hund läuft davon, die Maus huscht davon. Damit die Präfix-Regel hält, beginnt kein Paar mit einem Wort, das der Hof selbst zeigt; die Anfänge gehören zur Wiese. Die Daten stehen in `src/content/chapter3.ts`, die Dinge in `src/things/yard.ts`.
+
 ### 3.5 Fehlerverhalten
 
 - Ein falscher Buchstabe wird sanft markiert (kein lauter Fehlerton, kein Punktabzug im Hauptspiel).
@@ -96,7 +98,7 @@ Die Tasten-Reihenfolge folgt klassischen Zehnfinger-Kursen. **Groß-/Kleinschrei
 |---|---|---|---|
 | 1 | Kinderzimmer | Grundreihe: `a s d f j k l`, dann `g h` | *lala, dada, jaja, haha, gaga, aha* |
 | 2 | Haus | Obere Reihe: `e i`, `r u`, `t z`, `o p`, `w q` | *eis, keks, uhr, gurke, katze, tee, tasse, sofa, puppe, wasser, seife, qualle* – Räume siehe 3.3 |
-| 3 | Garten | Untere Reihe: `n m`, `b v`, `c x y` | *mama, sonne, hund, maus, gartenzwerg, baum, blume, biene, vogel, ball, bank, axt, pony, fuchs, milchkanne, kirsche, schnecke* – Bereiche siehe 3.4; erste Paare: *mama da, hund weg* |
+| 3 | Garten | Untere Reihe: `n m`, `b v`, `c x y`, dann die Leertaste | *mama, sonne, hund, maus, gartenzwerg, baum, blume, biene, vogel, ball, bank, axt, pony, fuchs, milchkanne, kirsche, schnecke* – Bereiche siehe 3.4; erste Paare: *hund weg, maus weg* |
 | 4 | Dorf / Schule | Umschalttaste (Großschreibung), `ä ö ü ß`, Satzzeichen `. , ? !` | *Der Hund bellt. Die Sonne scheint. Wo ist der Bäcker?* |
 | 5 | Umgebung / Expedition | Ziffern, Sonderzeichen | Logbuch: *Tag 3: Am Fluss wachsen 12 Birken.* |
 | später | Aufbau | alle | Rohstoffe sammeln, Dorf ausbauen |
@@ -108,7 +110,7 @@ Die Tasten-Reihenfolge folgt klassischen Zehnfinger-Kursen. **Groß-/Kleinschrei
 
 ## 5. Lernsystem
 
-- **Bildschirmtastatur** mit Farben pro Finger (gleicher Finger beider Hände, gleiche Farbe; die Seite zeigt die Hand). Die nächste(n) Taste(n) und die passenden Finger pulsieren, darunter zwei Hände und der Name des Fingers (z. B. „D: linker Mittelfinger“). Gesperrte Tasten sind grau, eine gedrückte Taste leuchtet kurz auf – hell bei richtig, rosa bei falsch.
+- **Bildschirmtastatur** mit Farben pro Finger (gleicher Finger beider Hände, gleiche Farbe; die Seite zeigt die Hand). Die nächste(n) Taste(n) und die passenden Finger pulsieren, darunter zwei Hände und der Name des Fingers (z. B. „D: linker Mittelfinger“). Gesperrte Tasten sind grau, eine gedrückte Taste leuchtet kurz auf – hell bei richtig, rosa bei falsch. Die Leertaste steht als breite Taste in einer eigenen Zeile unter den Buchstaben und gehört dem Daumen („Leertaste: Daumen“); bis zu ihrem Abschnitt ist sie gesperrt.
 - **Adaptive Wortauswahl:** Tasten mit hoher Fehlerquote tauchen häufiger in angebotenen Wörtern auf.
   - Höchstens 4 Wörter sind gleichzeitig sichtbar. Hat ein Raum mehr, warten die übrigen Dinge ohne Beschriftung.
   - Nach jedem getippten Wort rückt ein anderes Wort des Raums nach, sofern es eins gibt. Mitten im Wort wechselt nichts, und Präfix-Paare sind nie gleichzeitig sichtbar.

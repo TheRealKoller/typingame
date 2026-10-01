@@ -2,11 +2,12 @@ import { describe, expect, it } from 'vitest';
 import type { Finger, Row } from './layout';
 import { qwertzDe } from './qwertz-de';
 
-// Reference: German QWERTZ (ISO) letter rows, left to right, unshifted.
+// Reference: German QWERTZ (ISO) letter rows, left to right, unshifted, then the space bar.
 const expectedRows: Record<Row, string> = {
   top: 'qwertzuiopü+',
   home: 'asdfghjklöä#',
   bottom: '<yxcvbnm,.-',
+  space: ' ',
 };
 
 // Reference: finger assignment taught in German touch-typing courses.
@@ -19,6 +20,7 @@ const expectedFingers: Record<Finger, string> = {
   rightMiddle: 'ik,',
   rightRing: 'ol.',
   rightPinky: 'püöä+#-',
+  thumb: ' ',
 };
 
 const sorted = (chars: Iterable<string>): string[] => [...chars].sort();
@@ -31,7 +33,7 @@ describe('qwertzDe', () => {
 
   it('lists rows top to bottom', () => {
     const rowOrder = qwertzDe.keys.map((key) => key.row).filter((row, i, rows) => row !== rows[i - 1]);
-    expect(rowOrder).toEqual(['top', 'home', 'bottom']);
+    expect(rowOrder).toEqual(['top', 'home', 'bottom', 'space']);
   });
 
   it.each(Object.entries(expectedFingers))('assigns the %s to its keys', (finger, chars) => {

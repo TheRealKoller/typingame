@@ -111,9 +111,9 @@ export class RoomScene extends Phaser.Scene {
     }
 
     this.#engine = new TypingEngine(this.#shown);
-    // Keys stay unlocked across rooms and chapters.
-    this.#keyboard = new KeyboardView(this, this.scale.width / 2, 505, qwertzDe)
-      .setScale(0.7)
+    // Keys stay unlocked across rooms and chapters. The space bar adds a fourth row, so the keyboard sits a little higher and smaller.
+    this.#keyboard = new KeyboardView(this, this.scale.width / 2, 485, qwertzDe)
+      .setScale(0.65)
       .setUnlocked(playOrder.slice(0, position + 1).flatMap((p) => p.section.newKeys));
 
     this.#statsView = new StatsView(this, this.scale.width / 2, 200);
@@ -291,7 +291,7 @@ export class RoomScene extends Phaser.Scene {
   #showNewKeys(section: Section, at: { readonly x: number; readonly y: number }): void {
     const lines = section.newKeys.map((char) => {
       const key = qwertzDe.keys.find((k) => k.char === char);
-      return key ? `${char.toUpperCase()} – ${FINGER_NAME[key.finger]}` : char.toUpperCase();
+      return key ? `${key.label ?? char.toUpperCase()} – ${FINGER_NAME[key.finger]}` : char.toUpperCase();
     });
     const text = this.add
       .text(0, 0, [section.newKeys.length === 1 ? 'Neue Taste' : 'Neue Tasten', ...lines], {

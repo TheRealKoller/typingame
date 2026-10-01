@@ -10,4 +10,5 @@ export const FINGER_NAME: Readonly<Record<Finger, string>> = {
   rightMiddle: 'rechter Mittelfinger',
   rightRing: 'rechter Ringfinger',
   rightPinky: 'rechter kleiner Finger',
+  thumb: 'Daumen',
 };

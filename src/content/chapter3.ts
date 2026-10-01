@@ -42,5 +42,16 @@ export const chapter3: Chapter = {
         { text: 'schnecke', object: 'snail', reaction: 'Die Schnecke kriecht ein Stück.' },
       ],
     },
+    {
+      // The first word pairs; the space bar turns them into two words. Their first words belong to
+      // the meadow, so no pair starts with a word the yard shows.
+      id: '3d',
+      room: 'Hof',
+      newKeys: [' '],
+      words: [
+        { text: 'hund weg', object: 'dog', reaction: 'Der Hund läuft davon.' },
+        { text: 'maus weg', object: 'mouse', reaction: 'Die Maus huscht davon.' },
+      ],
+    },
   ],
 };
