@@ -121,4 +121,14 @@ def night_light():
     return im
 
 
-SPRITES = [floor_tile, wall_tile, crib, mobile, music_box, teddy, duck, night_light]
+def wall_plain():
+    """Wandflaeche, 16 x 16, wiederholbar und ohne Muster."""
+    w, h = 16, 16
+    im, d = shapes(w, h)
+    d.rectangle([0, 0, 15, 15], fill=CREAM)
+    d.rectangle([3, 3, 4, 5], fill=(236, 228, 214))
+    d.rectangle([11, 10, 12, 12], fill=(236, 228, 214))
+    return im
+
+
+SPRITES = [floor_tile, wall_tile, wall_plain, crib, mobile, music_box, teddy, duck, night_light]

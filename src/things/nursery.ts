@@ -33,6 +33,7 @@ import shrubImage from '../assets/rooms/shrub.png';
 import tableImage from '../assets/rooms/table.png';
 import teddyImage from '../assets/rooms/teddy.png';
 import wallImage from '../assets/rooms/wall_tile.png';
+import wallPlainImage from '../assets/rooms/wall_plain.png';
 import windowImage from '../assets/rooms/window.png';
 import childImage from '../assets/world/child.png';
 import { fillTiles, floatText, rock, squash, standingPicture, type Room, type ThingFactory } from './thing';
@@ -44,47 +45,50 @@ import { fillTiles, floatText, rock, squash, standingPicture, type Room, type Th
  */
 const ZOOM = 4;
 const TILE = 16 * ZOOM;
-/** The wall along the top edge, three tiles high. */
-const WALL_H = 3 * TILE;
+/** The wall face along the top, two tiles high, and one tile down each side. */
+const WALL_H = 2 * TILE;
+const WALL_SIDE = TILE;
+/** Where the floor ends at the bottom; the wall below it sits behind the keyboard. */
+const ROOM_BOTTOM = 9 * TILE;
 
-/** Everything without a word, in tile coordinates: hung on the wall or standing on the floor. */
-const FURNITURE: readonly (readonly [number, number, string])[] = [
-  // Wall: two windows and a row of framed pictures.
-  [4, 0, 'topWindow'],
-  [15, 0, 'topWindow'],
-  [1, 1, 'topPicture'],
-  [7, 1, 'topPicture2'],
-  [9, 0, 'topMirror'],
+/**
+ * Furniture without a word, in tile coordinates: the fourth entry mirrors the sprite, which
+ * breaks up the rows. Pieces stand against a wall or in a corner, the middle stays walkable.
+ */
+const FURNITURE: readonly (readonly [number, number, string, boolean?])[] = [
+  // Top wall: a window at each end, pictures between, furniture standing underneath.
+  [5, 0, 'topWindow'],
+  [14, 0, 'topWindow'],
+  [2, 1, 'topPicture'],
+  [8, 1, 'topPicture2'],
   [11, 1, 'topPicture3'],
-  [17, 1, 'topFrame'],
-  // Floor: shelves and boxes along the wall, seats and tables in the room.
-  [0, 2, 'topBookshelf'],
-  [2, 2, 'topCupboard'],
-  [4, 2, 'topBox'],
-  [7, 2, 'topChest'],
-  [10, 2, 'topShelf'],
-  [13, 2, 'topCrate'],
-  [16, 2, 'topCabinet'],
-  [18, 2, 'topDrawer'],
-  [3, 4, 'topRug'],
-  [7, 4, 'topCouch'],
-  [10, 4, 'topTable'],
-  [13, 4, 'topBench'],
-  [16, 4, 'topDesk'],
-  [0, 5, 'topPlant'],
-  [3, 5, 'topBarrel'],
-  [6, 5, 'topBox2'],
-  [9, 5, 'topRug2'],
-  [12, 5, 'topSeat'],
-  [15, 5, 'topPlant2'],
-  [18, 5, 'topShrub'],
-  [1, 6, 'topBox3'],
-  [5, 6, 'topPlant3'],
+  [16, 1, 'topMirror'],
+  [2, 2, 'topBookshelf'],
+  [3, 2, 'topCupboard'],
+  [6, 2, 'topShelf'],
+  [8, 2, 'topDrawer'],
+  // Left wall: the sleeping corner, with a chest beside the bed.
+  [1, 3, 'topCabinet', true],
+  [1, 5, 'topRug'],
+  [1, 6, 'topChest'],
+  // Right wall: a desk with a seat, flowers in the corner.
+  [18, 3, 'topDesk'],
+  [18, 5, 'topSeat'],
+  [18, 6, 'topPlant'],
+  // Floor: a rug to play on, a table, a bench, the toy box and crates near it.
+  [6, 5, 'topRug2'],
+  [12, 5, 'topTable'],
+  [15, 5, 'topChest', true],
+  [14, 6, 'topBench'],
+  [9, 6, 'topBox2'],
+  [10, 3, 'topCrate', true],
+  [4, 4, 'topShrub'],
+  [16, 4, 'topPlant3'],
 ];
 
 const bed: ThingFactory = (scene) => {
-  const x = 300;
-  const y = 350;
+  const x = 260;
+  const y = 384;
   const view = standingPicture(scene, 'topBed', x, y, ZOOM);
   return {
     view,
@@ -94,12 +98,12 @@ const bed: ThingFactory = (scene) => {
 };
 
 const mobile: ThingFactory = (scene) => {
-  const x = 300;
-  const y = 260;
+  const x = 260;
+  const y = 300;
   const view = standingPicture(scene, 'topMobile', x, y, ZOOM);
   return {
     view,
-    label: { x: x + 170, y: y - 20 },
+    label: { x: x + 170, y: y - 10 },
     react: () => {
       // Mirroring the arm reads as the mobile turning around its string.
       scene.tweens.killTweensOf(view);
@@ -110,12 +114,13 @@ const mobile: ThingFactory = (scene) => {
 };
 
 const musicBox: ThingFactory = (scene) => {
-  const x = 620;
-  const y = 300;
+  const x = 800;
+  const y = 350;
   const view = standingPicture(scene, 'topMusicBox', x, y, ZOOM);
   return {
     view,
-    label: { x, y: y + 30 },
+    // The music box stands on the table, its word sits beside it.
+    label: { x: x - 90, y: y - 40 },
     react: () => {
       rock(scene, view, 3, 2);
       ['♪', '♫', '♪', '♫'].forEach((note, i) => floatText(scene, x, y - 100, note, 200 + i * 450));
@@ -124,8 +129,8 @@ const musicBox: ThingFactory = (scene) => {
 };
 
 const teddy: ThingFactory = (scene) => {
-  const x = 870;
-  const y = 360;
+  const x = 1010;
+  const y = 390;
   const view = standingPicture(scene, 'topTeddy', x, y, ZOOM);
   return {
     view,
@@ -135,8 +140,8 @@ const teddy: ThingFactory = (scene) => {
 };
 
 const duck: ThingFactory = (scene) => {
-  const x = 1030;
-  const y = 310;
+  const x = 1130;
+  const y = 360;
   const view = standingPicture(scene, 'topDuck', x, y, ZOOM);
   return {
     view,
@@ -149,8 +154,8 @@ const duck: ThingFactory = (scene) => {
 };
 
 const nightLight: ThingFactory = (scene) => {
-  const x = 1170;
-  const y = 265;
+  const x = 470;
+  const y = 330;
   const view = standingPicture(scene, 'topNightLight', x, y, ZOOM);
   return {
     view,
@@ -164,6 +169,7 @@ export const nursery: Room = {
   assets: [
     { key: 'topFloor', url: floorImage },
     { key: 'topWall', url: wallImage },
+    { key: 'topWallPlain', url: wallPlainImage },
     { key: 'topWindow', url: windowImage },
     { key: 'topMirror', url: mirrorImage },
     { key: 'topFrame', url: frameImage },
@@ -202,17 +208,21 @@ export const nursery: Room = {
   ],
   backdrop: (scene) => {
     const { width, height } = scene.scale;
-    fillTiles(scene, 'topFloor', 0, WALL_H, width, height, ZOOM);
+    // The floor is framed by a wall on every side, so the room reads as a room.
+    fillTiles(scene, 'topFloor', WALL_SIDE, WALL_H, width - WALL_SIDE, ROOM_BOTTOM, ZOOM);
     fillTiles(scene, 'topWall', 0, 0, width, WALL_H, ZOOM);
-    for (const [tx, ty, key] of FURNITURE) {
-      scene.add.image(tx * TILE, ty * TILE, key).setOrigin(0).setScale(ZOOM);
+    fillTiles(scene, 'topWallPlain', 0, WALL_H, WALL_SIDE, ROOM_BOTTOM, ZOOM);
+    fillTiles(scene, 'topWallPlain', width - WALL_SIDE, WALL_H, width, ROOM_BOTTOM, ZOOM);
+    fillTiles(scene, 'topWallPlain', 0, ROOM_BOTTOM, width, height, ZOOM);
+    for (const [tx, ty, key, flip] of FURNITURE) {
+      scene.add.image(tx * TILE, ty * TILE, key).setOrigin(0).setScale(ZOOM).setFlipX(flip === true);
     }
   },
   avatar: (scene) => ({
-    view: standingPicture(scene, 'child', 640, 390, ZOOM).setDepth(5),
-    area: { x0: 40, y0: 230, x1: 1240, y1: 400 },
+    view: standingPicture(scene, 'child', 640, 400, ZOOM).setDepth(5),
+    area: { x0: 80, y0: 200, x1: 1200, y1: 430 },
   }),
-  // Free wall space above the floor.
-  hint: { x: 620, y: 60 },
+  // Clear wall between the pictures.
+  hint: { x: 620, y: 96 },
   things: { bed, mobile, musicBox, teddy, duck, nightLight },
 };
