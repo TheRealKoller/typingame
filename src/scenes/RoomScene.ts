@@ -5,7 +5,7 @@ import type { Section } from '../content/types';
 import { FINGER_NAME } from '../keyboard/fingers';
 import { qwertzDe } from '../keyboard/qwertz-de';
 import { rooms } from '../things/rooms';
-import type { Room, Thing } from '../things/thing';
+import type { Room, RoomAvatar, Thing } from '../things/thing';
 import type { Progress } from '../progress/progress';
 import { chooseShown, replaceTyped } from '../progress/practice';
 import { errorRate } from '../progress/stats';
@@ -23,6 +23,8 @@ const FADE_DURATION = 600;
 const HINT_DURATION = 5000;
 /** The typed word's hop plays before it gives way to the next word. */
 const WORD_OUT_DELAY = 350;
+/** How fast the arrow keys move the figure of a top-down room. */
+const WALK_SPEED = 260;
 /** The first *mama* is staged as a special moment; every later one reacts like any other word (design doc, section 4). */
 const MOMENT_WORD = 'mama';
 /** How far the other things and words step back while the moment plays. */
@@ -64,6 +66,13 @@ export class RoomScene extends Phaser.Scene {
   #transitioning = false;
   #progress!: Progress;
   #statsView!: StatsView;
+  /** The figure the arrow keys move; only top-down rooms have one. */
+  #avatar: RoomAvatar | null = null;
+  readonly #arrows = new Set<string>();
+  /** Stable reference, so the frame listener can be removed again on shutdown. */
+  readonly #walkFrame = (_time: number, delta: number): void => {
+    this.#walk(delta);
+  };
 
   constructor() {
     super('RoomScene');
@@ -127,6 +136,7 @@ export class RoomScene extends Phaser.Scene {
       }
     }
 
+    this.#avatar = room.avatar?.(this) ?? null;
     this.#engine = new TypingEngine(this.#shown);
     // Keys stay unlocked across rooms and chapters. The space bar adds a fourth row, so the keyboard sits a little higher and smaller.
     this.#keyboard = new KeyboardView(this, this.scale.width / 2, 485, qwertzDe)
@@ -143,7 +153,9 @@ export class RoomScene extends Phaser.Scene {
     // Keystrokes since the last finished word are saved when the window is hidden or closed.
     document.addEventListener('visibilitychange', this.#saveWhenHidden);
     window.addEventListener('pagehide', this.#save);
+    this.events.on('update', this.#walkFrame);
     this.events.once(Phaser.Scenes.Events.SHUTDOWN, () => {
+      this.events.off('update', this.#walkFrame);
       window.removeEventListener('keydown', this.#onKeyDown);
       window.removeEventListener('keyup', this.#onKeyUp);
       window.removeEventListener('blur', this.#hideOverview);
@@ -163,6 +175,12 @@ export class RoomScene extends Phaser.Scene {
       // Holding Tab shows the overview; keep the browser from moving focus.
       event.preventDefault();
       this.#showOverview();
+      return;
+    }
+    if (event.key.startsWith('Arrow')) {
+      // Walking is separate from typing: the arrow keys never type a character.
+      event.preventDefault();
+      this.#arrows.add(event.key);
       return;
     }
     if (this.#transitioning) return;
@@ -194,8 +212,23 @@ export class RoomScene extends Phaser.Scene {
   };
 
   readonly #onKeyUp = (event: KeyboardEvent): void => {
+    this.#arrows.delete(event.key);
     if (event.key === 'Tab') this.#hideOverview();
   };
+
+  /** Moves the figure of a top-down room while an arrow key is held. */
+  #walk(delta: number): void {
+    const avatar = this.#avatar;
+    if (!avatar) return;
+    const step = (WALK_SPEED * delta) / 1000;
+    const view = avatar.view;
+    if (this.#arrows.has('ArrowLeft')) view.x -= step;
+    if (this.#arrows.has('ArrowRight')) view.x += step;
+    if (this.#arrows.has('ArrowUp')) view.y -= step;
+    if (this.#arrows.has('ArrowDown')) view.y += step;
+    view.x = Phaser.Math.Clamp(view.x, avatar.area.x0, avatar.area.x1);
+    view.y = Phaser.Math.Clamp(view.y, avatar.area.y0, avatar.area.y1);
+  }
 
   /** Lets another word of the room take the place of the one just typed, favouring weak keys. */
   #rotate(typed: string): void {

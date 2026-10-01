@@ -56,6 +56,17 @@ def outline_silhouette(im, color=K):
         px[x, y] = (*color, 255)
 
 
+def from_text(rows, palette):
+    """Zeichnet ein Sprite aus einem Textraster – so bleiben kleine Figuren im Diff lesbar."""
+    im, d = shapes(len(rows[0]), len(rows))
+    for y, row in enumerate(rows):
+        for x, cell in enumerate(row):
+            color = palette.get(cell)
+            if color is not None:
+                d.point((x, y), fill=color)
+    return im
+
+
 def contact_sheet(sprites, path, scale=4, pad=14):
     """Reiht die Sprites vergroessert aneinander, damit man sie ansehen kann."""
     width = sum(im.width * scale + pad for _, im in sprites) + pad
