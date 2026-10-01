@@ -103,4 +103,17 @@ def scale():
     return im
 
 
-SPRITES = [tub, water, jellyfish, basin, soap, mirror, scale]
+def towels():
+    """Handtuchstange; ohne Wort."""
+    w, h = 18, 11
+    im, d = shapes(w, h)
+    d.rectangle([0, 1, 17, 2], fill=GREY2)
+    d.rectangle([1, 2, 7, 10], fill=WHITE)
+    d.rectangle([10, 2, 16, 8], fill=BLUE)
+    outline_silhouette(im)
+    d.rectangle([3, 4, 5, 5], fill=CREAM)
+    d.rectangle([12, 4, 14, 5], fill=CREAM)
+    return im
+
+
+SPRITES = [tub, water, jellyfish, basin, soap, mirror, scale, towels]

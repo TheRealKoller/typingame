@@ -31,11 +31,66 @@ GREY2 = (146, 152, 164)
 NIGHT = (58, 62, 98)
 MOON = (247, 232, 168)
 
+# Bild-Pixel je Entwurfs-Pixel; `set_scale` aendert das vor dem Zeichnen.
+SCALE = 1
+
 
 def shapes(w, h):
-    """Leere Zeichenflaeche und Stift."""
-    im = Image.new("RGBA", (w, h), (0, 0, 0, 0))
-    return im, ImageDraw.Draw(im)
+    """Leere Zeichenflaeche und Stift.
+
+    Jede Koordinate gilt in Entwurfs-Pixeln. `set_scale` legt fest, wie viele Bild-Pixel
+    ein Entwurfs-Pixel bekommt: Die Innenraeume zeichnen mit 2, damit ihre Kacheln bei
+    vierfachem Zoom genau so dicht sind wie die Welt (dort 1 bei vierfachem Zoom).
+    Konturen bleiben dabei 1 Bild-Pixel duenn und wirken dadurch feiner.
+    """
+    im = Image.new("RGBA", (w * SCALE, h * SCALE), (0, 0, 0, 0))
+    return im, ScaledDraw(ImageDraw.Draw(im), SCALE)
+
+
+def set_scale(scale):
+    """Setzt die Bild-Pixel je Entwurfs-Pixel fuer alle folgenden Sprites."""
+    global SCALE
+    SCALE = scale
+
+
+class ScaledDraw:
+    """Reicht Zeichenbefehle an ImageDraw durch und rechnet Entwurfs- in Bild-Pixel um.
+
+    Linienbreiten wachsen mit, damit eine Linie im Entwurf gleich breit bleibt.
+    """
+
+    def __init__(self, draw, scale):
+        self.draw = draw
+        self.scale = scale
+
+    def _box(self, box):
+        # PIL liest Rechtecke inklusiv, deshalb waechst auch die untere Kante um `scale`.
+        x0, y0, x1, y1 = box
+        return [x0 * self.scale, y0 * self.scale, (x1 + 1) * self.scale - 1, (y1 + 1) * self.scale - 1]
+
+    def _points(self, points):
+        if points and isinstance(points[0], (int, float)):
+            return [value * self.scale for value in points]
+        return [(x * self.scale, y * self.scale) for x, y in points]
+
+    def rectangle(self, box, **kwargs):
+        self.draw.rectangle(self._box(box), **kwargs)
+
+    def ellipse(self, box, **kwargs):
+        self.draw.ellipse(self._box(box), **kwargs)
+
+    def polygon(self, points, **kwargs):
+        self.draw.polygon(self._points(points), **kwargs)
+
+    def line(self, points, **kwargs):
+        kwargs["width"] = kwargs.get("width", 1) * self.scale
+        self.draw.line(self._points(points), **kwargs)
+
+    def point(self, xy, **kwargs):
+        self.draw.point((xy[0] * self.scale, xy[1] * self.scale), **kwargs)
+
+    def text(self, xy, *args, **kwargs):
+        self.draw.text((xy[0] * self.scale, xy[1] * self.scale), *args, **kwargs)
 
 
 def outline_silhouette(im, color=K):

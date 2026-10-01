@@ -16,21 +16,25 @@ from pathlib import Path
 sys.path.insert(0, os.path.dirname(os.path.abspath(__file__)))
 
 from pixel import contact_sheet  # noqa: E402
+import pixel  # noqa: E402
 
 OUT = Path(__file__).resolve().parent.parent / "assets"
-# Modul -> Ordner unter src/assets
+# Modul, Ordner unter src/assets, Bild-Pixel je Entwurfs-Pixel
+# Die Innenraeume zeichnen doppelt so gross und laufen im Spiel mit halbem Zoom:
+# dieselbe Groesse auf dem Bildschirm, aber dieselbe Pixeldichte wie die Welt.
 GROUPS = [
-    ("shared_sprites", "interior/shared"),
-    ("nursery", "interior/nursery"),
-    ("kitchen", "interior/kitchen"),
-    ("living_room", "interior/living_room"),
-    ("bathroom", "interior/bathroom"),
+    ("shared_sprites", "interior/shared", 2),
+    ("nursery", "interior/nursery", 2),
+    ("kitchen", "interior/kitchen", 2),
+    ("living_room", "interior/living_room", 2),
+    ("bathroom", "interior/bathroom", 2),
     # Draufsicht: eigene Sprites liegen neben den Kacheln der CC0-Pakete.
-    ("garden", "world"),
+    ("garden", "world", 1),
 ]
 
 if __name__ == "__main__":
-    for module_name, folder_name in GROUPS:
+    for module_name, folder_name, scale in GROUPS:
+        pixel.set_scale(scale)
         module = importlib.import_module(module_name)
         folder = OUT / folder_name
         folder.mkdir(parents=True, exist_ok=True)

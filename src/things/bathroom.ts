@@ -1,16 +1,19 @@
 import basinImage from '../assets/interior/bathroom/basin.png';
+import basketImage from '../assets/interior/shared/basket.png';
+import rugImage from '../assets/interior/shared/rug.png';
 import jellyfishImage from '../assets/interior/bathroom/jellyfish.png';
 import mirrorImage from '../assets/interior/bathroom/mirror.png';
 import scaleImage from '../assets/interior/bathroom/scale.png';
 import soapImage from '../assets/interior/bathroom/soap.png';
 import tubImage from '../assets/interior/bathroom/tub.png';
+import towelsImage from '../assets/interior/bathroom/towels.png';
 import waterImage from '../assets/interior/bathroom/water.png';
 import floorImage from '../assets/interior/shared/floor_tile.png';
 import wallImage from '../assets/interior/shared/wall_tile.png';
 import windowImage from '../assets/interior/shared/window.png';
 import { fillTiles, floatText, rise, rock, standingPicture, type Room, type ThingFactory } from './thing';
 
-const ZOOM = 8;
+const ZOOM = 4;
 const FLOOR_TOP = 384;
 const LABEL_LINE = FLOOR_TOP + 26;
 /** The tub, the water in it and the jellyfish above the water. */
@@ -116,6 +119,9 @@ export const bathroom: Room = {
     { key: 'jellyfish', url: jellyfishImage },
     { key: 'soap', url: soapImage },
     { key: 'mirror', url: mirrorImage },
+    { key: 'towels', url: towelsImage },
+    { key: 'rug', url: rugImage },
+    { key: 'basket', url: basketImage },
     { key: 'scale', url: scaleImage },
   ],
   backdrop: (scene) => {
@@ -123,6 +129,10 @@ export const bathroom: Room = {
     fillTiles(scene, 'floor', 0, FLOOR_TOP, scene.scale.width, scene.scale.height, ZOOM);
     scene.add.image(110, 230, 'window').setOrigin(0.5, 1).setScale(ZOOM);
     scene.add.image(TUB_X, FLOOR_TOP, 'tub').setOrigin(0.5, 1).setScale(ZOOM);
+    // Handtuchstange, Teppich und ein Korb – ohne Wort.
+    scene.add.image(500, 200, 'towels').setOrigin(0.5, 1).setScale(ZOOM);
+    scene.add.image(200, 426, 'rug').setOrigin(0.5, 1).setScale(ZOOM);
+    scene.add.image(620, FLOOR_TOP, 'basket').setOrigin(0.5, 1).setScale(ZOOM);
     scene.add.image(BASIN_X, FLOOR_TOP, 'basin').setOrigin(0.5, 1).setScale(ZOOM);
   },
   // Free wall space between the tub and the washbasin.

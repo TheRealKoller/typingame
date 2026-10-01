@@ -136,6 +136,14 @@ export function noise(x: number, y: number): number {
   return value - Math.floor(value);
 }
 
+/**
+ * One tile of `key` in game pixels. Interior tiles are drawn twice as large as the world
+ * ones, so the size comes from the texture instead of being fixed at 16 pixels.
+ */
+function tileSize(scene: Phaser.Scene, key: string, zoom: number): number {
+  return scene.textures.get(key).getSourceImage().width * zoom;
+}
+
 /** Fills a rectangle with one of several 16 px tiles, picked by `noise` so nothing lines up. */
 export function scatterTiles(
   scene: Phaser.Scene,
@@ -147,7 +155,7 @@ export function scatterTiles(
   zoom: number,
   chance = 1,
 ): void {
-  const size = 16 * zoom;
+  const size = tileSize(scene, keys[0] ?? '', zoom);
   for (let y = y0; y < y1; y += size) {
     for (let x = x0; x < x1; x += size) {
       const col = x / size;
@@ -173,7 +181,7 @@ export function fillTiles(
   y1: number,
   zoom: number,
 ): void {
-  const size = 16 * zoom;
+  const size = tileSize(scene, key, zoom);
   for (let y = y0; y < y1; y += size) {
     for (let x = x0; x < x1; x += size) {
       scene.add.image(x, y, key).setOrigin(0).setScale(zoom);
