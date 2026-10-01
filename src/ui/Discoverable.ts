@@ -7,6 +7,11 @@ const REVEAL_DURATION = 900;
 const GLOW_COLOR = 0xffe28a;
 /** Room around the thing for the blur to spread into. */
 const BLUR_MARGIN = 16;
+/**
+ * Experiment #65: with `true` an unfound thing starts blurred and pale. With `false` every
+ * thing is sharp and coloured from the start, and only the first typing adds the glow.
+ */
+const START_PALE = false;
 
 /**
  * A thing that stays blurred and pale until its word is typed: naming makes it visible.
@@ -22,6 +27,7 @@ export class Discoverable {
     this.#view = view;
     this.#discovered = discovered;
     if (discovered) return;
+    if (!START_PALE) return;
     // Without a size the filters would render the whole screen per thing. A container's
     // filter area is centred on its position, so it spans the farthest edge on each side.
     const bounds = view.getBounds();
