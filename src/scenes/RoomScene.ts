@@ -26,6 +26,9 @@ const WORD_OUT_DELAY = 350;
 /**
  * Walking keys for the home row: held together with CapsLock they move the figure instead of
  * typing, so the hands never leave `asdf`/`jklö`. The arrow keys keep working as before.
+ *
+ * The layout is Vim's, for Vim's reason: `h` `j` `k` `l` sit right under the fingers of the
+ * resting right hand, so walking costs no extra movement.
  */
 const WALK_KEYS: Readonly<Record<string, string>> = {
   h: 'ArrowLeft',
