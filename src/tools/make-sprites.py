@@ -30,6 +30,8 @@ GROUPS = [
     ("bathroom", "interior/bathroom", 2),
     # Draufsicht: eigene Sprites liegen neben den Kacheln der CC0-Pakete.
     ("garden", "world", 1),
+    # Experiment #65: Innenraeume in Draufsicht (eigene Kacheln und Dinge).
+    ("room_sprites", "rooms", 1),
 ]
 
 if __name__ == "__main__":

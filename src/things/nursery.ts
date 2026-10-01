@@ -1,46 +1,69 @@
-import bedImage from '../assets/interior/nursery/crib.png';
-import duckImage from '../assets/interior/nursery/duck.png';
-import mobileImage from '../assets/interior/nursery/mobile.png';
-import musicBoxImage from '../assets/interior/nursery/music_box.png';
-import nightLightImage from '../assets/interior/nursery/night_light.png';
-import teddyImage from '../assets/interior/nursery/teddy.png';
-import plantImage from '../assets/interior/shared/plant.png';
-import pictureImage from '../assets/interior/shared/picture.png';
-import toyShelfImage from '../assets/interior/nursery/toy_shelf.png';
-import floorImage from '../assets/interior/shared/floor_tile.png';
-import wallImage from '../assets/interior/shared/wall_tile.png';
-import windowImage from '../assets/interior/shared/window.png';
+import bookshelfImage from '../assets/rooms/bookshelf.png';
+import boxImage from '../assets/rooms/box.png';
+import cabinetImage from '../assets/rooms/cabinet.png';
+import cribImage from '../assets/rooms/crib.png';
+import duckImage from '../assets/rooms/duck.png';
+import floorImage from '../assets/rooms/floor_tile.png';
+import mobileImage from '../assets/rooms/mobile.png';
+import musicBoxImage from '../assets/rooms/music_box.png';
+import nightLightImage from '../assets/rooms/night_light.png';
+import pictureImage from '../assets/rooms/picture.png';
+import plantImage from '../assets/rooms/plant.png';
+import rugImage from '../assets/rooms/rug.png';
+import shelfImage from '../assets/rooms/shelf.png';
+import tableImage from '../assets/rooms/table.png';
+import teddyImage from '../assets/rooms/teddy.png';
+import wallImage from '../assets/rooms/wall_tile.png';
+import childImage from '../assets/world/child.png';
 import { fillTiles, floatText, rock, squash, standingPicture, type Room, type ThingFactory } from './thing';
 
 /**
- * The nursery is an interior: seen from the side and drawn closer up than the top-down world.
- * One 16 px tile fills 128 screen px here, 64 px outside (decision in #47). The sprites come
- * from `src/tools/make-sprites.py`, because no free pack has side-view interiors.
+ * Experiment #65: the nursery as a top-down room, same perspective and scale as the world.
+ * One 16 px tile fills 64 screen px here as well, so the things are not enlarged. Floor and
+ * wall are our own tiles, the furniture comes from Kenney's CC0 `rpg-urban` pack.
  */
 const ZOOM = 4;
-/** Wall above, floor below – three and three tiles. The things stand on the boundary. */
-const FLOOR_TOP = 384;
-const LABEL_LINE = FLOOR_TOP + 26;
+const TILE = 16 * ZOOM;
+/** The wall along the top edge, three tiles high. */
+const WALL_H = 3 * TILE;
+
+/** Furniture without a word, in tile coordinates. */
+const FURNITURE: readonly (readonly [number, number, string])[] = [
+  [6, 0, 'topPicture'],
+  [13, 0, 'topPicture'],
+  [0, 2, 'topCabinet'],
+  [2, 2, 'topBox'],
+  [3, 3, 'topBox'],
+  [17, 2, 'topBookshelf'],
+  [18, 4, 'topShelf'],
+  [19, 3, 'topPlant'],
+  [0, 5, 'topPlant'],
+  [5, 4, 'topRug'],
+  [12, 4, 'topTable'],
+  [15, 4, 'topCabinet'],
+  [9, 5, 'topBox'],
+];
 
 const bed: ThingFactory = (scene) => {
-  const x = 210;
-  const view = standingPicture(scene, 'bed', x, FLOOR_TOP, ZOOM);
+  const x = 300;
+  const y = 350;
+  const view = standingPicture(scene, 'topBed', x, y, ZOOM);
   return {
     view,
-    label: { x, y: LABEL_LINE },
+    label: { x, y: y + 30 },
     react: () => rock(scene, view, 4, 3),
   };
 };
 
 const mobile: ThingFactory = (scene) => {
-  const x = 210;
-  const view = standingPicture(scene, 'mobile', x, 170, ZOOM);
+  const x = 300;
+  const y = 260;
+  const view = standingPicture(scene, 'topMobile', x, y, ZOOM);
   return {
     view,
-    // The mobile hangs high up; its word sits beside it instead of under it.
-    label: { x: x + 200, y: 150 },
+    label: { x: x + 170, y: y - 20 },
     react: () => {
-      // Mirroring the arm back and forth reads as the mobile turning around its string.
+      // Mirroring the arm reads as the mobile turning around its string.
       scene.tweens.killTweensOf(view);
       view.setScale(1);
       scene.tweens.add({ targets: view, scaleX: -1, duration: 700, yoyo: true, repeat: 1, ease: 'Sine.easeInOut' });
@@ -49,89 +72,89 @@ const mobile: ThingFactory = (scene) => {
 };
 
 const musicBox: ThingFactory = (scene) => {
-  const x = 500;
-  const view = standingPicture(scene, 'musicBox', x, FLOOR_TOP, ZOOM);
+  const x = 600;
+  const y = 300;
+  const view = standingPicture(scene, 'topMusicBox', x, y, ZOOM);
   return {
     view,
-    label: { x, y: LABEL_LINE },
+    label: { x, y: y + 30 },
     react: () => {
       rock(scene, view, 3, 2);
-      ['♪', '♫', '♪', '♫'].forEach((note, i) => floatText(scene, x, FLOOR_TOP - 130, note, 200 + i * 450));
+      ['♪', '♫', '♪', '♫'].forEach((note, i) => floatText(scene, x, y - 100, note, 200 + i * 450));
     },
   };
 };
 
 const teddy: ThingFactory = (scene) => {
-  const x = 680;
-  const view = standingPicture(scene, 'teddy', x, FLOOR_TOP, ZOOM);
+  const x = 850;
+  const y = 360;
+  const view = standingPicture(scene, 'topTeddy', x, y, ZOOM);
   return {
     view,
-    label: { x, y: LABEL_LINE },
-    react: () => rock(scene, view, 12, 4),
+    label: { x, y: y + 30 },
+    react: () => squash(scene, view, 1.15, 1.15),
   };
 };
 
 const duck: ThingFactory = (scene) => {
-  const x = 850;
-  const view = standingPicture(scene, 'duck', x, FLOOR_TOP, ZOOM);
+  const x = 1020;
+  const y = 320;
+  const view = standingPicture(scene, 'topDuck', x, y, ZOOM);
   return {
     view,
-    label: { x, y: LABEL_LINE },
+    label: { x, y: y + 30 },
     react: () => {
-      squash(scene, view, 1.12, 0.8);
-      floatText(scene, x + 40, FLOOR_TOP - 120, 'quietsch!');
+      rock(scene, view, 6, 3);
+      floatText(scene, x + 40, y - 70, 'quak!');
     },
   };
 };
 
 const nightLight: ThingFactory = (scene) => {
-  const x = 1020;
-  const glow = scene.add.circle(0, -110, 90, 0xfff1b8).setAlpha(0);
-  const image = scene.add.image(0, 0, 'nightLight').setOrigin(0.5, 1).setScale(ZOOM);
-  const view = scene.add.container(x, FLOOR_TOP, [glow, image]);
+  const x = 1160;
+  const y = 270;
+  const view = standingPicture(scene, 'topNightLight', x, y, ZOOM);
   return {
     view,
-    label: { x, y: LABEL_LINE },
-    react: () => {
-      scene.tweens.killTweensOf(glow);
-      scene.tweens.chain({
-        targets: glow,
-        tweens: [
-          { alpha: 0.7, duration: 500, ease: 'Sine.easeOut' },
-          { alpha: 0, delay: 3000, duration: 800, ease: 'Sine.easeIn' },
-        ],
-      });
-    },
+    label: { x, y: y + 30 },
+    react: () => squash(scene, view, 1.2, 1.2),
   };
 };
 
-/** Chapter 1: the baby's room, where the first sounds make things show up. */
+/** Chapter 1: the nursery where the first sounds wake the world up. */
 export const nursery: Room = {
   assets: [
-    { key: 'wall', url: wallImage },
-    { key: 'floor', url: floorImage },
-    { key: 'window', url: windowImage },
-    { key: 'bed', url: bedImage },
-    { key: 'mobile', url: mobileImage },
-    { key: 'musicBox', url: musicBoxImage },
-    { key: 'teddy', url: teddyImage },
-    { key: 'duck', url: duckImage },
-    { key: 'toyShelf', url: toyShelfImage },
-    { key: 'picture', url: pictureImage },
-    { key: 'plant', url: plantImage },
-    { key: 'nightLight', url: nightLightImage },
+    { key: 'topFloor', url: floorImage },
+    { key: 'topWall', url: wallImage },
+    { key: 'topPicture', url: pictureImage },
+    { key: 'topCabinet', url: cabinetImage },
+    { key: 'topBox', url: boxImage },
+    { key: 'topBookshelf', url: bookshelfImage },
+    { key: 'topShelf', url: shelfImage },
+    { key: 'topPlant', url: plantImage },
+    { key: 'topTable', url: tableImage },
+    { key: 'topRug', url: rugImage },
+    { key: 'topBed', url: cribImage },
+    { key: 'topMobile', url: mobileImage },
+    { key: 'topMusicBox', url: musicBoxImage },
+    { key: 'topTeddy', url: teddyImage },
+    { key: 'topDuck', url: duckImage },
+    { key: 'topNightLight', url: nightLightImage },
+    { key: 'child', url: childImage },
   ],
   backdrop: (scene) => {
-    fillTiles(scene, 'wall', 0, 0, scene.scale.width, FLOOR_TOP, ZOOM);
-    fillTiles(scene, 'floor', 0, FLOOR_TOP, scene.scale.width, scene.scale.height, ZOOM);
-    // A night window on the wall.
-    // Wandschmuck und ein Topf in der Ecke – ohne Wort.
-    scene.add.image(420, 260, 'toyShelf').setOrigin(0.5, 1).setScale(ZOOM);
-    scene.add.image(700, 220, 'picture').setOrigin(0.5, 1).setScale(ZOOM);
-    scene.add.image(1220, FLOOR_TOP, 'plant').setOrigin(0.5, 1).setScale(ZOOM);
-    scene.add.image(1060, 250, 'window').setOrigin(0.5, 1).setScale(ZOOM);
+    const { width, height } = scene.scale;
+    fillTiles(scene, 'topFloor', 0, WALL_H, width, height, ZOOM);
+    fillTiles(scene, 'topWall', 0, 0, width, WALL_H, ZOOM);
+    for (const [tx, ty, key] of FURNITURE) {
+      scene.add.image(tx * TILE, ty * TILE, key).setOrigin(0).setScale(ZOOM);
+    }
   },
-  // Free wall space between the mobile and the window.
-  hint: { x: 660, y: 130 },
+  avatar: (scene) => ({
+    view: standingPicture(scene, 'child', 640, 390, ZOOM).setDepth(5),
+    area: { x0: 40, y0: 230, x1: 1240, y1: 400 },
+  }),
+  // Free wall space above the floor.
+  hint: { x: 620, y: 120 },
   things: { bed, mobile, musicBox, teddy, duck, nightLight },
 };
