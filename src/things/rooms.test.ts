@@ -14,4 +14,19 @@ describe('rooms', () => {
     });
     expect(missing).toEqual([]);
   });
+
+  // Phaser keeps textures by key, globally: two rooms using one key for different images
+  // would silently show the wrong drawing.
+  it('points every asset key at one image across all rooms', () => {
+    const byKey = new Map<string, string>();
+    const clashes: string[] = [];
+    for (const [name, room] of Object.entries(rooms)) {
+      for (const { key, url } of room.assets ?? []) {
+        const seen = byKey.get(key);
+        if (seen !== undefined && seen !== url) clashes.push(`${name}: "${key}" is used for two different images`);
+        byKey.set(key, url);
+      }
+    }
+    expect(clashes).toEqual([]);
+  });
 });

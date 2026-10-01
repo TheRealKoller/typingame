@@ -10,8 +10,16 @@ export interface Thing {
 
 export type ThingFactory = (scene: Phaser.Scene) => Thing;
 
+/** An image a room needs, loaded before the room is drawn. */
+export interface RoomAsset {
+  readonly key: string;
+  readonly url: string;
+}
+
 /** A room as the scene draws it; things are looked up by the `object` ids of the content. */
 export interface Room {
+  /** Images the room draws; loaded before `backdrop` and the things run. */
+  readonly assets?: readonly RoomAsset[];
   /** Draws what stays behind the things: walls, floor, furniture without a word. */
   backdrop(scene: Phaser.Scene): void;
   /** Free wall space for the hint that names new keys. */
@@ -93,4 +101,25 @@ export function squash(scene: Phaser.Scene, target: Phaser.GameObjects.Container
   scene.tweens.killTweensOf(target);
   target.setScale(1);
   scene.tweens.add({ targets: target, scaleX, scaleY, duration: 160, yoyo: true, repeat: 1, ease: 'Sine.easeInOut' });
+}
+
+/**
+ * Fills a rectangle with one 16 px tile image, drawn `zoom` times as large. Interiors use a
+ * larger zoom than the top-down world, so a single tile fills more of the screen.
+ */
+export function fillTiles(
+  scene: Phaser.Scene,
+  key: string,
+  x0: number,
+  y0: number,
+  x1: number,
+  y1: number,
+  zoom: number,
+): void {
+  const size = 16 * zoom;
+  for (let y = y0; y < y1; y += size) {
+    for (let x = x0; x < x1; x += size) {
+      scene.add.image(x, y, key).setOrigin(0).setScale(zoom);
+    }
+  }
 }
