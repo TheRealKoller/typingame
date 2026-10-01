@@ -2,7 +2,6 @@ import * as Phaser from 'phaser';
 import { qwertzDe } from '../keyboard/qwertz-de';
 import { Discoverable } from '../ui/Discoverable';
 import { KeyboardView } from '../ui/KeyboardView';
-import { WordLabel } from '../ui/WordLabel';
 import bushTile from './assets/tile_0004.png';
 import grassTile from './assets/tile_0000.png';
 import grassTile2 from './assets/tile_0001.png';
@@ -16,11 +15,12 @@ const WIDTH = 1280;
 const HEIGHT = 720;
 /** One tile is 16 px and drawn four times as large. */
 const STEP = 64;
-/** How far down the child may walk before the keyboard starts. */
-const WALK_BOTTOM = 366;
+/** The keyboard's own surface; the world ends above it. */
+const HUD_TOP = 420;
+/** How far down the child may walk. */
+const WALK_BOTTOM = 340;
 const WALK_SPEED = 240;
 
-/** Ground tiles, mixed so the meadow does not look like a grid. */
 const GROUND = [
   { key: 'grass', url: grassTile },
   { key: 'grass2', url: grassTile2 },
@@ -33,7 +33,6 @@ const SCENERY = [
   { key: 'sprout', url: sproutTile },
 ];
 
-/** Where the bushes stand, in tiles. */
 const BUSHES = [
   [1, 1],
   [6, 2],
@@ -42,6 +41,33 @@ const BUSHES = [
   [4, 4],
   [16, 4],
 ] as const;
+
+/** The word under a thing, in two drafts: dark text, or light text with a dark outline. */
+interface WordStyle {
+  readonly open: { readonly color: string; readonly stroke?: string; readonly strokeThickness?: number };
+  readonly typed: { readonly color: string; readonly stroke?: string; readonly strokeThickness?: number };
+}
+
+const OUTLINE = '#23232c';
+const STYLES: Readonly<Record<string, WordStyle>> = {
+  dark: { open: { color: '#4a4038' }, typed: { color: '#2b2b3a' } },
+  light: {
+    open: { color: '#f4ede4', stroke: OUTLINE, strokeThickness: 4 },
+    typed: { color: '#ffd9a0', stroke: OUTLINE, strokeThickness: 4 },
+  },
+};
+
+/** Draws a word like `WordLabel` does, so both drafts can be compared without touching the game's component. */
+function drawWord(scene: Phaser.Scene, x: number, y: number, word: string, typed: string, style: WordStyle): void {
+  const base = { fontFamily: 'sans-serif', fontSize: '32px' };
+  const open = scene.add.text(x, y, word, { ...base, ...style.open }).setOrigin(0.5).setDepth(6);
+  if (typed !== '') {
+    scene.add
+      .text(x - open.width / 2, y, typed, { ...base, ...style.typed })
+      .setOrigin(0, 0.5)
+      .setDepth(7);
+  }
+}
 
 class PrototypeScene extends Phaser.Scene {
   readonly #arrows = new Set<string>();
@@ -61,6 +87,8 @@ class PrototypeScene extends Phaser.Scene {
         throw new Error(`${name} is not a 16 x 16 sprite`);
       }
     }
+    const style = STYLES[new URLSearchParams(window.location.search).get('text') ?? 'dark'];
+    if (!style) throw new Error('unknown text style');
 
     this.#ground();
     this.#road();
@@ -75,25 +103,13 @@ class PrototypeScene extends Phaser.Scene {
     new Discoverable(dog, true);
     new Discoverable(mouse, false);
 
-    const words: readonly [string, number, number][] = [
-      ['baum', 6 * STEP + 24, 2 * STEP + STEP + 8],
-      ['blume', 3 * STEP + 24, 4 * STEP + STEP + 8],
-      ['hund', 752, 344],
-      ['maus', 932, 374],
-    ];
-    // Die Wortfarbe ist für den blassen Pastellhintergrund gemacht; `?plates` zeigt die Variante mit Unterlage.
-    const plates = new URLSearchParams(window.location.search).has('plates');
-    for (const [word, x, y] of words) {
-      if (plates) this.add.rectangle(x, y, word.length * 19 + 26, 40, 0xf4ede4, 0.82).setRounded(10).setDepth(4);
-      new WordLabel(this, x, y, word).setDepth(5);
-    }
+    drawWord(this, 6 * STEP + 24, 2 * STEP + STEP + 10, 'baum', '', style);
+    drawWord(this, 3 * STEP + 24, 4 * STEP + STEP + 10, 'blume', '', style);
+    drawWord(this, 752, 344, 'hund', 'hu', style);
+    drawWord(this, 932, 374, 'maus', '', style);
 
-    this.#child = this.add.container(600, 260, [paintSprite(this, CHILD, 4)]).setDepth(6);
-
-    new KeyboardView(this, WIDTH / 2, 485, qwertzDe)
-      .setScale(0.65)
-      .setUnlocked([...'asdfghjkleirutzopwqnmbv']);
-
+    this.#child = this.add.container(600, 260, [paintSprite(this, CHILD, 4)]).setDepth(5);
+    this.#hud();
     this.#captions();
 
     const press = (event: KeyboardEvent): void => {
@@ -135,6 +151,14 @@ class PrototypeScene extends Phaser.Scene {
     }
   }
 
+  /** The keyboard's own surface, so its pale keys are not read against the pixel world. */
+  #hud(): void {
+    const height = HEIGHT - HUD_TOP;
+    this.add.rectangle(WIDTH / 2, HUD_TOP + height / 2, WIDTH, height, 0xf4ede4).setDepth(8);
+    this.add.rectangle(WIDTH / 2, HUD_TOP, WIDTH, 4, 0xd9c8b4).setDepth(8);
+    new KeyboardView(this, WIDTH / 2, 485, qwertzDe).setScale(0.65).setUnlocked([...'asdfghjkleirutzopwqnmbv']).setDepth(9);
+  }
+
   #walk(delta: number): void {
     const child = this.#child;
     if (!child) return;
@@ -150,7 +174,7 @@ class PrototypeScene extends Phaser.Scene {
   #captions(): void {
     this.add.rectangle(WIDTH / 2, 34, WIDTH, 68, 0x1d1d24, 0.6).setDepth(9);
     this.add
-      .text(WIDTH / 2, 12, 'Prototyp · Wiese in Draufsicht · Kacheln: Kenney „Tiny Town" / „Tiny Farm" (CC0)', {
+      .text(WIDTH / 2, 12, 'Entwurf · Wiese in Draufsicht · Kacheln: Kenney „Tiny Town" / „Tiny Farm" (CC0)', {
         fontFamily: 'sans-serif',
         fontSize: '18px',
         color: '#f4ede4',
@@ -158,7 +182,7 @@ class PrototypeScene extends Phaser.Scene {
       .setOrigin(0.5, 0)
       .setDepth(10);
     this.add
-      .text(WIDTH / 2, 38, 'Welt: Pixel, vierfach · Bedienoberfläche: scharf wie im Spiel · Pfeiltasten bewegen das Kind', {
+      .text(WIDTH / 2, 38, 'Tastatur auf eigener Fläche · Pfeiltasten bewegen das Kind · ?text=light für helle Schrift mit Kontur', {
         fontFamily: 'sans-serif',
         fontSize: '15px',
         color: '#cfc7ba',
