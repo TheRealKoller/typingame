@@ -66,9 +66,21 @@ Im Haus sind die Wörter **Namen von Dingen**. Das Haus hat drei Räume; jeder R
 
 Sichtbar sind die Wörter des **aktuellen Raums** bis zum aktuellen Abschnitt; die Wörter eines verlassenen Raums bleiben dort. Die Abschnitte eines Raums folgen deshalb direkt aufeinander. Die Daten stehen in `src/content/chapter2.ts`.
 
-Ins Haus gelangt man aus dem Kinderzimmer: Ist in 1b die Genauigkeit erreicht (siehe 5), blendet das Kinderzimmer in die Küche über, und der Hinweis nennt die neuen Tasten `e i`. Jeder Raum füllt den Bildschirm. Wird die erste Stufe des nächsten Raums freigeschaltet, blendet das Spiel ruhig in diesen Raum über. Innerhalb eines Raums erwachen die Dinge der neuen Stufe an ihrem Platz. Freigeschaltete Tasten bleiben über Raum- und Kapitelgrenzen erhalten. Nach einem Neustart geht es im gespeicherten Abschnitt und damit im richtigen Raum weiter. Das Bad ist vorerst die letzte Stufe.
+Ins Haus gelangt man aus dem Kinderzimmer: Ist in 1b die Genauigkeit erreicht (siehe 5), blendet das Kinderzimmer in die Küche über, und der Hinweis nennt die neuen Tasten `e i`. Jeder Raum füllt den Bildschirm. Wird die erste Stufe des nächsten Raums freigeschaltet, blendet das Spiel ruhig in diesen Raum über. Innerhalb eines Raums erwachen die Dinge der neuen Stufe an ihrem Platz. Freigeschaltete Tasten bleiben über Raum- und Kapitelgrenzen erhalten. Nach einem Neustart geht es im gespeicherten Abschnitt und damit im richtigen Raum weiter. Nach dem Bad geht es in den Garten (siehe 3.4).
 
-### 3.4 Fehlerverhalten
+### 3.4 Dinge benennen (Kapitel 3)
+
+Im Garten sind die Wörter ebenfalls **Namen von Dingen**. Der Garten hat drei Bereiche; jeder Bereich umfasst eine Stufe der unteren Reihe:
+
+| Bereich | Abschnitt | Neue Tasten | Wörter |
+|---|---|---|---|
+| Wiese | 3a | `n m` | *mama, sonne, hund, maus, gartenzwerg* |
+| Beet | 3b | `b v` | *baum, blume, biene, vogel, ball, bank* |
+| Hof | 3c | `c x y` | *axt, pony, fuchs, milchkanne, kirsche, schnecke* |
+
+Die drei Bereiche sind Räume im selben Sinn wie die des Hauses; aus dem Bad (2e) führt der Übergang in die Wiese, und der Hinweis nennt `n m`. Eine Ausnahme unter den Wörtern ist *mama*: Ihr erstes Tippen ist der besondere Moment aus Abschnitt 4 und wird eigens inszeniert. Die Daten stehen in `src/content/chapter3.ts`.
+
+### 3.5 Fehlerverhalten
 
 - Ein falscher Buchstabe wird sanft markiert (kein lauter Fehlerton, kein Punktabzug im Hauptspiel).
 - Das Wort wird erst weitergeführt, wenn der richtige Buchstabe getippt ist. Ein falscher Buchstabe wechselt nicht zu einem anderen Wort.
@@ -82,7 +94,7 @@ Die Tasten-Reihenfolge folgt klassischen Zehnfinger-Kursen. **Groß-/Kleinschrei
 |---|---|---|---|
 | 1 | Kinderzimmer | Grundreihe: `a s d f j k l`, dann `g h` | *lala, dada, jaja, haha, gaga, aha* |
 | 2 | Haus | Obere Reihe: `e i`, `r u`, `t z`, `o p`, `w q` | *eis, keks, uhr, gurke, katze, tee, tasse, sofa, puppe, wasser, seife, qualle* – Räume siehe 3.3 |
-| 3 | Garten | Untere Reihe: `n m`, `b v`, `c x y` | *mama, oma, ball, baum, blume, nase, mond, hund, ente, maus, milch, sonne* – erste Paare: *mama da, hund weg* |
+| 3 | Garten | Untere Reihe: `n m`, `b v`, `c x y` | *mama, sonne, hund, maus, gartenzwerg, baum, blume, biene, vogel, ball, bank, axt, pony, fuchs, milchkanne, kirsche, schnecke* – Bereiche siehe 3.4; erste Paare: *mama da, hund weg* |
 | 4 | Dorf / Schule | Umschalttaste (Großschreibung), `ä ö ü ß`, Satzzeichen `. , ? !` | *Der Hund bellt. Die Sonne scheint. Wo ist der Bäcker?* |
 | 5 | Umgebung / Expedition | Ziffern, Sonderzeichen | Logbuch: *Tag 3: Am Fluss wachsen 12 Birken.* |
 | später | Aufbau | alle | Rohstoffe sammeln, Dorf ausbauen |
