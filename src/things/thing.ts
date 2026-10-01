@@ -33,6 +33,21 @@ export const LABEL_Y = FLOOR_Y + 26;
 export const OUTLINE = 0x8a7a6a;
 export const TEXT_COLOR = '#7a6a5a';
 
+/**
+ * A thing that is a single image standing on `bottom`, drawn `zoom` times as large.
+ * Interiors use a larger zoom than the top-down world, so one tile fills more of the screen.
+ */
+export function standingPicture(
+  scene: Phaser.Scene,
+  key: string,
+  x: number,
+  bottom: number,
+  zoom: number,
+): Phaser.GameObjects.Container {
+  const image = scene.add.image(0, 0, key).setOrigin(0.5, 1).setScale(zoom);
+  return scene.add.container(x, bottom, [image]);
+}
+
 /** Rocks a container a few times around its origin. */
 export function rock(scene: Phaser.Scene, target: Phaser.GameObjects.Container, angle: number, times: number): void {
   scene.tweens.killTweensOf(target);

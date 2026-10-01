@@ -1,14 +1,13 @@
-import * as Phaser from 'phaser';
-import bedImage from '../assets/interior/crib.png';
-import duckImage from '../assets/interior/duck.png';
-import floorImage from '../assets/interior/floor_tile.png';
-import mobileImage from '../assets/interior/mobile.png';
-import musicBoxImage from '../assets/interior/music_box.png';
-import nightLightImage from '../assets/interior/night_light.png';
-import teddyImage from '../assets/interior/teddy.png';
-import wallImage from '../assets/interior/wall_tile.png';
-import windowImage from '../assets/interior/window.png';
-import { fillTiles, floatText, rock, squash, type Room, type ThingFactory } from './thing';
+import bedImage from '../assets/interior/nursery/crib.png';
+import duckImage from '../assets/interior/nursery/duck.png';
+import mobileImage from '../assets/interior/nursery/mobile.png';
+import musicBoxImage from '../assets/interior/nursery/music_box.png';
+import nightLightImage from '../assets/interior/nursery/night_light.png';
+import teddyImage from '../assets/interior/nursery/teddy.png';
+import floorImage from '../assets/interior/shared/floor_tile.png';
+import wallImage from '../assets/interior/shared/wall_tile.png';
+import windowImage from '../assets/interior/shared/window.png';
+import { fillTiles, floatText, rock, squash, standingPicture, type Room, type ThingFactory } from './thing';
 
 /**
  * The nursery is an interior: seen from the side and drawn closer up than the top-down world.
@@ -20,15 +19,9 @@ const ZOOM = 8;
 const FLOOR_TOP = 384;
 const LABEL_LINE = FLOOR_TOP + 26;
 
-/** A thing that is a single image standing on the floor line. */
-function standing(scene: Phaser.Scene, key: string, x: number, bottom = FLOOR_TOP): Phaser.GameObjects.Container {
-  const image = scene.add.image(0, 0, key).setOrigin(0.5, 1).setScale(ZOOM);
-  return scene.add.container(x, bottom, [image]);
-}
-
 const bed: ThingFactory = (scene) => {
   const x = 210;
-  const view = standing(scene, 'bed', x);
+  const view = standingPicture(scene, 'bed', x, FLOOR_TOP, ZOOM);
   return {
     view,
     label: { x, y: LABEL_LINE },
@@ -38,7 +31,7 @@ const bed: ThingFactory = (scene) => {
 
 const mobile: ThingFactory = (scene) => {
   const x = 210;
-  const view = standing(scene, 'mobile', x, 170);
+  const view = standingPicture(scene, 'mobile', x, 170, ZOOM);
   return {
     view,
     // The mobile hangs high up; its word sits beside it instead of under it.
@@ -54,7 +47,7 @@ const mobile: ThingFactory = (scene) => {
 
 const musicBox: ThingFactory = (scene) => {
   const x = 500;
-  const view = standing(scene, 'musicBox', x);
+  const view = standingPicture(scene, 'musicBox', x, FLOOR_TOP, ZOOM);
   return {
     view,
     label: { x, y: LABEL_LINE },
@@ -67,7 +60,7 @@ const musicBox: ThingFactory = (scene) => {
 
 const teddy: ThingFactory = (scene) => {
   const x = 680;
-  const view = standing(scene, 'teddy', x);
+  const view = standingPicture(scene, 'teddy', x, FLOOR_TOP, ZOOM);
   return {
     view,
     label: { x, y: LABEL_LINE },
@@ -77,7 +70,7 @@ const teddy: ThingFactory = (scene) => {
 
 const duck: ThingFactory = (scene) => {
   const x = 850;
-  const view = standing(scene, 'duck', x);
+  const view = standingPicture(scene, 'duck', x, FLOOR_TOP, ZOOM);
   return {
     view,
     label: { x, y: LABEL_LINE },

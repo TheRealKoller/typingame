@@ -23,11 +23,15 @@ Weitere Kacheln kommen mit #53 (Garten in Draufsicht).
 
 ## Innenräume (Seitenansicht)
 
-`interior/` enthält **eigene** Sprites. Kein freies Paket hat Innenräume in Seitenansicht –
-geprüft in #47 bei Kenney (kompletter Pixel-Katalog), OpenGameArt und itch.io; dort sind
-Innenräume praktisch immer Draufsicht.
+`interior/` enthält **eigene** Sprites, je Raum ein Unterordner: `shared/` (Wand, Boden,
+Fenster – von allen Räumen benutzt), `nursery/`, `kitchen/`, `living_room/`, `bathroom/`.
+
+Kein freies Paket hat Innenräume in Seitenansicht – geprüft in #47 bei Kenney (kompletter
+Pixel-Katalog), OpenGameArt und itch.io; dort sind Innenräume praktisch immer Draufsicht.
 
 Erzeugt von [`../tools/make-sprites.py`](../tools/make-sprites.py): das Skript ist die
-Quelle, die PNGs sind daraus erzeugt und lassen sich jederzeit neu schreiben.
+Quelle, die PNGs sind daraus erzeugt und lassen sich jederzeit neu schreiben. Es zeichnet
+je Raum ein Modul (`nursery.py`, `kitchen.py`, …), die gemeinsamen Bausteine stehen in
+`pixel.py`; jeder Lauf legt einen Kontaktbogen nach `/tmp/sprites-<raum>.png`.
 
 Quelle: eigenes Werk. Die Lizenzwahl für die Veröffentlichung ist noch offen (#18).
