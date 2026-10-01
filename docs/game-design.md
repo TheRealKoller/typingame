@@ -127,12 +127,17 @@ Die Tasten-Reihenfolge folgt klassischen Zehnfinger-Kursen. **Groß-/Kleinschrei
 
 ## 6. Grafik und Ton
 
-Noch nicht festgelegt. Arbeitsrichtung:
+**Stil (entschieden, 01.10.26):** Pixelgrafik mit 16 × 16 px großen Kacheln. Quellen sind freie **CC0-Pakete** (Kenney: *Tiny Town*, *Tiny Farm*, *Roguelike/RPG*) statt selbst erzeugter Massenware. Objekte, die kein Paket mitbringt (Hund, Gartenzwerg, Teddy, Milchkanne …), entstehen als **eigene Pixelsprites im selben Ton**. Erprobt im Experiment #47.
 
-- Weicher, pastelliger Stil, der mit dem Fortschritt **schärfer und farbiger** wird – der Stilwechsel erzählt das Aufwachsen mit.
-- Bis zur Entscheidung: einfache Platzhaltergrafiken.
-- Quellen: freie Pakete (z. B. Kenney, CC0), selbst erstellte oder KI-generierte Grafiken. Lizenzen müssen zu einer späteren Open-Source-Veröffentlichung passen.
-- Ton: leise Umgebungsgeräusche, sanfte Rückmeldung beim Entdecken. Musik ruhig und unaufdringlich.
+**Perspektive (entschieden):** Das **Hauptspiel spielt in Draufsicht**. **Innenräume und Sonderszenen** – Kinderzimmer, Haus, später Bibliothek, Alchemistenküche, Tempelruine – bleiben in **Seitenansicht**. Der Wechsel ist ein wiederkehrendes Gestaltungsmittel und markiert „die Welt öffnet sich“, wenn das Kind Haus und Garten verlässt.
+
+**Aufwachsen:** Der Stil wird mit dem Fortschritt schärfer und farbiger – pro entdecktem Ding (umgesetzt) und über die Palette je Kapitel (noch offen).
+
+**Bedienoberfläche:** Bildschirmtastatur, Wortlabels und Statistik bleiben **scharf** und nicht pixelig, müssen aber zum Look passen: dunkle Schrift mit heller Kontur, Tasten deckend mit Kontur, damit sie über der Szene lesbar sind. Später lässt sich die Tastatur ausblenden (siehe #48).
+
+**Ton:** Noch nicht festgelegt. Arbeitsrichtung: leise Umgebungsgeräusche, sanfte Rückmeldung beim Entdecken, ruhige Musik.
+
+**Lizenzen:** Alle Assets müssen zu einer späteren Open-Source-Veröffentlichung passen – CC0 bevorzugt, CC BY mit Nennung möglich.
 
 ## 7. Technik
 
