@@ -15,8 +15,6 @@ const WIDTH = 1280;
 const HEIGHT = 720;
 /** One tile is 16 px and drawn four times as large. */
 const STEP = 64;
-/** The keyboard's own surface; the world ends above it. */
-const HUD_TOP = 420;
 /** How far down the child may walk. */
 const WALK_BOTTOM = 340;
 const WALK_SPEED = 240;
@@ -42,28 +40,17 @@ const BUSHES = [
   [16, 4],
 ] as const;
 
-/** The word under a thing, in two drafts: dark text, or light text with a dark outline. */
-interface WordStyle {
-  readonly open: { readonly color: string; readonly stroke?: string; readonly strokeThickness?: number };
-  readonly typed: { readonly color: string; readonly stroke?: string; readonly strokeThickness?: number };
-}
+/** The word under a thing: dark text with a light outline, the typed prefix darker still. */
+const WORD_OPEN = { color: '#6b5f52', stroke: '#f6efe6', strokeThickness: 4 };
+const WORD_TYPED = { color: '#2f2a24', stroke: '#f6efe6', strokeThickness: 4 };
 
-const OUTLINE = '#23232c';
-const STYLES: Readonly<Record<string, WordStyle>> = {
-  dark: { open: { color: '#4a4038' }, typed: { color: '#2b2b3a' } },
-  light: {
-    open: { color: '#f4ede4', stroke: OUTLINE, strokeThickness: 4 },
-    typed: { color: '#ffd9a0', stroke: OUTLINE, strokeThickness: 4 },
-  },
-};
-
-/** Draws a word like `WordLabel` does, so both drafts can be compared without touching the game's component. */
-function drawWord(scene: Phaser.Scene, x: number, y: number, word: string, typed: string, style: WordStyle): void {
+/** Draws a word the way `WordLabel` does, so the draft can be compared without touching the game's component. */
+function drawWord(scene: Phaser.Scene, x: number, y: number, word: string, typed: string): void {
   const base = { fontFamily: 'sans-serif', fontSize: '32px' };
-  const open = scene.add.text(x, y, word, { ...base, ...style.open }).setOrigin(0.5).setDepth(6);
+  const open = scene.add.text(x, y, word, { ...base, ...WORD_OPEN }).setOrigin(0.5).setDepth(6);
   if (typed !== '') {
     scene.add
-      .text(x - open.width / 2, y, typed, { ...base, ...style.typed })
+      .text(x - open.width / 2, y, typed, { ...base, ...WORD_TYPED })
       .setOrigin(0, 0.5)
       .setDepth(7);
   }
@@ -87,8 +74,8 @@ class PrototypeScene extends Phaser.Scene {
         throw new Error(`${name} is not a 16 x 16 sprite`);
       }
     }
-    const style = STYLES[new URLSearchParams(window.location.search).get('text') ?? 'dark'];
-    if (!style) throw new Error('unknown text style');
+    const style = new URLSearchParams(window.location.search).get('text');
+    if (style !== null) console.info('text style flag is gone; the draft uses dark text with a light outline');
 
     this.#ground();
     this.#road();
@@ -103,13 +90,13 @@ class PrototypeScene extends Phaser.Scene {
     new Discoverable(dog, true);
     new Discoverable(mouse, false);
 
-    drawWord(this, 6 * STEP + 24, 2 * STEP + STEP + 10, 'baum', '', style);
-    drawWord(this, 3 * STEP + 24, 4 * STEP + STEP + 10, 'blume', '', style);
-    drawWord(this, 752, 344, 'hund', 'hu', style);
-    drawWord(this, 932, 374, 'maus', '', style);
+    drawWord(this, 6 * STEP + 24, 2 * STEP + STEP + 10, 'baum', '');
+    drawWord(this, 3 * STEP + 24, 4 * STEP + STEP + 10, 'blume', '');
+    drawWord(this, 752, 344, 'hund', 'hu');
+    drawWord(this, 932, 374, 'maus', '');
 
     this.#child = this.add.container(600, 260, [paintSprite(this, CHILD, 4)]).setDepth(5);
-    this.#hud();
+    this.#keyboard();
     this.#captions();
 
     const press = (event: KeyboardEvent): void => {
@@ -151,11 +138,8 @@ class PrototypeScene extends Phaser.Scene {
     }
   }
 
-  /** The keyboard's own surface, so its pale keys are not read against the pixel world. */
-  #hud(): void {
-    const height = HEIGHT - HUD_TOP;
-    this.add.rectangle(WIDTH / 2, HUD_TOP + height / 2, WIDTH, height, 0xf4ede4).setDepth(8);
-    this.add.rectangle(WIDTH / 2, HUD_TOP, WIDTH, 4, 0xd9c8b4).setDepth(8);
+  /** The keyboard lies over the meadow; the keys are opaque with an edge, so no panel is needed. */
+  #keyboard(): void {
     new KeyboardView(this, WIDTH / 2, 485, qwertzDe).setScale(0.65).setUnlocked([...'asdfghjkleirutzopwqnmbv']).setDepth(9);
   }
 
@@ -182,7 +166,7 @@ class PrototypeScene extends Phaser.Scene {
       .setOrigin(0.5, 0)
       .setDepth(10);
     this.add
-      .text(WIDTH / 2, 38, 'Tastatur auf eigener Fläche · Pfeiltasten bewegen das Kind · ?text=light für helle Schrift mit Kontur', {
+      .text(WIDTH / 2, 38, 'Tasten deckend mit Kontur, kein Hintergrundstreifen · Pfeiltasten bewegen das Kind', {
         fontFamily: 'sans-serif',
         fontSize: '15px',
         color: '#cfc7ba',

@@ -11,6 +11,10 @@ const ROW_INDEX: Record<Row, number> = { top: 0, home: 1, bottom: 2, space: 3 };
 const TEXT_COLOR = 0x4a4038;
 const LOCKED_COLOR = 0xe6ddd2;
 const LOCKED_TEXT = '#b9ab9b';
+/** Outline of every key, so the keyboard reads over the scene behind it. */
+const KEY_EDGE = 0x8a7a6a;
+/** The caption sits over the scene as well, so its text carries a light outline. */
+const CAPTION_STROKE = '#f4ede4';
 const WRONG_FLASH = 0xe58b8b;
 const RIGHT_FLASH = 0xffffff;
 
@@ -99,7 +103,7 @@ export class KeyboardView extends Phaser.GameObjects.Container {
       const left = (ROW_OFFSET[key.row] - minOffset + column) * KEY_PITCH - width / 2;
       const capWidth = units * KEY_PITCH - (KEY_PITCH - KEY_SIZE);
       const container = scene.add.container(left + capWidth / 2, (ROW_INDEX[key.row] - 1) * KEY_PITCH);
-      const cap = scene.add.rectangle(0, 0, capWidth, KEY_SIZE).setRounded(8);
+      const cap = scene.add.rectangle(0, 0, capWidth, KEY_SIZE).setRounded(8).setStrokeStyle(2, KEY_EDGE);
       const flash = scene.add.rectangle(0, 0, capWidth, KEY_SIZE, RIGHT_FLASH).setRounded(8).setAlpha(0);
       const label = scene.add
         .text(0, 0, key.label ?? key.char.toUpperCase(), { fontFamily: 'sans-serif', fontSize: '22px' })
@@ -124,7 +128,13 @@ export class KeyboardView extends Phaser.GameObjects.Container {
     }
 
     this.#caption = scene.add
-      .text(0, handsTop + 140, '', { fontFamily: 'sans-serif', fontSize: '22px', color: '#4a4038' })
+      .text(0, handsTop + 140, '', {
+        fontFamily: 'sans-serif',
+        fontSize: '22px',
+        color: '#4a4038',
+        stroke: CAPTION_STROKE,
+        strokeThickness: 3,
+      })
       .setOrigin(0.5);
     this.add(this.#caption);
 
@@ -178,7 +188,7 @@ export class KeyboardView extends Phaser.GameObjects.Container {
       rate.setText('');
 
       if (!unlocked) {
-        cap.setFillStyle(LOCKED_COLOR).setStrokeStyle();
+        cap.setFillStyle(LOCKED_COLOR).setStrokeStyle(2, KEY_EDGE);
         label.setColor(LOCKED_TEXT);
       } else if (next) {
         nextKeys.push(key);
@@ -186,7 +196,7 @@ export class KeyboardView extends Phaser.GameObjects.Container {
         label.setColor('#4a4038');
         this.#pulse(container);
       } else {
-        cap.setFillStyle(FINGER_COLOR[key.finger], 0.45).setStrokeStyle();
+        cap.setFillStyle(FINGER_COLOR[key.finger]).setStrokeStyle(2, KEY_EDGE);
         label.setColor('#4a4038');
       }
     }
@@ -199,7 +209,7 @@ export class KeyboardView extends Phaser.GameObjects.Container {
         shape.setFillStyle(FINGER_COLOR[finger]).setStrokeStyle(3, TEXT_COLOR);
         this.#pulse(shape);
       } else {
-        shape.setFillStyle(FINGER_COLOR[finger], 0.35).setStrokeStyle();
+        shape.setFillStyle(FINGER_COLOR[finger], 0.75).setStrokeStyle();
       }
     }
 
@@ -214,19 +224,19 @@ export class KeyboardView extends Phaser.GameObjects.Container {
       container.setScale(1);
       const errorRate = rates.get(key.char);
       if (errorRate === undefined) {
-        cap.setFillStyle(LOCKED_COLOR).setStrokeStyle();
+        cap.setFillStyle(LOCKED_COLOR).setStrokeStyle(2, KEY_EDGE);
         label.setY(0).setColor(LOCKED_TEXT);
         rate.setText('');
         continue;
       }
       cap.setFillStyle(mix(NO_ERRORS_COLOR, MANY_ERRORS_COLOR, Math.min(errorRate / MANY_ERRORS_RATE, 1)));
-      cap.setStrokeStyle();
+      cap.setStrokeStyle(2, KEY_EDGE);
       label.setY(-7).setColor('#4a4038');
       rate.setText(`${Math.round(errorRate * 100)} %`);
     }
     for (const { finger, shape } of this.#hands) {
       this.scene.tweens.killTweensOf(shape);
-      shape.setScale(1).setFillStyle(FINGER_COLOR[finger], 0.35).setStrokeStyle();
+      shape.setScale(1).setFillStyle(FINGER_COLOR[finger], 0.75).setStrokeStyle();
     }
     this.#caption.setText('Fehler je Taste');
   }
