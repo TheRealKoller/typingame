@@ -1,7 +1,9 @@
 import catImage from '../assets/interior/living_room/cat.png';
 import chairImage from '../assets/interior/living_room/chair.png';
 import cupImage from '../assets/interior/living_room/cup.png';
+import curtainsImage from '../assets/interior/living_room/curtains.png';
 import dollImage from '../assets/interior/living_room/doll.png';
+import lampImage from '../assets/interior/living_room/lamp.png';
 import parrotImage from '../assets/interior/living_room/parrot.png';
 import photoImage from '../assets/interior/living_room/photo.png';
 import radioImage from '../assets/interior/living_room/radio.png';
@@ -14,7 +16,7 @@ import wallImage from '../assets/interior/shared/wall_tile.png';
 import windowImage from '../assets/interior/shared/window.png';
 import { fillTiles, floatText, rise, rock, squash, standingPicture, type Room, type ThingFactory } from './thing';
 
-const ZOOM = 8;
+const ZOOM = 4;
 const FLOOR_TOP = 384;
 const LABEL_LINE = FLOOR_TOP + 26;
 /** Tea corner on the left: pot and cup stand on the little table. */
@@ -152,12 +154,17 @@ export const livingRoom: Room = {
     { key: 'doll', url: dollImage },
     { key: 'photo', url: photoImage },
     { key: 'radio', url: radioImage },
+    { key: 'curtains', url: curtainsImage },
+    { key: 'lamp', url: lampImage },
     { key: 'parrot', url: parrotImage },
   ],
   backdrop: (scene) => {
     fillTiles(scene, 'wall', 0, 0, scene.scale.width, FLOOR_TOP, ZOOM);
     fillTiles(scene, 'floor', 0, FLOOR_TOP, scene.scale.width, scene.scale.height, ZOOM);
+    // Vorhaenge hinter dem Fenster und eine Lampe neben dem Tisch – ohne Wort.
+    scene.add.image(1120, 250, 'curtains').setOrigin(0.5, 1).setScale(ZOOM);
     scene.add.image(1120, 250, 'window').setOrigin(0.5, 1).setScale(ZOOM);
+    scene.add.image(65, FLOOR_TOP, 'lamp').setOrigin(0.5, 1).setScale(ZOOM);
     // The little table under the tea things and the shelf that carries the radio.
     scene.add.image(210, FLOOR_TOP, 'table').setOrigin(0.5, 1).setScale(ZOOM);
     scene.add.image(380, SHELF_TOP, 'shelf').setOrigin(0.5, 1).setScale(ZOOM);

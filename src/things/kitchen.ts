@@ -4,6 +4,8 @@ import cookieImage from '../assets/interior/kitchen/cookie.png';
 import counterImage from '../assets/interior/kitchen/counter_tile.png';
 import cucumberImage from '../assets/interior/kitchen/cucumber.png';
 import iceCreamImage from '../assets/interior/kitchen/ice_cream.png';
+import jarsImage from '../assets/interior/kitchen/jars.png';
+import potsImage from '../assets/interior/kitchen/pots.png';
 import riceImage from '../assets/interior/kitchen/rice.png';
 import vinegarImage from '../assets/interior/kitchen/vinegar.png';
 import floorImage from '../assets/interior/shared/floor_tile.png';
@@ -11,7 +13,7 @@ import wallImage from '../assets/interior/shared/wall_tile.png';
 import windowImage from '../assets/interior/shared/window.png';
 import { fall, fillTiles, floatText, rise, rock, standingPicture, type Room, type ThingFactory } from './thing';
 
-const ZOOM = 8;
+const ZOOM = 4;
 /** Wall above, floor below; the things stand on the floor line or on the worktop. */
 const FLOOR_TOP = 384;
 /** The worktop is a row of tiles; its things stand on the top edge. */
@@ -170,12 +172,17 @@ export const kitchen: Room = {
     { key: 'vinegar', url: vinegarImage },
     { key: 'clock', url: clockImage },
     { key: 'cucumber', url: cucumberImage },
+    { key: 'jars', url: jarsImage },
+    { key: 'pots', url: potsImage },
     { key: 'rice', url: riceImage },
   ],
   backdrop: (scene) => {
     fillTiles(scene, 'wall', 0, 0, scene.scale.width, FLOOR_TOP, ZOOM);
     fillTiles(scene, 'floor', 0, FLOOR_TOP, scene.scale.width, scene.scale.height, ZOOM);
     scene.add.image(1080, 250, 'window').setOrigin(0.5, 1).setScale(ZOOM);
+    // Wandbrett und haengende Toepfe ueber der Arbeitsplatte – ohne Wort.
+    scene.add.image(200, 200, 'jars').setOrigin(0.5, 1).setScale(ZOOM);
+    scene.add.image(640, 200, 'pots').setOrigin(0.5, 1).setScale(ZOOM);
     // The worktop: one row of tiles across the wall.
     fillTiles(scene, 'counter', 64, COUNTER_TOP, 1216, FLOOR_TOP, ZOOM);
   },

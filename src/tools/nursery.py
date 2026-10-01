@@ -6,6 +6,7 @@ from pixel import (
     BROWN2,
     CREAM,
     FLOOR,
+    GREEN,
     ORANGE,
     RED,
     RED2,
@@ -110,4 +111,20 @@ def night_light():
     return im
 
 
-SPRITES = [crib, mobile, music_box, teddy, duck, night_light]
+def toy_shelf():
+    """Regal mit Spielzeug; Wandschmuck ohne Wort."""
+    w, h = 22, 13
+    im, d = shapes(w, h)
+    d.rectangle([0, 0, 21, 12], fill=BROWN)
+    outline_silhouette(im)
+    d.rectangle([2, 2, 19, 5], fill=CREAM)
+    d.rectangle([2, 7, 19, 10], fill=CREAM)
+    d.ellipse([4, 2, 7, 5], fill=RED)
+    d.rectangle([9, 2, 12, 5], fill=BLUE)
+    d.rectangle([15, 3, 18, 5], fill=YELLOW)
+    d.rectangle([4, 8, 8, 10], fill=GREEN)
+    d.rectangle([12, 8, 17, 10], fill=ORANGE)
+    return im
+
+
+SPRITES = [crib, mobile, music_box, teddy, duck, night_light, toy_shelf]

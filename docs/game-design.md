@@ -129,6 +129,8 @@ Die Tasten-Reihenfolge folgt klassischen Zehnfinger-Kursen. **Groß-/Kleinschrei
 
 **Stil (entschieden, 01.10.26):** Pixelgrafik mit 16 × 16 px großen Kacheln. Quellen sind freie **CC0-Pakete** (Kenney: *Tiny Town*, *Tiny Farm*, *Roguelike/RPG*) statt selbst erzeugter Massenware. Objekte, die kein Paket mitbringt (Hund, Gartenzwerg, Teddy, Milchkanne …), entstehen als **eigene Pixelsprites im selben Ton**. Erprobt im Experiment #47.
 
+**Pixeldichte (entschieden, 01.10.26):** Welt und Innenräume laufen mit **demselben vierfachen Zoom**, gemessen an ihren Bild-Pixeln. Damit die Dinge in den Innenräumen trotzdem groß genug bleiben, sind die **Innenraum-Kacheln 32 × 32 px** groß statt 16 × 16 px; das Werkzeug `src/tools/make-sprites.py` zeichnet sie mit zwei Bild-Pixeln je Entwurfs-Pixel, `ZOOM` in den Räumen bleibt 4. So ist ein Bild-Pixel überall vier Bildschirm-Pixel groß und die Konturen überall ein Bild-Pixel dünn. Vergleich vorher/nachher samt Welt: [`docs/images/innenraeume-pixeldichte.png`](images/innenraeume-pixeldichte.png).
+
 **Perspektive (entschieden):** Das **Hauptspiel spielt in Draufsicht**. **Innenräume und Sonderszenen** – Kinderzimmer, Haus, später Bibliothek, Alchemistenküche, Tempelruine – bleiben in **Seitenansicht**. Der Wechsel ist ein wiederkehrendes Gestaltungsmittel und markiert „die Welt öffnet sich“, wenn das Kind Haus und Garten verlässt.
 
 **Aufwachsen:** Der Stil wird mit dem Fortschritt schärfer und farbiger – pro entdecktem Ding (umgesetzt) und über die Palette je Kapitel (noch offen).

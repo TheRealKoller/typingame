@@ -4,6 +4,9 @@ import mobileImage from '../assets/interior/nursery/mobile.png';
 import musicBoxImage from '../assets/interior/nursery/music_box.png';
 import nightLightImage from '../assets/interior/nursery/night_light.png';
 import teddyImage from '../assets/interior/nursery/teddy.png';
+import plantImage from '../assets/interior/shared/plant.png';
+import pictureImage from '../assets/interior/shared/picture.png';
+import toyShelfImage from '../assets/interior/nursery/toy_shelf.png';
 import floorImage from '../assets/interior/shared/floor_tile.png';
 import wallImage from '../assets/interior/shared/wall_tile.png';
 import windowImage from '../assets/interior/shared/window.png';
@@ -14,7 +17,7 @@ import { fillTiles, floatText, rock, squash, standingPicture, type Room, type Th
  * One 16 px tile fills 128 screen px here, 64 px outside (decision in #47). The sprites come
  * from `src/tools/make-sprites.py`, because no free pack has side-view interiors.
  */
-const ZOOM = 8;
+const ZOOM = 4;
 /** Wall above, floor below – three and three tiles. The things stand on the boundary. */
 const FLOOR_TOP = 384;
 const LABEL_LINE = FLOOR_TOP + 26;
@@ -113,12 +116,19 @@ export const nursery: Room = {
     { key: 'musicBox', url: musicBoxImage },
     { key: 'teddy', url: teddyImage },
     { key: 'duck', url: duckImage },
+    { key: 'toyShelf', url: toyShelfImage },
+    { key: 'picture', url: pictureImage },
+    { key: 'plant', url: plantImage },
     { key: 'nightLight', url: nightLightImage },
   ],
   backdrop: (scene) => {
     fillTiles(scene, 'wall', 0, 0, scene.scale.width, FLOOR_TOP, ZOOM);
     fillTiles(scene, 'floor', 0, FLOOR_TOP, scene.scale.width, scene.scale.height, ZOOM);
     // A night window on the wall.
+    // Wandschmuck und ein Topf in der Ecke – ohne Wort.
+    scene.add.image(420, 260, 'toyShelf').setOrigin(0.5, 1).setScale(ZOOM);
+    scene.add.image(700, 220, 'picture').setOrigin(0.5, 1).setScale(ZOOM);
+    scene.add.image(1220, FLOOR_TOP, 'plant').setOrigin(0.5, 1).setScale(ZOOM);
     scene.add.image(1060, 250, 'window').setOrigin(0.5, 1).setScale(ZOOM);
   },
   // Free wall space between the mobile and the window.

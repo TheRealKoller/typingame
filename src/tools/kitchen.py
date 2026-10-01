@@ -122,4 +122,28 @@ def rice():
     return im
 
 
-SPRITES = [counter_tile, ice_cream, cookie, coffee, vinegar, clock, cucumber, rice]
+def jars():
+    """Wandbrett mit Glaesern; ohne Wort."""
+    w, h = 24, 11
+    im, d = shapes(w, h)
+    d.rectangle([0, 7, 23, 10], fill=BROWN)
+    for x, color in ((1, RED), (7, YELLOW), (13, GREEN), (18, BLUE)):
+        d.rectangle([x, 2, x + 3, 7], fill=color)
+        d.rectangle([x, 1, x + 3, 2], fill=CREAM)
+    outline_silhouette(im)
+    return im
+
+
+def pots():
+    """Haengende Toepfe ueber der Arbeitsplatte; ohne Wort."""
+    w, h = 16, 11
+    im, d = shapes(w, h)
+    d.rectangle([0, 0, 15, 2], fill=BROWN2)
+    for x, r, color in ((4, 4, GREY), (11, 5, GREY2)):
+        d.rectangle([x, 2, x, 4], fill=BROWN2)
+        d.ellipse([x - r, 4, x + r, 4 + r * 2], fill=color)
+    outline_silhouette(im)
+    return im
+
+
+SPRITES = [counter_tile, ice_cream, cookie, coffee, vinegar, clock, cucumber, rice, jars, pots]

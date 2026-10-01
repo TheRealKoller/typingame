@@ -168,4 +168,30 @@ def parrot():
     return im
 
 
-SPRITES = [shelf, tea_table, tea, cup, chair, cat, sofa, doll, photo, radio, parrot]
+def curtains():
+    """Vorhänge am Fenster; ohne Wort."""
+    w, h = 26, 16
+    im, d = shapes(w, h)
+    d.rectangle([0, 0, 25, 2], fill=BROWN)
+    d.polygon([(0, 2), (10, 2), (9, 15), (0, 15)], fill=RED)
+    d.polygon([(16, 2), (25, 2), (25, 15), (17, 15)], fill=RED)
+    outline_silhouette(im)
+    d.rectangle([3, 3, 3, 14], fill=RED2)
+    d.rectangle([21, 3, 21, 14], fill=RED2)
+    return im
+
+
+def lamp():
+    """Stehlampe; ohne Wort."""
+    w, h = 13, 19
+    im, d = shapes(w, h)
+    d.polygon([(2, 2), (10, 2), (12, 9), (0, 9)], fill=YELLOW)
+    d.rectangle([5, 9, 7, 16], fill=BROWN2)
+    d.ellipse([2, 15, 10, 18], fill=BROWN)
+    outline_silhouette(im)
+    d.rectangle([4, 3, 4, 7], fill=CREAM)
+    d.rectangle([8, 3, 8, 7], fill=CREAM)
+    return im
+
+
+SPRITES = [shelf, tea_table, tea, cup, chair, cat, sofa, doll, photo, radio, parrot, curtains, lamp]
