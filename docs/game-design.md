@@ -78,7 +78,9 @@ Im Garten sind die Wörter ebenfalls **Namen von Dingen**. Der Garten hat drei B
 | Beet | 3b | `b v` | *baum, blume, biene, vogel, ball, bank* |
 | Hof | 3c | `c x y` | *axt, pony, fuchs, milchkanne, kirsche, schnecke* |
 
-Die drei Bereiche sind Räume im selben Sinn wie die des Hauses; aus dem Bad (2e) führt der Übergang in die Wiese, und der Hinweis nennt `n m`. Eine Ausnahme unter den Wörtern ist *mama*: Ihr erstes Tippen ist der besondere Moment aus Abschnitt 4 und wird eigens inszeniert. Die Daten stehen in `src/content/chapter3.ts`.
+Die drei Bereiche sind Räume im selben Sinn wie die des Hauses; aus dem Bad (2e) führt der Übergang in die Wiese, und der Hinweis nennt `n m`. Die Daten stehen in `src/content/chapter3.ts`.
+
+Eine Ausnahme unter den Wörtern ist *mama*: Ihr erstes Tippen ist der besondere Moment aus Abschnitt 4 und wird eigens inszeniert. Warmes Licht legt sich über die Szene, die Mama-Figur tritt hervor, während die übrigen Dinge und Wörter zurücktreten, und ihr Wort schwebt warm über dem Bild; das Tippen läuft dabei ruhig weiter. Jedes weitere *mama* reagiert wie ein gewöhnliches Ding. Dass der Moment stattgefunden hat, steht im Spielstand (`discovered`), also wird er nach einem Neustart nicht wiederholt.
 
 ### 3.5 Fehlerverhalten
 
