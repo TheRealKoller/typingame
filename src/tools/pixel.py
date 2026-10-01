@@ -1,0 +1,72 @@
+"""Gemeinsame Bausteine fuer die Pixelsprites der Innenraeume.
+
+Farben im Ton der Kenney-Kacheln: dunkle Kontur, wenige, kraeftige Toene.
+Vorgehen beim Zeichnen: erst die Silhouette fuellen, dann mit `outline_silhouette`
+eine 1-px-Kontur legen, zuletzt die Innendetails.
+"""
+
+from PIL import Image, ImageDraw
+
+K = (43, 43, 51)
+CREAM = (244, 237, 228)
+WALL = (240, 234, 222)
+WALL2 = (222, 212, 194)
+FLOOR = (206, 168, 116)
+FLOOR2 = (188, 146, 96)
+SKIN = (240, 201, 160)
+RED = (224, 138, 138)
+RED2 = (192, 90, 90)
+YELLOW = (245, 215, 122)
+YELLOW2 = (238, 198, 92)
+ORANGE = (232, 164, 74)
+GREEN = (169, 214, 148)
+GREEN2 = (127, 176, 105)
+BLUE = (111, 168, 220)
+BLUE2 = (74, 127, 181)
+BROWN = (192, 138, 90)
+BROWN2 = (138, 90, 52)
+WHITE = (255, 255, 255)
+GREY = (196, 200, 208)
+GREY2 = (146, 152, 164)
+NIGHT = (58, 62, 98)
+MOON = (247, 232, 168)
+
+
+def shapes(w, h):
+    """Leere Zeichenflaeche und Stift."""
+    im = Image.new("RGBA", (w, h), (0, 0, 0, 0))
+    return im, ImageDraw.Draw(im)
+
+
+def outline_silhouette(im, color=K):
+    """Legt eine 1 px Kontur um jede zusammenhaengende Form."""
+    px = im.load()
+    w, h = im.size
+    edge = []
+    for y in range(h):
+        for x in range(w):
+            if px[x, y][3] != 0:
+                continue
+            for dx, dy in ((1, 0), (-1, 0), (0, 1), (0, -1)):
+                nx, ny = x + dx, y + dy
+                if 0 <= nx < w and 0 <= ny < h and px[nx, ny][3] != 0:
+                    edge.append((x, y))
+                    break
+    for x, y in edge:
+        px[x, y] = (*color, 255)
+
+
+def contact_sheet(sprites, path, scale=4, pad=14):
+    """Reiht die Sprites vergroessert aneinander, damit man sie ansehen kann."""
+    width = sum(im.width * scale + pad for _, im in sprites) + pad
+    height = max(im.height * scale for _, im in sprites) + 42
+    sheet = Image.new("RGB", (width, height), (60, 60, 68))
+    d = ImageDraw.Draw(sheet)
+    x = pad
+    for name, im in sprites:
+        big = im.resize((im.width * scale, im.height * scale), Image.NEAREST)
+        sheet.paste(big, (x, 26), big)
+        d.text((x, 8), name, fill=(255, 255, 255))
+        x += big.width + pad
+    sheet.save(path)
+    return sheet.size
