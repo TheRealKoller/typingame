@@ -23,6 +23,12 @@ const FADE_DURATION = 600;
 const HINT_DURATION = 5000;
 /** The typed word's hop plays before it gives way to the next word. */
 const WORD_OUT_DELAY = 350;
+/** The first *mama* is staged as a special moment; every later one reacts like any other word (design doc, section 4). */
+const MOMENT_WORD = 'mama';
+/** How far the other things and words step back while the moment plays. */
+const MOMENT_RECEDE_ALPHA = 0.4;
+/** How long light, word and the step forward run before everything returns. */
+const MOMENT_MS = 3200;
 
 export interface RoomSceneData {
   /** Saved progress plus the running session; decides the section and so the room. */
@@ -154,11 +160,14 @@ export class RoomScene extends Phaser.Scene {
     for (const typingEvent of events) {
       if (typingEvent.type !== 'complete') continue;
       const entry = this.#things.get(typingEvent.word);
+      // The moment belongs to the word's first typing, so it has to be read before the word is marked discovered.
+      const firstTime = !this.#progress.discovered.has(typingEvent.word);
       entry?.discoverable.discover();
       entry?.thing.react();
       this.#labels.find((label) => label.word === typingEvent.word)?.celebrate();
       this.#progress.discover(typingEvent.word);
       void this.#progress.save();
+      if (firstTime && typingEvent.word === MOMENT_WORD) this.#playMamaMoment(entry?.thing);
       this.#rotate(typingEvent.word);
     }
     this.#render();
@@ -189,6 +198,59 @@ export class RoomScene extends Phaser.Scene {
       this.tweens.killTweensOf(inLabel);
       this.tweens.add({ targets: inLabel, alpha: 1, delay: WORD_OUT_DELAY + 300, duration: 800 });
     }
+  }
+
+  /**
+   * Stages the first *mama*: warm light over the scene, the figure steps forward while the other
+   * things and words step back, and her word floats above. Nothing is blocked; typing goes on.
+   */
+  #playMamaMoment(mama: Thing | undefined): void {
+    const width = this.scale.width;
+    const height = this.scale.height;
+
+    // Warm light over the whole scene, slowly in and out again.
+    const light = this.add.rectangle(width / 2, height / 2, width, height, 0xffd9a0).setDepth(5).setAlpha(0);
+    this.tweens.chain({
+      targets: light,
+      tweens: [
+        { alpha: 0.5, duration: 900, ease: 'Sine.easeOut' },
+        { alpha: 0, delay: 1100, duration: 1200, ease: 'Sine.easeIn' },
+      ],
+      onComplete: () => light.destroy(),
+    });
+
+    // Her word, warm and large, above the scene.
+    const word = this.add
+      .text(width / 2, 130, MOMENT_WORD, { fontFamily: 'sans-serif', fontSize: '64px', color: '#e8a33d' })
+      .setOrigin(0.5)
+      .setDepth(6)
+      .setAlpha(0);
+    this.tweens.chain({
+      targets: word,
+      tweens: [
+        { alpha: 0.95, y: 112, duration: 900, ease: 'Sine.easeOut' },
+        { alpha: 0, y: 92, delay: 1100, duration: 1200, ease: 'Sine.easeIn' },
+      ],
+      onComplete: () => word.destroy(),
+    });
+
+    // Mama steps forward, the rest of the meadow steps back.
+    const step = { duration: 900, hold: 1300, yoyo: true, ease: 'Sine.easeInOut' };
+    if (mama) this.tweens.add({ targets: mama.view, scale: 1.18, ...step });
+    for (const entry of this.#things.values()) {
+      if (entry.thing === mama) continue;
+      this.tweens.add({ targets: entry.thing.view, alpha: MOMENT_RECEDE_ALPHA, ...step });
+    }
+    const quiet = this.#labels.filter((label) => label.alpha > 0 && label.word !== MOMENT_WORD);
+    for (const label of quiet) this.tweens.add({ targets: label, alpha: MOMENT_RECEDE_ALPHA, ...step });
+
+    // A word typed meanwhile may have taken another's place, so the labels end in their true state.
+    this.time.delayedCall(MOMENT_MS, () => {
+      for (const label of quiet) {
+        this.tweens.killTweensOf(label);
+        label.setAlpha(this.#shown.includes(label.word) ? 1 : 0);
+      }
+    });
   }
 
   #showOverview(): void {
