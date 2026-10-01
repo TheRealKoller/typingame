@@ -23,6 +23,20 @@ const FADE_DURATION = 600;
 const HINT_DURATION = 5000;
 /** The typed word's hop plays before it gives way to the next word. */
 const WORD_OUT_DELAY = 350;
+/**
+ * Walking keys for the home row: held together with CapsLock they move the figure instead of
+ * typing, so the hands never leave `asdf`/`jklö`. The arrow keys keep working as before.
+ */
+const WALK_KEYS: Readonly<Record<string, string>> = {
+  h: 'ArrowLeft',
+  j: 'ArrowDown',
+  k: 'ArrowUp',
+  l: 'ArrowRight',
+};
+
+/** How far beside a named thing the figure stops, in screen px. */
+const WALK_BESIDE = 44;
+
 /** How fast the arrow keys move the figure of a top-down room. */
 const WALK_SPEED = 260;
 /** The first *mama* is staged as a special moment; every later one reacts like any other word (design doc, section 4). */
@@ -69,6 +83,8 @@ export class RoomScene extends Phaser.Scene {
   /** The figure the arrow keys move; only top-down rooms have one. */
   #avatar: RoomAvatar | null = null;
   readonly #arrows = new Set<string>();
+  /** True while CapsLock is physically held down. */
+  #capsHeld = false;
   /** Stable reference, so the frame listener can be removed again on shutdown. */
   readonly #walkFrame = (_time: number, delta: number): void => {
     this.#walk(delta);
@@ -137,6 +153,16 @@ export class RoomScene extends Phaser.Scene {
     }
 
     this.#avatar = room.avatar?.(this) ?? null;
+    if (this.#avatar) {
+      this.add
+        .text(18, this.scale.height - 26, 'laufen: CapsLock + h j k l', {
+          fontFamily: 'sans-serif',
+          fontSize: '16px',
+          color: '#7a6a5a',
+        })
+        .setOrigin(0, 0.5)
+        .setAlpha(0.7);
+    }
     this.#engine = new TypingEngine(this.#shown);
     // Keys stay unlocked across rooms and chapters. The space bar adds a fourth row, so the keyboard sits a little higher and smaller.
     this.#keyboard = new KeyboardView(this, this.scale.width / 2, 485, qwertzDe)
@@ -177,10 +203,17 @@ export class RoomScene extends Phaser.Scene {
       this.#showOverview();
       return;
     }
-    if (event.key.startsWith('Arrow')) {
-      // Walking is separate from typing: the arrow keys never type a character.
+    if (event.key === 'CapsLock') {
+      this.#capsHeld = true;
+      return;
+    }
+    // Walking is separate from typing: neither the arrow keys nor the walk keys type a character.
+    const walking = event.getModifierState?.('CapsLock') === true || this.#capsHeld;
+    const walkKey = WALK_KEYS[event.key.toLowerCase()];
+    if (event.key.startsWith('Arrow') || (walking && walkKey !== undefined)) {
       event.preventDefault();
-      this.#arrows.add(event.key);
+      this.#stopWalk();
+      this.#arrows.add(walkKey ?? event.key);
       return;
     }
     if (this.#transitioning) return;
@@ -199,6 +232,7 @@ export class RoomScene extends Phaser.Scene {
       const firstTime = !this.#progress.discovered.has(typingEvent.word);
       entry?.discoverable.discover();
       entry?.thing.react();
+      if (entry) this.#walkTo(entry.thing.view.x, entry.thing.view.y);
       this.#labels.find((label) => label.word === typingEvent.word)?.celebrate();
       this.#progress.discover(typingEvent.word);
       void this.#progress.save();
@@ -212,9 +246,41 @@ export class RoomScene extends Phaser.Scene {
   };
 
   readonly #onKeyUp = (event: KeyboardEvent): void => {
+    if (event.key === 'CapsLock') {
+      this.#capsHeld = false;
+      return;
+    }
+    const walkKey = WALK_KEYS[event.key.toLowerCase()];
+    if (walkKey !== undefined) this.#arrows.delete(walkKey);
     this.#arrows.delete(event.key);
     if (event.key === 'Tab') this.#hideOverview();
   };
+
+  /** Stops the walk to a named thing so a held key can take over. */
+  #stopWalk(): void {
+    if (this.#avatar) this.tweens.killTweensOf(this.#avatar.view);
+  }
+
+  /**
+   * Sends the figure over to the thing the player just named. Walking becomes the reward for
+   * naming, so no mode has to be switched and the hands stay on the home row.
+   */
+  #walkTo(x: number, y: number): void {
+    const avatar = this.#avatar;
+    if (!avatar) return;
+    const view = avatar.view;
+    const targetX = Phaser.Math.Clamp(x + WALK_BESIDE, avatar.area.x0, avatar.area.x1);
+    const targetY = Phaser.Math.Clamp(y + WALK_BESIDE, avatar.area.y0, avatar.area.y1);
+    this.tweens.killTweensOf(view);
+    const distance = Phaser.Math.Distance.Between(view.x, view.y, targetX, targetY);
+    this.tweens.add({
+      targets: view,
+      x: targetX,
+      y: targetY,
+      duration: Math.max(240, (distance / WALK_SPEED) * 1000),
+      ease: 'Sine.easeInOut',
+    });
+  }
 
   /** Moves the figure of a top-down room while an arrow key is held. */
   #walk(delta: number): void {
