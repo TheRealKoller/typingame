@@ -39,15 +39,12 @@ Stack: Tauri 2, TypeScript, Phaser, Vite.
 
 ### Aufbau
 
-- `src/` – Spiel (TypeScript, Phaser); Einstieg `src/main.ts`; `src/scenes/RoomScene.ts` spielt jeden Raum im aktuellen Abschnitt und wechselt über Raum- und Kapitelgrenzen
+- `src/` – Spiel (TypeScript, Phaser); Einstieg `src/main.ts`; `src/scenes/HomeRowScene.ts` ist vorläufig die einzige Szene: Tippen auf der Grundreihe mit Bildschirmtastatur und Statistik, bis der Kampf-Prototyp (M2) sie ablöst
 - `src/keyboard/` – Tastaturlayouts als Daten (physische Taste → Zeichen, Reihe, Finger); zuerst `qwertz-de.ts`
 - `src/typing/` – Tipp-Engine: Zielauswahl per Präfix, Fehler, Wortabschluss (ohne Phaser)
-- `src/content/` – Spielinhalte als Daten: Kapitel, Räume, Abschnitte, freigeschaltete Tasten, Laute bzw. Wörter (`chapter1.ts`, `chapter2.ts`, `chapter3.ts`); `rooms.ts` legt fest, welche Wörter sichtbar sind; `chapters.test.ts` prüft Tastenregel, Präfix-Paare und zusammenhängende Räume
-- `src/progress/` – Fortschritt ohne Phaser: Freischaltung nach Genauigkeit (`unlock.ts`), Sitzungsstatistik (`stats.ts`), Auswahl der sichtbaren Wörter nach Fehlerquote (`practice.ts`), Spielstand (`save.ts` Format, `progress.ts` Laden/Speichern, `storage.ts` Datei bzw. localStorage)
-- `src/ui/` – wiederverwendbare Phaser-Bausteine, z. B. `KeyboardView` (Bildschirmtastatur), `Discoverable` (Ding blass und unscharf bis zum Entdecken)
-- `src/assets/` – Grafik: `world/` (Pixelkacheln aus freien CC0-Paketen **und die eigenen Sprites der Draufsicht**; Bedeutung und Quellen in `LICENSES.md`) und `interior/` (eigene Sprites für Innenräume in Seitenansicht, je Raum ein Unterordner)
-- `src/tools/` – Hilfsskripte, nicht Teil des Builds: `make-sprites.py` zeichnet die eigenen Sprites (Innenräume nach `src/assets/interior/`, Draufsicht nach `src/assets/world/`), je Raum ein Modul, gemeinsame Bausteine in `pixel.py`
-- `src/things/` – Räume mit Platzhalter-Dingen (Hintergrund, Zeichnung, Wortposition, Reaktion): `nursery.ts`, `kitchen.ts`, `livingRoom.ts`, `bathroom.ts`, `meadow.ts`, `gardenBed.ts`, `yard.ts`; `rooms.ts` ordnet sie den Raumnamen der Inhalte zu, die Dinge werden über die `object`-IDs angesprochen; `thing.ts` enthält Vertrag und gemeinsame Animationen (Phaser nur als Typ, damit `rooms.test.ts` ohne Phaser läuft)
+- `src/content/` – Spielinhalte als Daten, vorerst die Wortliste der Grundreihe (`words.ts`); `words.test.ts` prüft die Tastenregel
+- `src/progress/` – Fortschritt ohne Phaser: Freischaltung nach Genauigkeit (`unlock.ts`), Sitzungsstatistik (`stats.ts`), gewichtete Wortauswahl nach Fehlerquote ohne Präfix-Paare (`practice.ts`), Spielstand (`save.ts` Format, `progress.ts` Laden/Speichern, `storage.ts` Datei bzw. localStorage)
+- `src/ui/` – wiederverwendbare Phaser-Bausteine: `KeyboardView` (Bildschirmtastatur), `StatsView` (Statistik), `WordLabel` (Wort mit getipptem Anfang)
 - Tests liegen neben dem Code als `*.test.ts` unter `src/` und laufen mit [Vitest](https://vitest.dev) in Node, ohne Phaser.
 - `src-tauri/` – Desktop-Hülle (Rust, Tauri 2), Konfiguration in `src-tauri/tauri.conf.json`
 

@@ -169,7 +169,7 @@ Bis alle Buchstaben beherrscht sind, ist das Spiel ein **Tutorial** in der Bibli
 ## 7. Grafik und Ton
 
 - **Thema:** Fantasy.
-- **Stil:** offen. Naheliegend ist Pixelgrafik: Die vorhandenen Kenney-Kacheln in `src/assets/world/` (CC0, *Tiny Town*, *Roguelike/RPG*) sind mittelalterlich und könnten für Karten und Weltkarte taugen.
+- **Stil:** offen. Naheliegend ist Pixelgrafik; die mittelalterlichen CC0-Pakete von Kenney (*Tiny Town*, *Roguelike/RPG*), die der alte Stand (`rpg-prototyp`) nutzte, könnten für Karten und Weltkarte taugen.
 - **Bedienoberfläche:** Bildschirmtastatur, Wortlabels und Statistik bleiben **scharf** und nicht pixelig, müssen aber zum Look passen und über der Szene lesbar sein.
 - **Zwischensequenzen:** zuerst Text, später Video oder Stop-Motion (siehe 3.4).
 - **Ton:** noch nicht festgelegt ([#56](https://github.com/TheRealKoller/typingame/issues/56)).
