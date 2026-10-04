@@ -9,6 +9,7 @@ import readingDeskImage from '../assets/library/reading-desk.png';
 import scrollImage from '../assets/library/scroll.png';
 import dungeonImage from '../assets/lucifer/dungeon/dungeon-tileset.png';
 import torchImage from '../assets/lucifer/lava/torch.png';
+import grassTilesetImage from '../assets/spire/tileset/grass-tileset.png';
 import constructionImage from '../assets/spire/builder/tower-construction.png';
 import firebugImage from '../assets/spire/enemies/firebug.png';
 import scorpionImage from '../assets/spire/enemies/scorpion.png';
@@ -97,6 +98,13 @@ export const LECTERN = 'lectern';
 export const READING_DESK = 'reading-desk';
 export const BOOK_PILE = 'book-pile';
 export const SCROLL = 'scroll';
+
+/** Frames cut from the Spire grass tileset (64 × 64 px) for the courtyard. */
+export const GRASS_TILESET = 'grass-tileset';
+export const GRASS_FRAME = 'grass';
+export const SAND_FRAME = 'sand';
+export const TREE_FRAMES = ['tree-green', 'tree-green-2', 'tree-autumn', 'tree-autumn-2'] as const;
+export const ROCK_FRAMES = ['rock', 'rock-2'] as const;
 export const CONSTRUCTION = 'construction';
 /** Frames of the cloud that reveals a finished tower (second row of the construction sheet). */
 export const CONSTRUCTION_REVEAL = 'construction-reveal';
@@ -138,6 +146,7 @@ export function preloadBattleArt(scene: Phaser.Scene): void {
   scene.load.image(READING_DESK, readingDeskImage);
   scene.load.spritesheet(BOOK_PILE, bookPileImage, { frameWidth: 64, frameHeight: 64 });
   scene.load.image(SCROLL, scrollImage);
+  scene.load.image(GRASS_TILESET, grassTilesetImage);
   scene.load.spritesheet(CONSTRUCTION, constructionImage, { frameWidth: 192, frameHeight: 256 });
   for (const [kind, sheet] of Object.entries(ENEMY_SHEETS)) {
     scene.load.spritesheet(kind, sheet.url, { frameWidth: sheet.frameWidth, frameHeight: sheet.frameHeight });
@@ -161,6 +170,18 @@ export function createBattleArt(scene: Phaser.Scene): void {
     dungeon.add(WALL_EDGE_FRAME, 0, 136, 56, 32, 8);
     dungeon.add(CARPET_FRAME, 0, 320, 192, 16, 16);
     dungeon.add(BANNER_FRAME, 0, 480, 70, 32, 54);
+  }
+  const grass = scene.textures.get(GRASS_TILESET);
+  if (!grass.has(GRASS_FRAME)) {
+    // Positions in the Spire grass tileset: a grass arm and the sand centre of the crosses, trees and rocks on the right.
+    grass.add(GRASS_FRAME, 0, 128, 64, 64, 64);
+    grass.add(SAND_FRAME, 0, 128, 448, 64, 64);
+    grass.add(TREE_FRAMES[0], 0, 832, 384, 64, 64);
+    grass.add(TREE_FRAMES[1], 0, 896, 384, 64, 64);
+    grass.add(TREE_FRAMES[2], 0, 832, 576, 64, 64);
+    grass.add(TREE_FRAMES[3], 0, 896, 576, 64, 64);
+    grass.add(ROCK_FRAMES[0], 0, 832, 768, 64, 64);
+    grass.add(ROCK_FRAMES[1], 0, 896, 768, 64, 64);
   }
 
   const anims = scene.anims;

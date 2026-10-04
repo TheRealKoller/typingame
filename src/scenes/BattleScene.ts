@@ -4,7 +4,7 @@ import { Commands, type Command } from '../battle/commands';
 import type { BuildSite } from '../battle/level';
 import type { Point } from '../battle/path';
 import { MASTER_NAME, MASTER_VERDICTS, pageText } from '../content/cutscenes';
-import { practiceLevel } from '../content/library';
+import { practiceLevel, practiceMap, READING_ROOM, type PracticeMap, type Prop } from '../content/library';
 import { RAID_LEVEL } from '../content/raid';
 import { JOURNEY, RAID, raidSetup, STAGES, stageIndex, stageSetup, type StageSetup } from '../content/tutorial';
 import { FINGER_NAME } from '../keyboard/fingers';
@@ -31,6 +31,11 @@ import {
   DUNGEON,
   ENEMY_SHEETS,
   FLOOR_FRAMES,
+  GRASS_FRAME,
+  GRASS_TILESET,
+  ROCK_FRAMES,
+  SAND_FRAME,
+  TREE_FRAMES,
   LECTERN,
   LIBRARY_SCALE,
   READING_DESK,
@@ -74,27 +79,18 @@ const WOOD_EDGE = 0xb57d50;
 const PAPER = 0xf4ead6;
 const PAPER_EDGE = 0xcbb894;
 
-/** Furniture of the reading room, clear of the carpet and the build sites; `frame` picks a variant. */
-const FURNITURE: readonly { key: string; frame?: number; x: number; y: number }[] = [
-  ...[96, 160, 420, 484, 548, 820, 884, 1060, 1124].map((x, i) => ({ key: BOOKSHELF, frame: i % 3, x, y: 86 })),
-  { key: LECTERN, x: 60, y: 420 },
-  { key: READING_DESK, x: 880, y: 420 },
-  { key: BOOK_PILE, frame: 0, x: 1200, y: 320 },
-  { key: BOOK_PILE, frame: 1, x: 520, y: 175 },
-  { key: SCROLL, x: 1210, y: 420 },
-];
-/** Banners and torches on the back wall. */
-const BANNERS: readonly number[] = [250, 710, 990];
-const TORCHES: readonly number[] = [340, 740, 1200];
-/** Floor tiles that are worn, as column/row of 64 px cells. */
+/** Floor tiles that are worn on indoor maps, as column/row of 64 px cells. */
 const WORN_TILES: readonly [number, number][] = [
   [2, 3], [5, 5], [9, 2], [13, 4], [16, 6], [7, 6], [11, 5], [18, 3],
 ];
+const SAND_EDGE = 0xbd6a62;
 
 export interface BattleSceneData {
   readonly progress: Progress;
   /** Set when the stage has just begun: a hint names its new keys. */
   readonly announce?: boolean;
+  /** How many practice battles came before this one in a row; picks the map. */
+  readonly round?: number;
 }
 
 interface EnemyView {
@@ -154,6 +150,9 @@ export class BattleScene extends Phaser.Scene {
   /** Shelves that can still catch fire in the raid, in the order they burn. */
   #shelves: Phaser.GameObjects.Image[] = [];
   #darkness: Phaser.GameObjects.Rectangle | null = null;
+  /** Practice battles played in a row so far; picks the next map. */
+  #round = 0;
+  #map!: PracticeMap;
 
   preload(): void {
     preloadBattleArt(this);
@@ -168,7 +167,10 @@ export class BattleScene extends Phaser.Scene {
     this.#setup = this.#raid ? raidSetup() : stageSetup(this.#stage);
     this.#unlock = this.#raid ? null : new UnlockTracker();
     this.#unlockReached = false;
-    this.#battle = new Battle(this.#raid ? RAID_LEVEL : practiceLevel(STAGES[this.#stage]!.section));
+    this.#round = data.round ?? 0;
+    // The raid always strikes the reading room.
+    this.#map = this.#raid ? READING_ROOM : practiceMap(this.#round);
+    this.#battle = new Battle(this.#raid ? RAID_LEVEL : practiceLevel(STAGES[this.#stage]!.section, this.#map));
     this.#shelves = [];
     this.#darkness = null;
     this.#commands = this.#newCommands();
@@ -246,7 +248,7 @@ export class BattleScene extends Phaser.Scene {
       event.preventDefault();
       if (event.repeat) return;
       if (this.#ended()) {
-        if (!this.#raid) this.scene.restart({ progress: this.#progress } satisfies BattleSceneData);
+        if (!this.#raid) this.scene.restart({ progress: this.#progress, round: this.#round + 1 } satisfies BattleSceneData);
         return;
       }
       this.#battle.endFlood();
@@ -369,45 +371,17 @@ export class BattleScene extends Phaser.Scene {
     return placed;
   }
 
-  /** The reading room: stone floor, back wall with shelves, banners and torches, a carpet as the path. */
+  /** The map of this battle: floor, walls or grass, the path, its props, the build sites and the ward circle. */
   #drawMap(): void {
-    const { width } = this.scale;
-    const tile = 32 * LIBRARY_SCALE;
-    this.add.tileSprite(0, 0, width, DESK_TOP, DUNGEON, FLOOR_FRAMES[0]).setOrigin(0).setTileScale(LIBRARY_SCALE);
-    for (const [column, row] of WORN_TILES) {
-      this.add.image(column * tile, row * tile, DUNGEON, FLOOR_FRAMES[2]).setOrigin(0).setScale(LIBRARY_SCALE);
-    }
+    if (this.#map.indoor) this.#drawRoom();
+    else this.#drawCourtyard();
 
-    this.add.tileSprite(0, 0, width, WALL_HEIGHT, DUNGEON, BRICK_FRAME).setOrigin(0).setTileScale(LIBRARY_SCALE);
-    this.add
-      .tileSprite(0, WALL_HEIGHT - 8 * LIBRARY_SCALE, width, 8 * LIBRARY_SCALE, DUNGEON, WALL_EDGE_FRAME)
-      .setOrigin(0)
-      .setTileScale(LIBRARY_SCALE);
-    for (const x of BANNERS) this.add.image(x, 8, DUNGEON, BANNER_FRAME).setOrigin(0.5, 0).setScale(LIBRARY_SCALE);
-    for (const x of TORCHES) this.add.sprite(x, 44, TORCH).setScale(LIBRARY_SCALE).play(TORCH_FLAME);
-
-    const path = this.#battle.level.path;
-    const segments = path.slice(1).map((to, i) => {
-      const from = path[i]!;
-      return {
-        x: Math.min(from.x, to.x) - PATH_WIDTH / 2,
-        y: Math.min(from.y, to.y) - PATH_WIDTH / 2,
-        width: Math.abs(to.x - from.x) + PATH_WIDTH,
-        height: Math.abs(to.y - from.y) + PATH_WIDTH,
-      };
-    });
-    // Outline every segment, then lay the carpet again over the inner edges so only the outline of the whole carpet remains.
-    const edges = this.add.graphics().setDepth(1).fillStyle(CARPET_EDGE, 1);
-    for (const s of segments) edges.fillRect(s.x - 3, s.y - 3, s.width + 6, s.height + 6);
-    for (const s of segments) {
-      this.add.tileSprite(s.x, s.y, s.width, s.height, DUNGEON, CARPET_FRAME).setOrigin(0).setTileScale(LIBRARY_SCALE).setDepth(1);
-    }
-
-    for (const { key, frame, x, y } of FURNITURE) {
-      // Furniture stands on its lower edge, so it sorts with towers and golems by that line.
-      const image = this.add.image(x, y, key, frame).setOrigin(0.5, 1);
-      image.setY(y + image.height / 2).setDepth(y + image.height / 2);
-      if (key === BOOKSHELF) this.#shelves.push(image);
+    for (const prop of this.#map.props) {
+      const image = this.#propImage(prop);
+      // Props stand on their lower edge, so they sort with towers and golems by that line.
+      image.setOrigin(0.5, 1);
+      image.setY(prop.y + image.displayHeight / 2).setDepth(prop.y + image.displayHeight / 2);
+      if (prop.kind === 'bookshelf') this.#shelves.push(image);
     }
     // In the raid the fire spreads from the ward circle towards the door.
     this.#shelves.sort((a, b) => b.x - a.x);
@@ -415,6 +389,12 @@ export class BattleScene extends Phaser.Scene {
       this.#darkness = this.add.rectangle(0, 0, this.scale.width, DESK_TOP, 0x120808, 0).setOrigin(0).setDepth(990);
     }
 
+    this.#drawSitesAndWard();
+  }
+
+  /** Build sites, the ward circle at the end of the path and the Enter prompt in it. */
+  #drawSitesAndWard(): void {
+    const path = this.#battle.level.path;
     for (const site of this.#battle.level.sites) {
       this.add
         .rectangle(site.x, site.y, 56, 56, PAD_COLOR)
@@ -433,6 +413,74 @@ export class BattleScene extends Phaser.Scene {
       .setDepth(1002);
     // The blue glow breathes, so the prompt is noticed without shouting.
     this.tweens.add({ targets: this.#wavePrompt, alpha: { from: 1, to: 0.65 }, duration: 900, yoyo: true, repeat: -1 });
+  }
+
+  #propImage(prop: Prop): Phaser.GameObjects.Image {
+    const { x, y, variant = 0 } = prop;
+    switch (prop.kind) {
+      case 'bookshelf':
+        return this.add.image(x, y, BOOKSHELF, variant % 3);
+      case 'book-pile':
+        return this.add.image(x, y, BOOK_PILE, variant % 2);
+      case 'lectern':
+        return this.add.image(x, y, LECTERN);
+      case 'reading-desk':
+        return this.add.image(x, y, READING_DESK);
+      case 'scroll':
+        return this.add.image(x, y, SCROLL);
+      case 'tree':
+        return this.add.image(x, y, GRASS_TILESET, TREE_FRAMES[variant % TREE_FRAMES.length]);
+      case 'rock':
+        return this.add.image(x, y, GRASS_TILESET, ROCK_FRAMES[variant % ROCK_FRAMES.length]);
+    }
+  }
+
+  /** Lays the path: outline every segment, then the path again over the inner edges so only the outline of the whole remains. */
+  #layPath(texture: string, frame: string, edgeColor: number, scale: number): void {
+    const path = this.#battle.level.path;
+    const segments = path.slice(1).map((to, i) => {
+      const from = path[i]!;
+      return {
+        x: Math.min(from.x, to.x) - PATH_WIDTH / 2,
+        y: Math.min(from.y, to.y) - PATH_WIDTH / 2,
+        width: Math.abs(to.x - from.x) + PATH_WIDTH,
+        height: Math.abs(to.y - from.y) + PATH_WIDTH,
+      };
+    });
+    const edges = this.add.graphics().setDepth(1).fillStyle(edgeColor, 1);
+    for (const s of segments) edges.fillRect(s.x - 3, s.y - 3, s.width + 6, s.height + 6);
+    for (const s of segments) {
+      this.add.tileSprite(s.x, s.y, s.width, s.height, texture, frame).setOrigin(0).setTileScale(scale).setDepth(1);
+    }
+  }
+
+  /** A room of the library: stone floor, back wall with banners and torches, a carpet as the path. */
+  #drawRoom(): void {
+    const { width } = this.scale;
+    const tile = 32 * LIBRARY_SCALE;
+    const floor = this.#map.floor === 'slab' ? FLOOR_FRAMES[1] : FLOOR_FRAMES[0];
+    this.add.tileSprite(0, 0, width, DESK_TOP, DUNGEON, floor).setOrigin(0).setTileScale(LIBRARY_SCALE);
+    if (this.#map.floor !== 'slab') {
+      for (const [column, row] of WORN_TILES) {
+        this.add.image(column * tile, row * tile, DUNGEON, FLOOR_FRAMES[2]).setOrigin(0).setScale(LIBRARY_SCALE);
+      }
+    }
+
+    this.add.tileSprite(0, 0, width, WALL_HEIGHT, DUNGEON, BRICK_FRAME).setOrigin(0).setTileScale(LIBRARY_SCALE);
+    this.add
+      .tileSprite(0, WALL_HEIGHT - 8 * LIBRARY_SCALE, width, 8 * LIBRARY_SCALE, DUNGEON, WALL_EDGE_FRAME)
+      .setOrigin(0)
+      .setTileScale(LIBRARY_SCALE);
+    for (const x of this.#map.banners ?? []) this.add.image(x, 8, DUNGEON, BANNER_FRAME).setOrigin(0.5, 0).setScale(LIBRARY_SCALE);
+    for (const x of this.#map.torches ?? []) this.add.sprite(x, 44, TORCH).setScale(LIBRARY_SCALE).play(TORCH_FLAME);
+
+    this.#layPath(DUNGEON, CARPET_FRAME, CARPET_EDGE, LIBRARY_SCALE);
+  }
+
+  /** The courtyard: grass and a sand path. */
+  #drawCourtyard(): void {
+    this.add.tileSprite(0, 0, this.scale.width, DESK_TOP, GRASS_TILESET, GRASS_FRAME).setOrigin(0);
+    this.#layPath(GRASS_TILESET, SAND_FRAME, SAND_EDGE, 1);
   }
 
   /** Wooden desk below the map: the keyboard lies on it, the notes left and right carry the texts. */
