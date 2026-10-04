@@ -1,4 +1,5 @@
 import * as Phaser from 'phaser';
+import type { Point } from '../battle/path';
 import bookPileImage from '../assets/library/book-pile.png';
 import bookshelfBurntImage from '../assets/library/bookshelf-burnt.png';
 import bookshelfImage from '../assets/library/bookshelf.png';
@@ -9,6 +10,8 @@ import readingDeskImage from '../assets/library/reading-desk.png';
 import scrollImage from '../assets/library/scroll.png';
 import dungeonImage from '../assets/lucifer/dungeon/dungeon-tileset.png';
 import torchImage from '../assets/lucifer/lava/torch.png';
+import standingFlagDamagedImage from '../assets/lucifer/lava/standing-flag-damaged.png';
+import waterImage from '../assets/spire/tileset/animated-water-tiles.png';
 import grassTilesetImage from '../assets/spire/tileset/grass-tileset.png';
 import constructionImage from '../assets/spire/builder/tower-construction.png';
 import firebugImage from '../assets/spire/enemies/firebug.png';
@@ -103,8 +106,18 @@ export const SCROLL = 'scroll';
 export const GRASS_TILESET = 'grass-tileset';
 export const GRASS_FRAME = 'grass';
 export const SAND_FRAME = 'sand';
+/** Outline of the sand paths. */
+export const SAND_EDGE = 0xbd6a62;
 export const TREE_FRAMES = ['tree-green', 'tree-green-2', 'tree-autumn', 'tree-autumn-2'] as const;
 export const ROCK_FRAMES = ['rock', 'rock-2'] as const;
+/** A wooden bridge across water running from top to bottom. */
+export const BRIDGE_FRAME = 'bridge';
+/** Open water, one frame per step of the Spire water animation (64 × 64 px from the middle of each 448 px frame). */
+export const WATER = 'water';
+export const WATER_FRAMES = Array.from({ length: 10 }, (_, i) => `water-${i}`);
+/** Torn standing flag (Lucifer lava pack, 32 × 64 frames): the Silence holds a place on the world map. */
+export const FLAG_DAMAGED = 'standing-flag-damaged';
+export const FLAG_DAMAGED_WAVING = 'standing-flag-damaged-waving';
 export const CONSTRUCTION = 'construction';
 /** Frames of the cloud that reveals a finished tower (second row of the construction sheet). */
 export const CONSTRUCTION_REVEAL = 'construction-reveal';
@@ -147,6 +160,8 @@ export function preloadBattleArt(scene: Phaser.Scene): void {
   scene.load.spritesheet(BOOK_PILE, bookPileImage, { frameWidth: 64, frameHeight: 64 });
   scene.load.image(SCROLL, scrollImage);
   scene.load.image(GRASS_TILESET, grassTilesetImage);
+  scene.load.image(WATER, waterImage);
+  scene.load.spritesheet(FLAG_DAMAGED, standingFlagDamagedImage, { frameWidth: 32, frameHeight: 64 });
   scene.load.spritesheet(CONSTRUCTION, constructionImage, { frameWidth: 192, frameHeight: 256 });
   for (const [kind, sheet] of Object.entries(ENEMY_SHEETS)) {
     scene.load.spritesheet(kind, sheet.url, { frameWidth: sheet.frameWidth, frameHeight: sheet.frameHeight });
@@ -182,6 +197,11 @@ export function createBattleArt(scene: Phaser.Scene): void {
     grass.add(TREE_FRAMES[3], 0, 896, 576, 64, 64);
     grass.add(ROCK_FRAMES[0], 0, 832, 768, 64, 64);
     grass.add(ROCK_FRAMES[1], 0, 896, 768, 64, 64);
+    grass.add(BRIDGE_FRAME, 0, 448, 861, 192, 99);
+  }
+  const water = scene.textures.get(WATER);
+  if (!water.has(WATER_FRAMES[0]!)) {
+    WATER_FRAMES.forEach((frame, i) => water.add(frame, 0, i * 448 + 192, 192, 64, 64));
   }
 
   const anims = scene.anims;
@@ -210,6 +230,9 @@ export function createBattleArt(scene: Phaser.Scene): void {
   if (!anims.exists(TORCH_FLAME)) {
     anims.create({ key: TORCH_FLAME, frames: anims.generateFrameNumbers(TORCH, {}), frameRate: FRAME_RATE, repeat: -1 });
   }
+  if (!anims.exists(FLAG_DAMAGED_WAVING)) {
+    anims.create({ key: FLAG_DAMAGED_WAVING, frames: anims.generateFrameNumbers(FLAG_DAMAGED, {}), frameRate: FRAME_RATE, repeat: -1 });
+  }
   if (!anims.exists(FIRE_BURNING)) {
     // Frames 4 and 5 are the flames; the others are the idle trap and its smoke.
     anims.create({ key: FIRE_BURNING, frames: anims.generateFrameNumbers(FIRE, { start: 4, end: 5 }), frameRate: 6, repeat: -1 });
@@ -228,5 +251,34 @@ export function createBattleArt(scene: Phaser.Scene): void {
     if (!anims.exists(art.impact)) {
       anims.create({ key: art.impact, frames: anims.generateFrameNumbers(art.impact, {}), frameRate: 2 * FRAME_RATE });
     }
+  }
+}
+
+/** How a path is laid: tiles of `frame` in `texture`, `width` px wide, with a 3 px outline of `edgeColor`. */
+export interface PathStyle {
+  readonly texture: string;
+  readonly frame: string;
+  readonly edgeColor: number;
+  readonly tileScale: number;
+  readonly width: number;
+  readonly depth: number;
+}
+
+/** Lays a path along `points`: outline every segment, then the path again over the inner edges so only the outline of the whole remains. */
+export function layPath(scene: Phaser.Scene, points: readonly Point[], style: PathStyle): void {
+  const half = style.width / 2;
+  const segments = points.slice(1).map((to, i) => {
+    const from = points[i]!;
+    return {
+      x: Math.min(from.x, to.x) - half,
+      y: Math.min(from.y, to.y) - half,
+      width: Math.abs(to.x - from.x) + style.width,
+      height: Math.abs(to.y - from.y) + style.width,
+    };
+  });
+  const edges = scene.add.graphics().setDepth(style.depth).fillStyle(style.edgeColor, 1);
+  for (const s of segments) edges.fillRect(s.x - 3, s.y - 3, s.width + 6, s.height + 6);
+  for (const s of segments) {
+    scene.add.tileSprite(s.x, s.y, s.width, s.height, style.texture, style.frame).setOrigin(0).setTileScale(style.tileScale).setDepth(style.depth);
   }
 }

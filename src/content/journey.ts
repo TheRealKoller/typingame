@@ -94,10 +94,10 @@ export const FIRST_POINT = 'ruin';
 
 export const REGIONS: readonly Region[] = [
   { name: 'Aschefelder', x: 380, y: 160, open: true },
-  { name: 'Flüsterwald', x: 860, y: 220, open: false },
-  { name: 'Nebelmoor', x: 920, y: 560, open: false },
-  { name: 'Salzöde', x: 1130, y: 420, open: false },
-  { name: 'Gläserne Berge', x: 1110, y: 110, open: false },
+  { name: 'Flüsterwald', x: 1060, y: 240, open: false },
+  { name: 'Nebelmoor', x: 1040, y: 600, open: false },
+  { name: 'Salzöde', x: 1170, y: 360, open: false },
+  { name: 'Gläserne Berge', x: 1150, y: 110, open: false },
 ];
 
 export function worldPoint(id: string): WorldPoint {

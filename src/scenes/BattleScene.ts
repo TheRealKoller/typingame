@@ -46,6 +46,8 @@ import {
   TOWER_ART,
   WALL_EDGE_FRAME,
   createBattleArt,
+  layPath,
+  SAND_EDGE,
   deathAnimation,
   preloadBattleArt,
   walkAnimation,
@@ -84,7 +86,6 @@ const PAPER_EDGE = 0xcbb894;
 const WORN_TILES: readonly [number, number][] = [
   [2, 3], [5, 5], [9, 2], [13, 4], [16, 6], [7, 6], [11, 5], [18, 3],
 ];
-const SAND_EDGE = 0xbd6a62;
 
 export interface BattleSceneData {
   readonly progress: Progress;
@@ -445,25 +446,6 @@ export class BattleScene extends Phaser.Scene {
     }
   }
 
-  /** Lays the path: outline every segment, then the path again over the inner edges so only the outline of the whole remains. */
-  #layPath(texture: string, frame: string, edgeColor: number, scale: number): void {
-    const path = this.#battle.level.path;
-    const segments = path.slice(1).map((to, i) => {
-      const from = path[i]!;
-      return {
-        x: Math.min(from.x, to.x) - PATH_WIDTH / 2,
-        y: Math.min(from.y, to.y) - PATH_WIDTH / 2,
-        width: Math.abs(to.x - from.x) + PATH_WIDTH,
-        height: Math.abs(to.y - from.y) + PATH_WIDTH,
-      };
-    });
-    const edges = this.add.graphics().setDepth(1).fillStyle(edgeColor, 1);
-    for (const s of segments) edges.fillRect(s.x - 3, s.y - 3, s.width + 6, s.height + 6);
-    for (const s of segments) {
-      this.add.tileSprite(s.x, s.y, s.width, s.height, texture, frame).setOrigin(0).setTileScale(scale).setDepth(1);
-    }
-  }
-
   /** A room of the library: stone floor, back wall with banners and torches, a carpet as the path. */
   #drawRoom(): void {
     const { width } = this.scale;
@@ -484,13 +466,27 @@ export class BattleScene extends Phaser.Scene {
     for (const x of this.#map.banners ?? []) this.add.image(x, 8, DUNGEON, BANNER_FRAME).setOrigin(0.5, 0).setScale(LIBRARY_SCALE);
     for (const x of this.#map.torches ?? []) this.add.sprite(x, 44, TORCH).setScale(LIBRARY_SCALE).play(TORCH_FLAME);
 
-    this.#layPath(DUNGEON, CARPET_FRAME, CARPET_EDGE, LIBRARY_SCALE);
+    layPath(this, this.#battle.level.path, {
+      texture: DUNGEON,
+      frame: CARPET_FRAME,
+      edgeColor: CARPET_EDGE,
+      tileScale: LIBRARY_SCALE,
+      width: PATH_WIDTH,
+      depth: 1,
+    });
   }
 
   /** The courtyard: grass and a sand path. */
   #drawCourtyard(): void {
     this.add.tileSprite(0, 0, this.scale.width, DESK_TOP, GRASS_TILESET, GRASS_FRAME).setOrigin(0);
-    this.#layPath(GRASS_TILESET, SAND_FRAME, SAND_EDGE, 1);
+    layPath(this, this.#battle.level.path, {
+      texture: GRASS_TILESET,
+      frame: SAND_FRAME,
+      edgeColor: SAND_EDGE,
+      tileScale: 1,
+      width: PATH_WIDTH,
+      depth: 1,
+    });
   }
 
   /** Wooden desk below the map: the keyboard lies on it, the notes left and right carry the texts. */
