@@ -40,8 +40,10 @@ Thema: **Fantasy**.
 - **Hauptfigur:** der Lehrling. Er ist etwas zynisch und hat einen trockenen Humor; die Zwischensequenzen leben von seinen Kommentaren.
 - Der Spieler **wählt den Namen** des Lehrlings zu Beginn. Die Eingabe ist freies Tippen, keine Übung, und zählt nicht zur Statistik.
 - Der Lehrling hat **kein Gesicht**: Man sieht ihn nie, er ist der Spieler. Er tritt nur in Texten auf.
-- **Die Meisterin:** Bibliothekarin und Lehrerin des Lehrlings. Name offen.
-- **Der Rivale:** Künstler, neidisch auf die Meisterin, erschafft die Monster aus Tinte. Name offen.
+- **Die Meisterin: Kalliope** (griech. „die Schönstimmige“, Muse der epischen Dichtung). Bibliothekarin und Lehrerin des Lehrlings.
+- **Der Rivale: Atramentus** (von lat. *atramentum*, „Tinte“). Künstler, neidisch auf Kalliope, erschafft die Monster aus Tinte.
+  - **Motiv – Bild gegen Wort:** Kalliope schreibt, er malt; sein Leitspruch ist „Ein Bild sagt mehr als tausend Worte“. Er neidet ihr, dass die Welt Worte verehrt und seine Bilder übersieht.
+  - Seine Monster sind Bilder ohne Namen – deshalb vergehen sie, wenn man schreibt.
 
 ### 3.3 Handlung
 
@@ -49,6 +51,17 @@ Thema: **Fantasy**.
 2. **Der Überfall:** Kaum sind die Buchstaben gelernt, greift das Verstummen die Bibliothek an. Dieser Kampf ist **nicht zu gewinnen**: Die Bibliothek brennt ab, die Meisterin wird verschleppt. Zuvor spricht sie noch einen **Bann**, der die Gegner schwächt: Sie können nur noch zeitweise vorrücken (siehe 4.1).
 3. **Die Reise:** Der Lehrling **drängt das Verstummen** über die **Weltkarte** zurück ins Feindesland. Je weiter er kommt, desto schwerer wird es. An bestimmten Ereignissen findet er **Bücher** (oder Ähnliches), aus denen er neue Fähigkeiten lernt: Großschreibung, Umlaute, Satzzeichen, Ziffern, Sonderzeichen. Unterwegs zeigt sich nach und nach, wer hinter dem Verstummen steckt.
 4. **Finale:** Der Lehrling besiegt den Rivalen und befreit die Meisterin. Das Spiel hat ein **Ende**.
+
+Wie sich Atramentus zeigt (vorläufig, ein Schritt je Gebiet):
+
+| Gebiet | Hinweis |
+|---|---|
+| Aschefelder | Pinselstriche an den Monstern |
+| Flüsterwald | eine Signatur auf einem Monster |
+| Nebelmoor | alte Briefe über einen Wettstreit mit Kalliope, den sie gewann |
+| Salzöde | ein Skizzenbuch mit Entwürfen kommender Bosse |
+| Gläserne Berge | er zeigt sich selbst |
+| Finale | gegen sein Meisterwerk schreibt man ein Gedicht |
 
 ### 3.4 Zwischensequenzen
 
@@ -61,8 +74,8 @@ Thema: **Fantasy**.
 ### 4.1 Ein Level
 
 - Eine Karte mit einem Weg, **Bauplätzen** am Rand und am Ende des Wegs der **Bannkreis** – der Rest des Banns der Meisterin, der das Land dahinter schützt.
-- Ein Level läuft im Wechsel zweier Phasen (Arbeitstitel **Gezeiten des Banns**; denkbar sind auch Tag/Nacht oder Mondphasen):
-  - **Flut** – der Bann ist stark: Die Gegner müssen sich zurückziehen. Man baut und rüstet in Ruhe auf.
+- Ein Level läuft im Wechsel von **Ebbe und Flut des Banns**:
+  - **Flut** – der Bann ist stark: Die Gegner müssen sich zurückziehen. Man baut und rüstet in Ruhe auf, ohne Zeitdruck. Die Flut endet **auf Wunsch des Spielers**, z. B. mit dem getippten Wort *los*. Endloses Bauen verhindert die knappe Tinte.
   - **Ebbe** – der Bann ist schwach: Die Gegner rücken in **Wellen** vor.
 - Erreicht ein Gegner den Bannkreis, wird er schwächer. Bricht er, ist das Level verloren.
 - Wer alle Ebben übersteht, hat das Verstummen zurückgedrängt und gewinnt das Level. Auf der Weltkarte ist das Gebiet damit befreit.
@@ -111,7 +124,7 @@ Thema: **Fantasy**.
 ### 4.8 Belohnungen
 
 - Zwischendurch oder nach einem Bosskampf gewinnt man Belohnungen, z. B. einen **Bücherkarren** oder eine **verlorene Schriftrolle**.
-- Was sie bringen, ist offen.
+- Eine **Schriftrolle** schaltet einen neuen Spezialangriff frei, ein **Bücherkarren** einen neuen Turmtyp.
 
 ## 5. Progression
 
@@ -213,10 +226,7 @@ Offene Fragen werden als Issues mit Label `idee` diskutiert. Entscheidungen flie
 - Spielname – [#13](https://github.com/TheRealKoller/typingame/issues/13)
 - Lizenz bei Veröffentlichung – [#18](https://github.com/TheRealKoller/typingame/issues/18)
 - Ton und Klang – [#56](https://github.com/TheRealKoller/typingame/issues/56)
-- Gezeiten des Banns: Ebbe und Flut, Tag und Nacht oder Mondphasen? Endet die Flut nach Zeit oder wenn der Spieler bereit ist?
-- Was bringen Belohnungen wie Bücherkarren und Schriftrollen?
-- Wie enthüllt sich der Rivale Schritt für Schritt, und was treibt ihn genau an?
 - Wächst das Tempo der Gegner mit den gemessenen Anschlägen pro Minute, damit Anfänger nicht überrollt werden?
 - Kann man ein angefangenes Wort abbrechen, um das Ziel zu wechseln (z. B. mit Esc)?
 - Gebiete der Weltkarte überarbeiten (siehe 5).
-- Namen für Meisterin, Rivale, Welt und Bibliothek.
+- Namen für Welt und Bibliothek.
