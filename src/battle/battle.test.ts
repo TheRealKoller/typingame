@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest';
-import { LEVEL_1 } from '../content/level1';
+import { practiceLevel } from '../content/library';
 import { Battle } from './battle';
 import type { EnemyKind, Level, TowerKind } from './level';
 import { pointAt } from './path';
@@ -115,13 +115,13 @@ describe('Battle', () => {
     expect(battle.enemies).toHaveLength(2);
   });
 
-  it('plays the first level to the end when nothing stops the enemies', () => {
-    const battle = new Battle({ ...LEVEL_1, ward: 1000 });
+  it('plays the last practice battle to the end when nothing stops the enemies', () => {
+    const battle = new Battle({ ...practiceLevel(3), ward: 1000 });
     while (battle.phase !== 'won') {
       battle.endFlood();
       run(battle, 1000);
     }
-    const enemies = LEVEL_1.waves.reduce((sum, wave) => sum + wave.count * wave.kind.wardDamage, 0);
+    const enemies = practiceLevel(3).waves.reduce((sum, wave) => sum + wave.count * wave.kind.wardDamage, 0);
     expect(battle.ward).toBe(1000 - enemies);
   });
 });

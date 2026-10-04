@@ -170,6 +170,7 @@ Bis alle Buchstaben beherrscht sind, ist das Spiel ein **Tutorial** in der Bibli
 
 - **Thema:** Fantasy.
 - **Stil (entschieden, 04.10.26):** Pixelgrafik aus dem Fantasy-Tower-Defense-Set **Foozle „Spire“** (CC0): Gras-Tileset mit Wegen, Wasser, Steinen und Bäumen; sechs Türme mit je drei Ausbaustufen samt Waffen-, Geschoss- und Trefferanimation; acht animierte Gegner (vier fliegend, vier am Boden); Bau- und Einsturzanimation. Liegt unter `src/assets/spire/`, Quellen in `src/assets/LICENSES.md`. Was das Set nicht hat – Bannkreis, Tinte –, entsteht passend dazu.
+- **Bibliothek (entschieden, 04.10.26):** Boden, Wände, Banner und Fackeln aus Foozle **„Lucifer“** (CC0, gleicher Zeichner wie Spire), Bodenflammen für den Überfall aus dem Foozle **„Pixel Trap Pack“** (CC0). Regale, Pulte, Bücher und die **Papiergolems** sind selbst gezeichnet (`src/tools/library_sprites.py`). Der Weg im Lesesaal ist ein roter Teppich.
 - **Bedienoberfläche:** Bildschirmtastatur, Wortlabels und Statistik bleiben **scharf** und nicht pixelig, müssen aber zum Look passen und über der Szene lesbar sein.
 - **Zwischensequenzen:** zuerst Text, später Video oder Stop-Motion (siehe 3.4).
 - **Ton:** noch nicht festgelegt ([#56](https://github.com/TheRealKoller/typingame/issues/56)).

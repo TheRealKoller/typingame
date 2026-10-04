@@ -3,7 +3,7 @@ import { Battle, type Enemy, type Shot, type Tower } from '../battle/battle';
 import { Commands, type Command } from '../battle/commands';
 import type { BuildSite } from '../battle/level';
 import type { Point } from '../battle/path';
-import { LEVEL_1 } from '../content/level1';
+import { practiceLevel } from '../content/library';
 import { STAGES, stageIndex, stageSetup, type StageSetup } from '../content/tutorial';
 import { FINGER_NAME } from '../keyboard/fingers';
 import { qwertzDe } from '../keyboard/qwertz-de';
@@ -16,15 +16,24 @@ import { StatsView } from '../ui/StatsView';
 import { WordLabel } from '../ui/WordLabel';
 import { nextScene } from './flow';
 import {
+  BANNER_FRAME,
+  BOOK_PILE,
+  BOOKSHELF,
+  BRICK_FRAME,
+  CARPET_FRAME,
   CONSTRUCTION,
   CONSTRUCTION_REVEAL,
+  DUNGEON,
   ENEMY_SHEETS,
-  GRASS_FRAME,
-  ROCK_FRAMES,
-  SAND_FRAME,
-  TILESET,
+  FLOOR_FRAMES,
+  LECTERN,
+  LIBRARY_SCALE,
+  READING_DESK,
+  SCROLL,
+  TORCH,
+  TORCH_FLAME,
   TOWER_ART,
-  TREE_FRAMES,
+  WALL_EDGE_FRAME,
   createBattleArt,
   deathAnimation,
   preloadBattleArt,
@@ -33,9 +42,11 @@ import {
 } from './battleArt';
 
 const PATH_WIDTH = 64;
-const PATH_EDGE = 0xbd6a62;
-const PAD_COLOR = 0xe8c9a0;
-const PAD_EDGE = 0x8a6a4a;
+const CARPET_EDGE = 0x5a1414;
+const PAD_COLOR = 0xd9cdb8;
+const PAD_EDGE = 0x6e6252;
+/** The back wall of the reading room, with shelves standing against it. */
+const WALL_HEIGHT = 96;
 /** Word labels sit this far above the centre of their build site. */
 const LABEL_OFFSET = 52;
 const WORD_SIZE = 30;
@@ -58,18 +69,21 @@ const WOOD_EDGE = 0xb57d50;
 const PAPER = 0xf4ead6;
 const PAPER_EDGE = 0xcbb894;
 
-/** Trees and rocks on the grass, clear of the path and the build sites. */
-const DECORATION: readonly { frame: string; x: number; y: number }[] = [
-  { frame: TREE_FRAMES[0], x: 70, y: 300 },
-  { frame: TREE_FRAMES[1], x: 120, y: 380 },
-  { frame: TREE_FRAMES[2], x: 520, y: 170 },
-  { frame: TREE_FRAMES[0], x: 590, y: 140 },
-  { frame: TREE_FRAMES[3], x: 1210, y: 300 },
-  { frame: TREE_FRAMES[1], x: 1180, y: 400 },
-  { frame: TREE_FRAMES[2], x: 960, y: 40 },
-  { frame: ROCK_FRAMES[0], x: 430, y: 40 },
-  { frame: ROCK_FRAMES[1], x: 880, y: 420 },
-  { frame: ROCK_FRAMES[0], x: 660, y: 425 },
+/** Furniture of the reading room, clear of the carpet and the build sites; `frame` picks a variant. */
+const FURNITURE: readonly { key: string; frame?: number; x: number; y: number }[] = [
+  ...[96, 160, 420, 484, 548, 820, 884, 1060, 1124].map((x, i) => ({ key: BOOKSHELF, frame: i % 3, x, y: 86 })),
+  { key: LECTERN, x: 60, y: 420 },
+  { key: READING_DESK, x: 880, y: 420 },
+  { key: BOOK_PILE, frame: 0, x: 1200, y: 320 },
+  { key: BOOK_PILE, frame: 1, x: 520, y: 175 },
+  { key: SCROLL, x: 1210, y: 420 },
+];
+/** Banners and torches on the back wall. */
+const BANNERS: readonly number[] = [250, 710, 990];
+const TORCHES: readonly number[] = [340, 740, 1200];
+/** Floor tiles that are worn, as column/row of 64 px cells. */
+const WORN_TILES: readonly [number, number][] = [
+  [2, 3], [5, 5], [9, 2], [13, 4], [16, 6], [7, 6], [11, 5], [18, 3],
 ];
 
 export interface BattleSceneData {
@@ -136,7 +150,7 @@ export class BattleScene extends Phaser.Scene {
     this.#setup = stageSetup(this.#stage);
     this.#unlock = this.#stage + 1 < STAGES.length ? new UnlockTracker() : null;
     this.#unlockReached = false;
-    this.#battle = new Battle(LEVEL_1);
+    this.#battle = new Battle(practiceLevel(STAGES[this.#stage]!.section));
     this.#commands = this.#newCommands();
     this.#labels = [];
     this.#labelKey = '';
@@ -321,43 +335,55 @@ export class BattleScene extends Phaser.Scene {
     return placed;
   }
 
+  /** The reading room: stone floor, back wall with shelves, banners and torches, a carpet as the path. */
   #drawMap(): void {
-    this.add.tileSprite(0, 0, this.scale.width, this.scale.height, TILESET, GRASS_FRAME).setOrigin(0);
+    const { width } = this.scale;
+    const tile = 32 * LIBRARY_SCALE;
+    this.add.tileSprite(0, 0, width, DESK_TOP, DUNGEON, FLOOR_FRAMES[0]).setOrigin(0).setTileScale(LIBRARY_SCALE);
+    for (const [column, row] of WORN_TILES) {
+      this.add.image(column * tile, row * tile, DUNGEON, FLOOR_FRAMES[2]).setOrigin(0).setScale(LIBRARY_SCALE);
+    }
+
+    this.add.tileSprite(0, 0, width, WALL_HEIGHT, DUNGEON, BRICK_FRAME).setOrigin(0).setTileScale(LIBRARY_SCALE);
+    this.add
+      .tileSprite(0, WALL_HEIGHT - 8 * LIBRARY_SCALE, width, 8 * LIBRARY_SCALE, DUNGEON, WALL_EDGE_FRAME)
+      .setOrigin(0)
+      .setTileScale(LIBRARY_SCALE);
+    for (const x of BANNERS) this.add.image(x, 8, DUNGEON, BANNER_FRAME).setOrigin(0.5, 0).setScale(LIBRARY_SCALE);
+    for (const x of TORCHES) this.add.sprite(x, 44, TORCH).setScale(LIBRARY_SCALE).play(TORCH_FLAME);
 
     const path = this.#battle.level.path;
-    const edges = this.add.graphics().lineStyle(4, PATH_EDGE, 1);
-    for (let i = 1; i < path.length; i++) {
-      const from = path[i - 1]!;
-      const to = path[i]!;
-      const x = Math.min(from.x, to.x) - PATH_WIDTH / 2;
-      const y = Math.min(from.y, to.y) - PATH_WIDTH / 2;
-      const width = Math.abs(to.x - from.x) + PATH_WIDTH;
-      const height = Math.abs(to.y - from.y) + PATH_WIDTH;
-      this.add.tileSprite(x, y, width, height, TILESET, SAND_FRAME).setOrigin(0);
-      edges.strokeRect(x, y, width, height);
-    }
-    // Fill the sand again over the inner edges, so only the outline of the whole path remains.
-    for (let i = 1; i < path.length; i++) {
-      const from = path[i - 1]!;
-      const to = path[i]!;
-      const x = Math.min(from.x, to.x) - PATH_WIDTH / 2 + 2;
-      const y = Math.min(from.y, to.y) - PATH_WIDTH / 2 + 2;
-      this.add
-        .tileSprite(x, y, Math.abs(to.x - from.x) + PATH_WIDTH - 4, Math.abs(to.y - from.y) + PATH_WIDTH - 4, TILESET, SAND_FRAME)
-        .setOrigin(0);
+    const segments = path.slice(1).map((to, i) => {
+      const from = path[i]!;
+      return {
+        x: Math.min(from.x, to.x) - PATH_WIDTH / 2,
+        y: Math.min(from.y, to.y) - PATH_WIDTH / 2,
+        width: Math.abs(to.x - from.x) + PATH_WIDTH,
+        height: Math.abs(to.y - from.y) + PATH_WIDTH,
+      };
+    });
+    // Outline every segment, then lay the carpet again over the inner edges so only the outline of the whole carpet remains.
+    const edges = this.add.graphics().setDepth(1).fillStyle(CARPET_EDGE, 1);
+    for (const s of segments) edges.fillRect(s.x - 3, s.y - 3, s.width + 6, s.height + 6);
+    for (const s of segments) {
+      this.add.tileSprite(s.x, s.y, s.width, s.height, DUNGEON, CARPET_FRAME).setOrigin(0).setTileScale(LIBRARY_SCALE).setDepth(1);
     }
 
-    for (const { frame, x, y } of DECORATION) this.add.image(x, y, TILESET, frame).setDepth(y);
+    for (const { key, frame, x, y } of FURNITURE) {
+      // Furniture stands on its lower edge, so it sorts with towers and golems by that line.
+      const image = this.add.image(x, y, key, frame).setOrigin(0.5, 1);
+      image.setY(y + image.height / 2).setDepth(y + image.height / 2);
+    }
 
     for (const site of this.#battle.level.sites) {
       this.add
         .rectangle(site.x, site.y, 56, 56, PAD_COLOR)
         .setStrokeStyle(3, PAD_EDGE)
-        .setDepth(1);
+        .setDepth(2);
     }
 
     const end = path.at(-1)!;
-    this.#ward = this.add.graphics({ x: end.x, y: end.y }).setDepth(2);
+    this.#ward = this.add.graphics({ x: end.x, y: end.y }).setDepth(3);
     this.tweens.add({ targets: this.#ward, alpha: { from: 1, to: 0.6 }, duration: 1200, yoyo: true, repeat: -1 });
   }
 
@@ -436,7 +462,7 @@ export class BattleScene extends Phaser.Scene {
       let view = this.#enemies.get(enemy.id);
       if (!view) {
         view = {
-          sprite: this.add.sprite(at.x, at.y, enemy.kind.id),
+          sprite: this.add.sprite(at.x, at.y, enemy.kind.id).setScale(ENEMY_SHEETS[enemy.kind.id]?.scale ?? 1),
           health: this.add.graphics(),
           shownHealth: enemy.kind.health,
           last: at,

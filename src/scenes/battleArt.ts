@@ -1,9 +1,14 @@
 import * as Phaser from 'phaser';
+import bookPileImage from '../assets/library/book-pile.png';
+import bookshelfImage from '../assets/library/bookshelf.png';
+import lecternImage from '../assets/library/lectern.png';
+import largePaperGolemImage from '../assets/library/paper-golem-large.png';
+import paperGolemImage from '../assets/library/paper-golem.png';
+import readingDeskImage from '../assets/library/reading-desk.png';
+import scrollImage from '../assets/library/scroll.png';
+import dungeonImage from '../assets/lucifer/dungeon/dungeon-tileset.png';
+import torchImage from '../assets/lucifer/lava/torch.png';
 import constructionImage from '../assets/spire/builder/tower-construction.png';
-import firebugImage from '../assets/spire/enemies/firebug.png';
-import leafbugImage from '../assets/spire/enemies/leafbug.png';
-import scorpionImage from '../assets/spire/enemies/scorpion.png';
-import tilesetImage from '../assets/spire/tileset/grass-tileset.png';
 import baseTower01Image from '../assets/spire/towers/base-tower-01.png';
 import tower01ImpactImage from '../assets/spire/towers/tower-01-weapon-impact.png';
 import tower01ProjectileImage from '../assets/spire/towers/tower-01-level-01-projectile.png';
@@ -25,13 +30,32 @@ interface EnemySheet {
   readonly deathFrames: number;
   /** Direction the side rows face; the sprite is flipped for the other one. */
   readonly sideFaces: 'left' | 'right';
+  /** Drawing scale on screen; the paper golems are drawn small within their frames. */
+  readonly scale: number;
 }
 
-/** Sprite sheets by enemy kind id (see `src/content/level1.ts`). */
+/** Sprite sheets by enemy kind id (see `src/content/library.ts`). */
 export const ENEMY_SHEETS: Readonly<Record<string, EnemySheet>> = {
-  leafbug: { url: leafbugImage, frameWidth: 64, frameHeight: 64, columns: 8, walkFrames: 8, deathFrames: 7, sideFaces: 'right' },
-  scorpion: { url: scorpionImage, frameWidth: 64, frameHeight: 64, columns: 8, walkFrames: 8, deathFrames: 8, sideFaces: 'left' },
-  firebug: { url: firebugImage, frameWidth: 128, frameHeight: 64, columns: 11, walkFrames: 8, deathFrames: 11, sideFaces: 'right' },
+  'paper-golem': {
+    url: paperGolemImage,
+    frameWidth: 64,
+    frameHeight: 64,
+    columns: 8,
+    walkFrames: 8,
+    deathFrames: 8,
+    sideFaces: 'right',
+    scale: 1.5,
+  },
+  'paper-golem-large': {
+    url: largePaperGolemImage,
+    frameWidth: 64,
+    frameHeight: 64,
+    columns: 8,
+    walkFrames: 8,
+    deathFrames: 8,
+    sideFaces: 'right',
+    scale: 1.5,
+  },
 };
 
 export type Heading = 'down' | 'up' | 'side';
@@ -39,13 +63,26 @@ const HEADINGS: readonly Heading[] = ['down', 'up', 'side'];
 const WALK_ROW = 3;
 const DEATH_ROW = 6;
 
-/** Ground tile frames cut from the grass tileset (64 × 64 px each). */
-export const GRASS_FRAME = 'grass';
-export const SAND_FRAME = 'sand';
-export const TREE_FRAMES = ['tree-green', 'tree-green-2', 'tree-autumn', 'tree-autumn-2'] as const;
-export const ROCK_FRAMES = ['rock', 'rock-2'] as const;
+/**
+ * Frames cut from the Lucifer dungeon tileset (32 × 32 px source tiles, shown
+ * twice as large like the rest of the art).
+ */
+export const DUNGEON = 'dungeon';
+export const FLOOR_FRAMES = ['floor', 'floor-slab', 'floor-worn'] as const;
+export const BRICK_FRAME = 'brick';
+export const WALL_EDGE_FRAME = 'wall-edge';
+export const CARPET_FRAME = 'carpet';
+export const BANNER_FRAME = 'banner';
+/** Scale of the Lucifer tiles and the library props, which are drawn at half the Spire density. */
+export const LIBRARY_SCALE = 2;
 
-export const TILESET = 'tileset';
+export const TORCH = 'torch';
+export const TORCH_FLAME = 'torch-flame';
+export const BOOKSHELF = 'bookshelf';
+export const LECTERN = 'lectern';
+export const READING_DESK = 'reading-desk';
+export const BOOK_PILE = 'book-pile';
+export const SCROLL = 'scroll';
 export const CONSTRUCTION = 'construction';
 /** Frames of the cloud that reveals a finished tower (second row of the construction sheet). */
 export const CONSTRUCTION_REVEAL = 'construction-reveal';
@@ -78,7 +115,13 @@ export function deathAnimation(kind: string, heading: Heading): string {
 }
 
 export function preloadBattleArt(scene: Phaser.Scene): void {
-  scene.load.image(TILESET, tilesetImage);
+  scene.load.image(DUNGEON, dungeonImage);
+  scene.load.spritesheet(TORCH, torchImage, { frameWidth: 32, frameHeight: 32 });
+  scene.load.spritesheet(BOOKSHELF, bookshelfImage, { frameWidth: 64, frameHeight: 128 });
+  scene.load.image(LECTERN, lecternImage);
+  scene.load.image(READING_DESK, readingDeskImage);
+  scene.load.spritesheet(BOOK_PILE, bookPileImage, { frameWidth: 64, frameHeight: 64 });
+  scene.load.image(SCROLL, scrollImage);
   scene.load.spritesheet(CONSTRUCTION, constructionImage, { frameWidth: 192, frameHeight: 256 });
   for (const [kind, sheet] of Object.entries(ENEMY_SHEETS)) {
     scene.load.spritesheet(kind, sheet.url, { frameWidth: sheet.frameWidth, frameHeight: sheet.frameHeight });
@@ -92,17 +135,16 @@ export function preloadBattleArt(scene: Phaser.Scene): void {
 
 /** Cuts the tile frames and registers the animations; safe to call again after a restart. */
 export function createBattleArt(scene: Phaser.Scene): void {
-  const tiles = scene.textures.get(TILESET);
-  if (!tiles.has(GRASS_FRAME)) {
-    // Positions in the Spire grass tileset: a grass arm and the sand centre of the crosses, trees and rocks on the right.
-    tiles.add(GRASS_FRAME, 0, 128, 64, 64, 64);
-    tiles.add(SAND_FRAME, 0, 128, 448, 64, 64);
-    tiles.add('tree-green', 0, 832, 384, 64, 64);
-    tiles.add('tree-green-2', 0, 896, 384, 64, 64);
-    tiles.add('tree-autumn', 0, 832, 576, 64, 64);
-    tiles.add('tree-autumn-2', 0, 896, 576, 64, 64);
-    tiles.add('rock', 0, 832, 768, 64, 64);
-    tiles.add('rock-2', 0, 896, 768, 64, 64);
+  const dungeon = scene.textures.get(DUNGEON);
+  if (!dungeon.has(CARPET_FRAME)) {
+    // Positions in the Lucifer dungeon tileset.
+    dungeon.add(FLOOR_FRAMES[0], 0, 0, 160, 32, 32);
+    dungeon.add(FLOOR_FRAMES[1], 0, 0, 192, 32, 32);
+    dungeon.add(FLOOR_FRAMES[2], 0, 32, 160, 32, 32);
+    dungeon.add(BRICK_FRAME, 0, 32, 32, 32, 32);
+    dungeon.add(WALL_EDGE_FRAME, 0, 136, 56, 32, 8);
+    dungeon.add(CARPET_FRAME, 0, 320, 192, 16, 16);
+    dungeon.add(BANNER_FRAME, 0, 480, 70, 32, 54);
   }
 
   const anims = scene.anims;
@@ -128,6 +170,9 @@ export function createBattleArt(scene: Phaser.Scene): void {
     });
   }
 
+  if (!anims.exists(TORCH_FLAME)) {
+    anims.create({ key: TORCH_FLAME, frames: anims.generateFrameNumbers(TORCH, {}), frameRate: FRAME_RATE, repeat: -1 });
+  }
   if (!anims.exists(CONSTRUCTION_REVEAL)) {
     anims.create({
       key: CONSTRUCTION_REVEAL,

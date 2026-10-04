@@ -1,5 +1,7 @@
 import { describe, expect, it } from 'vitest';
-import { LEVEL_1 } from '../content/level1';
+import { practiceLevel } from '../content/library';
+
+const LEVEL_1 = practiceLevel(1);
 import { stageSetup } from '../content/tutorial';
 import { TypingEngine } from '../typing/engine';
 import { Battle } from './battle';
