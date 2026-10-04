@@ -169,7 +169,7 @@ Bis alle Buchstaben beherrscht sind, ist das Spiel ein **Tutorial** in der Bibli
 ## 7. Grafik und Ton
 
 - **Thema:** Fantasy.
-- **Stil:** offen. Naheliegend ist Pixelgrafik; die mittelalterlichen CC0-Pakete von Kenney (*Tiny Town*, *Roguelike/RPG*), die der alte Stand (`rpg-prototyp`) nutzte, könnten für Karten und Weltkarte taugen.
+- **Stil (entschieden, 04.10.26):** Pixelgrafik aus dem Fantasy-Tower-Defense-Set **Foozle „Spire“** (CC0): Gras-Tileset mit Wegen, Wasser, Steinen und Bäumen; sechs Türme mit je drei Ausbaustufen samt Waffen-, Geschoss- und Trefferanimation; acht animierte Gegner (vier fliegend, vier am Boden); Bau- und Einsturzanimation. Liegt unter `src/assets/spire/`, Quellen in `src/assets/LICENSES.md`. Was das Set nicht hat – Bannkreis, Tinte –, entsteht passend dazu.
 - **Bedienoberfläche:** Bildschirmtastatur, Wortlabels und Statistik bleiben **scharf** und nicht pixelig, müssen aber zum Look passen und über der Szene lesbar sein.
 - **Zwischensequenzen:** zuerst Text, später Video oder Stop-Motion (siehe 3.4).
 - **Ton:** noch nicht festgelegt ([#56](https://github.com/TheRealKoller/typingame/issues/56)).
