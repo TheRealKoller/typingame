@@ -13,6 +13,8 @@ export interface Enemy {
   /** Pixels travelled along the path. */
   distance: number;
   health: number;
+  /** Glows and carries a word; typing it strikes the enemy down (see `strike`). */
+  readonly marked: boolean;
 }
 
 export interface Tower {
@@ -110,6 +112,15 @@ export class Battle {
     return true;
   }
 
+  /** Strikes a marked enemy down at once, for the ink it leaves; false if it is not marked or already gone. */
+  strike(enemy: Enemy): boolean {
+    if (!enemy.marked || !this.#enemies.includes(enemy)) return false;
+    enemy.health = 0;
+    this.#ink += enemy.kind.ink;
+    this.#enemies = this.#enemies.filter((other) => other !== enemy);
+    return true;
+  }
+
   /** Ends the flood when the player is ready; the next wave starts to advance. */
   endFlood(): void {
     if (this.#phase !== 'flood') return;
@@ -128,7 +139,9 @@ export class Battle {
     wave.forEach((squad, i) => {
       let spawned = this.#spawned[i] ?? 0;
       while (spawned < squad.count && this.#waveMs >= (squad.delayMs ?? 0) + spawned * squad.spacingMs) {
-        this.#enemies.push({ id: this.#nextId++, kind: squad.kind, distance: 0, health: squad.kind.health });
+        // Every `markEvery`-th enemy of a squad glows, starting with the first.
+        const marked = squad.markEvery !== undefined && spawned % squad.markEvery === 0;
+        this.#enemies.push({ id: this.#nextId++, kind: squad.kind, distance: 0, health: squad.kind.health, marked });
         spawned++;
       }
       this.#spawned[i] = spawned;

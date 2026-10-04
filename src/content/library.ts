@@ -34,22 +34,23 @@ export const LIBRARY_SITES: readonly BuildSite[] = [
 /**
  * Waves per tutorial section: few, slow golems, enough ink for two towers at
  * the start. The golems grow tougher from wave to wave and from section to
- * section, so one tower is not enough for long.
+ * section, so one tower is not enough for long. Every third small golem glows
+ * and carries a word, so there is something to type while the wave advances.
  */
 const PRACTICE_WAVES: Readonly<Record<number, readonly Wave[]>> = {
   1: [
-    [{ kind: stronger(PAPER_GOLEM, 2), count: 4, spacingMs: 2200 }],
-    [{ kind: stronger(PAPER_GOLEM, 3.5), count: 6, spacingMs: 1800 }],
+    [{ kind: stronger(PAPER_GOLEM, 2), count: 4, spacingMs: 2200, markEvery: 3 }],
+    [{ kind: stronger(PAPER_GOLEM, 3.5), count: 6, spacingMs: 1800, markEvery: 3 }],
   ],
   2: [
-    [{ kind: stronger(PAPER_GOLEM, 3), count: 6, spacingMs: 1800 }],
+    [{ kind: stronger(PAPER_GOLEM, 3), count: 6, spacingMs: 1800, markEvery: 3 }],
     [{ kind: stronger(LARGE_PAPER_GOLEM, 3), count: 2, spacingMs: 3000 }],
-    [{ kind: stronger(PAPER_GOLEM, 5), count: 8, spacingMs: 1500 }],
+    [{ kind: stronger(PAPER_GOLEM, 5), count: 8, spacingMs: 1500, markEvery: 3 }],
   ],
   3: [
-    [{ kind: stronger(PAPER_GOLEM, 4.5), count: 8, spacingMs: 1500 }],
+    [{ kind: stronger(PAPER_GOLEM, 4.5), count: 8, spacingMs: 1500, markEvery: 3 }],
     [{ kind: stronger(LARGE_PAPER_GOLEM, 4), count: 4, spacingMs: 2500 }],
-    [{ kind: stronger(PAPER_GOLEM, 7), count: 10, spacingMs: 1200 }],
+    [{ kind: stronger(PAPER_GOLEM, 7), count: 10, spacingMs: 1200, markEvery: 3 }],
   ],
 };
 

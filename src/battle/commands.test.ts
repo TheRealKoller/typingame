@@ -84,3 +84,44 @@ describe('Commands', () => {
     expect(battle.towerAt(site)).toBeDefined();
   });
 });
+
+describe('enemy words', () => {
+  function withGolems() {
+    const level = { ...LEVEL_1, waves: [[{ kind: LEVEL_1.waves[0]![0]!.kind, count: 6, spacingMs: 100, markEvery: 2 }]] };
+    const battle = new Battle(level);
+    const commands = new Commands(battle, [CROSSBOW], WORDS, { keys: {}, random: () => 0.5 });
+    battle.endFlood();
+    for (let i = 0; i < 6; i++) battle.update(100);
+    commands.refresh();
+    return { battle, commands };
+  }
+
+  it('gives every glowing enemy its own word, clear of site words and keywords', () => {
+    const { battle, commands } = withGolems();
+    const enemyWords = battle.enemies.map((enemy) => commands.enemyWord(enemy));
+
+    expect(enemyWords.filter((word) => word !== null)).toHaveLength(3);
+    expect(enemyWords.filter((_, i) => !battle.enemies[i]!.marked)).toEqual([null, null, null]);
+    expect(hasPrefixPair([...commands.words, CROSSBOW.keyword])).toBe(false);
+  });
+
+  it('strikes the enemy whose word is typed, also while a site is selected', () => {
+    const { battle, commands } = withGolems();
+    const target = battle.enemies.find((enemy) => enemy.marked)!;
+    commands.complete(commands.siteWord(battle.level.sites[0]!)!);
+
+    expect(commands.complete(commands.enemyWord(target)!)).toEqual({ type: 'strike', enemy: target });
+    expect(battle.enemies).not.toContain(target);
+    expect(commands.selected).toBe(battle.level.sites[0]);
+  });
+
+  it('drops the word of an enemy that is gone', () => {
+    const { battle, commands } = withGolems();
+    const target = battle.enemies.find((enemy) => enemy.marked)!;
+    const word = commands.enemyWord(target)!;
+    battle.strike(target);
+    commands.refresh();
+
+    expect(commands.words).not.toContain(word);
+  });
+});
