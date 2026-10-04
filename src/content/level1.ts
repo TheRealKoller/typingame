@@ -1,9 +1,15 @@
-import type { EnemyKind, Level } from '../battle/level';
+import type { EnemyKind, Level, TowerKind } from '../battle/level';
 
 /** Ground enemies of the first level; the ids match the sprites in `src/assets/spire/enemies/`. */
-export const LEAFBUG: EnemyKind = { id: 'leafbug', speed: 40, wardDamage: 1 };
-export const SCORPION: EnemyKind = { id: 'scorpion', speed: 55, wardDamage: 1 };
-export const FIREBUG: EnemyKind = { id: 'firebug', speed: 30, wardDamage: 2 };
+export const LEAFBUG: EnemyKind = { id: 'leafbug', speed: 40, wardDamage: 1, health: 30, ink: 10 };
+export const SCORPION: EnemyKind = { id: 'scorpion', speed: 55, wardDamage: 1, health: 40, ink: 15 };
+export const FIREBUG: EnemyKind = { id: 'firebug', speed: 30, wardDamage: 2, health: 120, ink: 30 };
+
+/** The crossbow tower (Spire tower 01). */
+export const CROSSBOW: TowerKind = { id: 'tower-01', keyword: 'jagd', cost: 50, range: 170, damage: 10, cooldownMs: 800 };
+
+/** Typed during a flood to let the next wave come. */
+export const FLOOD_WORD = 'ja';
 
 /** First level on a 1280 × 720 map: one winding path from the left edge to the ward circle on the right. */
 export const LEVEL_1: Level = {
