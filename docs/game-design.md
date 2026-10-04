@@ -108,7 +108,9 @@ Wie sich Atramentus zeigt (vorläufig, ein Schritt je Gebiet):
 ### 4.3 Kampf
 
 - Türme greifen von selbst an.
-- **Spezialgegner** tragen Wörter. Tippt man das Wort, greift man sie direkt an. Im Tutorial leuchtet jeder dritte kleine Papiergolem golden und trägt ein Wort; getippt fällt er sofort und hinterlässt Tinte.
+- **Spezialgegner** tragen Wörter. Tippt man das Wort, greift man sie direkt an.
+  - **Feuerwespen** (ab dem zweiten Ort): schnell und schwach, kommen in Schwärmen in jeder zweiten Welle und schlüpfen an langsamen Türmen vorbei.
+  - **Panzerkäfer** (ab dem dritten Ort, letzte Welle): ein Panzer aus gehärteter Tinte hält 80 % jedes Turmtreffers ab. Sie leuchten immer und tragen lange Wörter (ab 7 Zeichen); jedes getippte Wort zieht ihnen 70 Leben ab und gibt ihnen ein neues Wort, bis sie fallen. Bauen allein reicht gegen sie nicht. Im Tutorial leuchtet jeder dritte kleine Papiergolem golden und trägt ein Wort; getippt fällt er sofort und hinterlässt Tinte.
 - Türme können **Spezialangriffe** haben, die man mit Wörtern auslöst.
 - **Bosse** verlangen einen ganzen Text, z. B. ein Gedicht oder eine Rede.
 

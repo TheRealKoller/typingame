@@ -14,7 +14,9 @@ import standingFlagDamagedImage from '../assets/lucifer/lava/standing-flag-damag
 import waterImage from '../assets/spire/tileset/animated-water-tiles.png';
 import grassTilesetImage from '../assets/spire/tileset/grass-tileset.png';
 import constructionImage from '../assets/spire/builder/tower-construction.png';
+import clampbeetleImage from '../assets/spire/enemies/clampbeetle.png';
 import firebugImage from '../assets/spire/enemies/firebug.png';
+import firewaspImage from '../assets/spire/enemies/firewasp.png';
 import scorpionImage from '../assets/spire/enemies/scorpion.png';
 import fireImage from '../assets/traps/fire-trap-level-1.png';
 
@@ -65,6 +67,8 @@ export const ENEMY_SHEETS: Readonly<Record<string, EnemySheet>> = {
   // Spire creatures, darkened: the Silence has taken them.
   scorpion: { url: scorpionImage, frameWidth: 64, frameHeight: 64, columns: 8, walkFrames: 8, deathFrames: 8, sideFaces: 'left', scale: 1, tint: 0x8a80b0 },
   firebug: { url: firebugImage, frameWidth: 128, frameHeight: 64, columns: 11, walkFrames: 8, deathFrames: 11, sideFaces: 'right', scale: 1, tint: 0x8a80b0 },
+  firewasp: { url: firewaspImage, frameWidth: 96, frameHeight: 96, columns: 12, walkFrames: 8, deathFrames: 12, sideFaces: 'right', scale: 0.8, tint: 0x8a80b0 },
+  clampbeetle: { url: clampbeetleImage, frameWidth: 64, frameHeight: 64, columns: 13, walkFrames: 8, deathFrames: 13, sideFaces: 'left', scale: 1.3, tint: 0x6a6090 },
   shadow: { url: firebugImage, frameWidth: 128, frameHeight: 64, columns: 11, walkFrames: 8, deathFrames: 11, sideFaces: 'right', scale: 1.4, tint: 0x2a2038 },
 };
 

@@ -360,7 +360,7 @@ export class BattleScene extends Phaser.Scene {
   #apply(command: Command | null): void {
     if (command?.type === 'build' || command?.type === 'upgrade') this.#showTower(this.#battle.towerAt(command.site));
     if (command?.type === 'tooExpensive') this.#float(command.site, 'Zu wenig Tinte', '#8a2f2f');
-    if (command?.type === 'strike') this.#showStrike(command.enemy);
+    if (command?.type === 'strike') this.#showStrike(command.enemy, command.defeated);
   }
 
   /** Brings words, typing engine, keyboard and HUD in line with the battle. */
@@ -681,15 +681,20 @@ export class BattleScene extends Phaser.Scene {
     }
   }
 
-  /** The word of a glowing enemy was typed: a flash of light, and it falls at once. */
-  #showStrike(enemy: Enemy): void {
+  /** The word of a glowing enemy was typed: a flash of light, and it falls, or a tough one is wounded. */
+  #showStrike(enemy: Enemy, defeated: boolean): void {
     const view = this.#enemies.get(enemy.id);
     if (!view) return;
+    const flash = this.add.circle(view.sprite.x, view.sprite.y, 20, 0xfff2b0, 0.9).setDepth(902);
+    this.tweens.add({ targets: flash, scale: 3, alpha: 0, duration: 350, onComplete: () => flash.destroy() });
+    if (!defeated) {
+      // A tough enemy only takes the word's damage and walks on with a new word.
+      view.shownHealth = Math.min(view.shownHealth, enemy.health);
+      return;
+    }
     this.#enemies.delete(enemy.id);
     view.health.destroy();
     view.glow?.destroy();
-    const flash = this.add.circle(view.sprite.x, view.sprite.y, 20, 0xfff2b0, 0.9).setDepth(902);
-    this.tweens.add({ targets: flash, scale: 3, alpha: 0, duration: 350, onComplete: () => flash.destroy() });
     const heading = (view.sprite.getData('heading') as Heading | undefined) ?? 'side';
     view.sprite.play(deathAnimation(enemy.kind.id, heading));
     view.sprite.once(Phaser.Animations.Events.ANIMATION_COMPLETE, () => {

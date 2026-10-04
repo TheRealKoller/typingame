@@ -163,7 +163,14 @@ export function generateAshMap(random: Random, id: string, name: string): Battle
 export interface Foes {
   readonly small: EnemyKind;
   readonly large: EnemyKind;
+  /** Fast and frail, they come in a swarm. */
+  readonly swift: EnemyKind;
+  /** Shelled against towers; they always glow and fall only to typed words. */
+  readonly armored: EnemyKind;
 }
+
+/** Swarms of swift enemies come from this difficulty on; armored ones from `MARKED_FROM`, since they carry words. */
+export const SWIFT_FROM = 2;
 
 /** Enemies carry words only from this difficulty on; the first places are about building. */
 export const MARKED_FROM = 3;
@@ -182,27 +189,38 @@ export function waveCount(difficulty: number): number {
 /**
  * Waves for a battle of `difficulty`: more and tougher enemies from wave to
  * wave and from place to place. Large ones join from the second place on, in
- * later waves together with the small ones. From `MARKED_FROM` on every third
- * small one glows and carries a word. They all leave less ink than in the library.
+ * later waves together with the small ones; every other wave brings a swarm of
+ * swift ones from `SWIFT_FROM` on. From `MARKED_FROM` on every third small one
+ * glows and carries a word, and the last wave brings armored ones that only
+ * typed words break. They all leave less ink than in the library.
  */
 export function generateWaves(random: Random, difficulty: number, foes: Foes): Wave[] {
   const waves: Wave[] = [];
   const count = waveCount(difficulty);
   for (let i = 0; i < count; i++) {
     const factor = 1.4 + 0.07 * (difficulty - 1) + 0.15 * i;
+    const tougher = (kind: EnemyKind) => leaner(stronger(kind, factor));
     const small: Squad = {
-      kind: leaner(stronger(foes.small, factor)),
+      kind: tougher(foes.small),
       count: 4 + difficulty + 2 * i + Math.floor(random() * 2),
       spacingMs: Math.max(900, 1700 - 120 * difficulty - 80 * i),
       ...(difficulty >= MARKED_FROM ? { markEvery: 3 } : {}),
     };
+    const squads: Squad[] = [small];
     const largeCount = Math.min(i, difficulty - 1, 2);
-    if (largeCount === 0) {
-      waves.push([small]);
-      continue;
+    if (largeCount > 0) {
+      const large: Squad = { kind: tougher(foes.large), count: largeCount, spacingMs: 2600, delayMs: 1500 + Math.floor(random() * 1500) };
+      // A large squad comes alone now and then; in the last wave always with the small ones.
+      if (i === count - 1 || random() < 0.5) squads.push(large);
+      else squads.splice(0, 1, large);
     }
-    const large: Squad = { kind: leaner(stronger(foes.large, factor)), count: largeCount, spacingMs: 2600, delayMs: 1500 + Math.floor(random() * 1500) };
-    waves.push(i === count - 1 || random() < 0.5 ? [small, large] : [large]);
+    if (difficulty >= SWIFT_FROM && i % 2 === 1) {
+      squads.push({ kind: tougher(foes.swift), count: 1 + difficulty, spacingMs: 600, delayMs: 2500 + Math.floor(random() * 2000) });
+    }
+    if (difficulty >= MARKED_FROM && i === count - 1) {
+      squads.push({ kind: leaner(foes.armored), count: difficulty - MARKED_FROM + 1, spacingMs: 3000, delayMs: 4000, markEvery: 1 });
+    }
+    waves.push(squads);
   }
   return waves;
 }

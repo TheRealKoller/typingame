@@ -1,7 +1,7 @@
 import { describe, expect, it } from 'vitest';
-import { CELLAR, RUIN } from './journey';
+import { CELLAR, RUIN, SHELLED_BEETLE, SILENT_WASP } from './journey';
 import { PRACTICE_MAPS, type BattleMap } from './library';
-import { distanceToPath, generateAshMap, generateWaves, LAYOUT, MARKED_FROM, seededRandom, siteFits, touchesPath, waveCount } from './mapgen';
+import { distanceToPath, generateAshMap, generateWaves, LAYOUT, MARKED_FROM, SWIFT_FROM, seededRandom, siteFits, touchesPath, waveCount } from './mapgen';
 import { SILENT_FIREBUG, SILENT_SCORPION } from './raid';
 
 const FIXED_MAPS: readonly BattleMap[] = [...PRACTICE_MAPS, RUIN, CELLAR];
@@ -55,7 +55,7 @@ describe('generated maps', () => {
 });
 
 describe('generated waves', () => {
-  const foes = { small: SILENT_SCORPION, large: SILENT_FIREBUG };
+  const foes = { small: SILENT_SCORPION, large: SILENT_FIREBUG, swift: SILENT_WASP, armored: SHELLED_BEETLE };
 
   it('grow tougher from wave to wave and with the difficulty', () => {
     for (const difficulty of [1, 2, 3, 4]) {
@@ -81,6 +81,18 @@ describe('generated waves', () => {
     for (const difficulty of [2, 3, 4]) {
       expect(kinds(difficulty)[0]).toEqual(['scorpion']);
       expect(kinds(difficulty).flat()).toContain('firebug');
+    }
+  });
+
+  it('bring swift swarms from the second place on, and armored enemies that always glow in the last wave of later places', () => {
+    for (const difficulty of [1, 2, 3, 4]) {
+      const waves = generateWaves(seededRandom(5), difficulty, foes);
+      const swift = waves.flat().filter((squad) => squad.kind.id === SILENT_WASP.id);
+      const armored = waves.map((wave) => wave.filter((squad) => squad.kind.id === SHELLED_BEETLE.id));
+      expect(swift.length > 0, `swift at ${difficulty}`).toBe(difficulty >= SWIFT_FROM);
+      expect(armored.flat().length > 0, `armored at ${difficulty}`).toBe(difficulty >= MARKED_FROM);
+      expect(armored.slice(0, -1).flat()).toEqual([]);
+      for (const squad of armored.flat()) expect(squad.markEvery).toBe(1);
     }
   });
 });
