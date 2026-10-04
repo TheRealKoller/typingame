@@ -24,8 +24,8 @@ function level(overrides: Partial<Level> = {}): Level {
     ward: 5,
     ink: 50,
     waves: [
-      { kind: BUG, count: 2, spacingMs: 1000 },
-      { kind: BEETLE, count: 1, spacingMs: 1000 },
+      [{ kind: BUG, count: 2, spacingMs: 1000 }],
+      [{ kind: BEETLE, count: 1, spacingMs: 1000 }],
     ],
     ...overrides,
   };
@@ -94,7 +94,7 @@ describe('Battle', () => {
   });
 
   it('is lost when the ward breaks, and nothing moves afterwards', () => {
-    const battle = new Battle(level({ ward: 2, waves: [{ kind: BEETLE, count: 3, spacingMs: 500 }] }));
+    const battle = new Battle(level({ ward: 2, waves: [[{ kind: BEETLE, count: 3, spacingMs: 500 }]] }));
     battle.endFlood();
     run(battle, 6000);
 
@@ -121,7 +121,9 @@ describe('Battle', () => {
       battle.endFlood();
       run(battle, 1000);
     }
-    const enemies = practiceLevel(3).waves.reduce((sum, wave) => sum + wave.count * wave.kind.wardDamage, 0);
+    const enemies = practiceLevel(3)
+      .waves.flat()
+      .reduce((sum, squad) => sum + squad.count * squad.kind.wardDamage, 0);
     expect(battle.ward).toBe(1000 - enemies);
   });
 });
@@ -140,7 +142,7 @@ describe('towers', () => {
   });
 
   it('attacks enemies in range and turns the defeated into ink', () => {
-    const battle = new Battle(level({ waves: [{ kind: BUG, count: 1, spacingMs: 1000 }] }));
+    const battle = new Battle(level({ waves: [[{ kind: BUG, count: 1, spacingMs: 1000 }]] }));
     battle.build(battle.level.sites[0]!, BOW);
     battle.endFlood();
 
@@ -157,7 +159,7 @@ describe('towers', () => {
   });
 
   it('leaves enemies out of range alone and reports them at the ward circle', () => {
-    const battle = new Battle(level({ waves: [{ kind: BUG, count: 1, spacingMs: 1000 }] }));
+    const battle = new Battle(level({ waves: [[{ kind: BUG, count: 1, spacingMs: 1000 }]] }));
     battle.build(battle.level.sites[1]!, BOW);
     battle.endFlood();
 
@@ -169,7 +171,7 @@ describe('towers', () => {
   });
 
   it('aims at the enemy furthest along the path when several are in range', () => {
-    const battle = new Battle(level({ waves: [{ kind: BEETLE, count: 2, spacingMs: 400 }] }));
+    const battle = new Battle(level({ waves: [[{ kind: BEETLE, count: 2, spacingMs: 400 }]] }));
     battle.build(battle.level.sites[0]!, BOW);
     battle.endFlood();
 
@@ -180,5 +182,28 @@ describe('towers', () => {
     const [leader, follower] = battle.enemies;
     expect(Math.hypot(battle.positionOf(follower!).x - 100, battle.positionOf(follower!).y - 40)).toBeLessThanOrEqual(60);
     expect(shots.map((shot) => shot.enemy.id)).toEqual([leader!.id, leader!.id]);
+  });
+});
+
+describe('squads', () => {
+  it('enter on their own schedules within one wave', () => {
+    const battle = new Battle(
+      level({
+        waves: [
+          [
+            { kind: BUG, count: 2, spacingMs: 1000 },
+            { kind: BEETLE, count: 1, spacingMs: 1000, delayMs: 500 },
+          ],
+        ],
+      }),
+    );
+    battle.endFlood();
+
+    run(battle, 300);
+    expect(battle.enemies.map((enemy) => enemy.kind.id)).toEqual(['bug']);
+    run(battle, 400);
+    expect(battle.enemies.map((enemy) => enemy.kind.id)).toEqual(['bug', 'beetle']);
+    run(battle, 500);
+    expect(battle.enemies.map((enemy) => enemy.kind.id)).toEqual(['bug', 'beetle', 'bug']);
   });
 });

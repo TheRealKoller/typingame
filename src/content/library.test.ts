@@ -4,7 +4,7 @@ import { practiceLevel } from './library';
 /** Health of each golem kind in the order its waves come. */
 function healthByKind(section: number): Record<string, number[]> {
   const result: Record<string, number[]> = {};
-  for (const { kind } of practiceLevel(section).waves) (result[kind.id] ??= []).push(kind.health);
+  for (const { kind } of practiceLevel(section).waves.flat()) (result[kind.id] ??= []).push(kind.health);
   return result;
 }
 
@@ -18,7 +18,7 @@ it('makes the golems of each kind tougher from wave to wave', () => {
 });
 
 it('starts each section with tougher golems than the one before', () => {
-  const first = [1, 2, 3].map((section) => practiceLevel(section).waves[0]!.kind.health);
+  const first = [1, 2, 3].map((section) => practiceLevel(section).waves[0]![0]!.kind.health);
   expect(first).toEqual([...first].sort((a, b) => a - b));
   expect(new Set(first).size).toBe(first.length);
 });

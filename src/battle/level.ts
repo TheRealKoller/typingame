@@ -26,13 +26,18 @@ export interface TowerKind {
   readonly cooldownMs: number;
 }
 
-/** Enemies that advance together during one ebb. */
-export interface Wave {
+/** Enemies of one kind within a wave, entering one after another. */
+export interface Squad {
   readonly kind: EnemyKind;
   readonly count: number;
-  /** Time between two enemies entering the path. */
+  /** Time between two enemies of this squad entering the path. */
   readonly spacingMs: number;
+  /** Time after the wave begins until the first enemy of this squad enters; 0 if omitted. */
+  readonly delayMs?: number;
 }
+
+/** Squads that advance together during one ebb, each on its own schedule. */
+export type Wave = readonly Squad[];
 
 /** A place next to the path where a tower can be built. */
 export interface BuildSite {
