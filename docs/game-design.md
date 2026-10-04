@@ -75,7 +75,7 @@ Wie sich Atramentus zeigt (vorläufig, ein Schritt je Gebiet):
 
 - Eine Karte mit einem Weg, **Bauplätzen** am Rand und am Ende des Wegs der **Bannkreis** – der Rest des Banns der Meisterin, der das Land dahinter schützt.
 - Ein Level läuft im Wechsel von **Ebbe und Flut des Banns**:
-  - **Flut** – der Bann ist stark: Die Gegner müssen sich zurückziehen. Man baut und rüstet in Ruhe auf, ohne Zeitdruck. Die Flut endet **auf Wunsch des Spielers** mit dem getippten Wort *los* – bevor `o` freigeschaltet ist, mit *ja*. Endloses Bauen verhindert die knappe Tinte.
+  - **Flut** – der Bann ist stark: Die Gegner müssen sich zurückziehen. Man baut und rüstet in Ruhe auf, ohne Zeitdruck. Die Flut endet **auf Wunsch des Spielers** mit **Enter**; ein hervorgehobener Hinweis am Bannkreis zeigt das. Enter zählt nicht als Anschlag. Endloses Bauen verhindert die knappe Tinte.
   - **Ebbe** – der Bann ist schwach: Die Gegner rücken in **Wellen** vor.
 - Das Tempo der Gegner ist vorläufig **konstant**, unabhängig von den Anschlägen pro Minute.
 - Erreicht ein Gegner den Bannkreis, wird er schwächer. Bricht er, ist das Level verloren.

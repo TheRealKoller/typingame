@@ -7,9 +7,9 @@ import { raidSetup } from './tutorial';
 
 it('offers words from the whole tutorial on every build site, without prefix pairs', () => {
   const setup = raidSetup();
-  const commands = new Commands(new Battle(RAID_LEVEL), setup.towers, setup.floodWord, setup.words, { keys: {} });
+  const commands = new Commands(new Battle(RAID_LEVEL), setup.towers, setup.words, { keys: {} });
   const words = commands.words;
-  expect(words).toHaveLength(RAID_LEVEL.sites.length + 1);
+  expect(words).toHaveLength(RAID_LEVEL.sites.length);
   expect(words.some((word, i) => words.some((other, j) => i !== j && other.startsWith(word)))).toBe(false);
 });
 

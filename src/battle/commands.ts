@@ -7,37 +7,27 @@ export type Command =
   | { readonly type: 'select'; readonly site: BuildSite }
   | { readonly type: 'build'; readonly site: BuildSite; readonly tower: TowerKind }
   /** The keyword was typed but the ink did not suffice; the selection is released. */
-  | { readonly type: 'tooExpensive'; readonly site: BuildSite; readonly tower: TowerKind }
-  | { readonly type: 'endFlood' };
+  | { readonly type: 'tooExpensive'; readonly site: BuildSite; readonly tower: TowerKind };
 
 /**
  * Turns completed words into actions in a battle. Free build sites carry a
  * word; typing it selects the site, then a tower keyword builds there.
- * During a flood, `floodWord` lets the next wave come.
  */
 export class Commands {
   readonly #battle: Battle;
   readonly #towers: readonly TowerKind[];
-  readonly #floodWord: string;
   readonly #siteWords = new Map<string, string>();
   #selected: BuildSite | null = null;
 
   /**
-   * Gives every build site a word from `pool`. Keywords and the flood word are
-   * never site words, and no two words that can be visible together form a prefix pair.
+   * Gives every build site a word from `pool`. Keywords are never site words,
+   * and no two site words form a prefix pair.
    */
-  constructor(
-    battle: Battle,
-    towers: readonly TowerKind[],
-    floodWord: string,
-    pool: readonly string[],
-    context: PracticeContext,
-  ) {
+  constructor(battle: Battle, towers: readonly TowerKind[], pool: readonly string[], context: PracticeContext) {
     this.#battle = battle;
     this.#towers = towers;
-    this.#floodWord = floodWord;
-    const reserved = [floodWord, ...towers.map((tower) => tower.keyword)];
-    const taken = [floodWord];
+    const reserved = towers.map((tower) => tower.keyword);
+    const taken: string[] = [];
     for (const site of battle.level.sites) {
       const word = pickWord(
         pool.filter((candidate) => !reserved.includes(candidate)),
@@ -62,8 +52,7 @@ export class Commands {
   /** Words that can be typed now. */
   get words(): readonly string[] {
     if (this.#selected) return this.#towers.map((tower) => tower.keyword);
-    const sites = this.#battle.level.sites.map((site) => this.siteWord(site)).filter((word) => word !== null);
-    return this.#battle.phase === 'flood' ? [this.#floodWord, ...sites] : sites;
+    return this.#battle.level.sites.map((site) => this.siteWord(site)).filter((word) => word !== null);
   }
 
   /** Leaves a selected build site without building. */
@@ -80,10 +69,6 @@ export class Commands {
       this.#selected = null;
       if (!this.#battle.build(site, tower)) return { type: 'tooExpensive', site, tower };
       return { type: 'build', site, tower };
-    }
-    if (word === this.#floodWord && this.#battle.phase === 'flood') {
-      this.#battle.endFlood();
-      return { type: 'endFlood' };
     }
     const site = this.#battle.level.sites.find((candidate) => this.siteWord(candidate) === word);
     if (!site) return null;

@@ -36,13 +36,13 @@ describe('tutorial stages', () => {
     (_, index) => {
       const setup = stageSetup(index);
       const stage = STAGES[index]!;
-      for (const word of [...setup.words, setup.floodWord, ...setup.towers.map((tower) => tower.keyword)]) {
+      for (const word of [...setup.words, ...setup.towers.map((tower) => tower.keyword)]) {
         expect([...word].filter((char) => !setup.keys.includes(char)), word).toEqual([]);
       }
       expect(setup.words.filter((word) => stage.newKeys.some((key) => word.includes(key))).length).toBeGreaterThanOrEqual(3);
 
       for (let seed = 1; seed <= 20; seed++) {
-        const commands = new Commands(new Battle(practiceLevel(STAGES[index]!.section)), setup.towers, setup.floodWord, setup.words, {
+        const commands = new Commands(new Battle(practiceLevel(STAGES[index]!.section)), setup.towers, setup.words, {
           keys: {},
           random: seeded(seed),
         });

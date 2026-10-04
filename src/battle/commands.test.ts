@@ -1,19 +1,18 @@
 import { describe, expect, it } from 'vitest';
 import { practiceLevel } from '../content/library';
-
-const LEVEL_1 = practiceLevel(1);
 import { stageSetup } from '../content/tutorial';
 import { TypingEngine } from '../typing/engine';
 import { Battle } from './battle';
 import { Commands } from './commands';
 
-/** Home row with g and h: the crossbow is built with »jagd«, the flood ends with »ja«. */
-const { words: WORDS, towers, floodWord: FLOOD_WORD } = stageSetup(1);
+const LEVEL_1 = practiceLevel(1);
+/** Home row with g and h: the crossbow is built with »jagd«. */
+const { words: WORDS, towers } = stageSetup(1);
 const CROSSBOW = towers[0]!;
 
 function setup(ink = LEVEL_1.ink) {
   const battle = new Battle({ ...LEVEL_1, ink });
-  const commands = new Commands(battle, [CROSSBOW], FLOOD_WORD, WORDS, { keys: {}, random: () => 0.5 });
+  const commands = new Commands(battle, [CROSSBOW], WORDS, { keys: {}, random: () => 0.5 });
   return { battle, commands };
 }
 
@@ -22,14 +21,13 @@ function hasPrefixPair(words: readonly string[]): boolean {
 }
 
 describe('Commands', () => {
-  it('gives every build site its own word, apart from keywords and the flood word', () => {
+  it('gives every build site its own word, apart from keywords', () => {
     const { battle, commands } = setup();
     const siteWords = battle.level.sites.map((site) => commands.siteWord(site));
 
     expect(new Set(siteWords).size).toBe(battle.level.sites.length);
     expect(siteWords).not.toContain(CROSSBOW.keyword);
-    expect(siteWords).not.toContain(FLOOD_WORD);
-    expect(commands.words).toEqual([FLOOD_WORD, ...siteWords]);
+    expect(commands.words).toEqual(siteWords);
     expect(hasPrefixPair(commands.words)).toBe(false);
   });
 
@@ -45,7 +43,7 @@ describe('Commands', () => {
     expect(battle.ink).toBe(LEVEL_1.ink - CROSSBOW.cost);
     expect(commands.selected).toBeNull();
     expect(commands.siteWord(site)).toBeNull();
-    expect(commands.words).toHaveLength(LEVEL_1.sites.length);
+    expect(commands.words).toHaveLength(LEVEL_1.sites.length - 1);
   });
 
   it('releases the site when the ink does not suffice', () => {
@@ -55,7 +53,7 @@ describe('Commands', () => {
 
     expect(commands.complete(CROSSBOW.keyword)).toEqual({ type: 'tooExpensive', site, tower: CROSSBOW });
     expect(commands.selected).toBeNull();
-    expect(commands.words).toContain(FLOOD_WORD);
+    expect(commands.words).toHaveLength(LEVEL_1.sites.length);
     expect(battle.towers).toEqual([]);
   });
 
@@ -66,15 +64,7 @@ describe('Commands', () => {
     commands.cancel();
 
     expect(commands.selected).toBeNull();
-    expect(commands.words).toContain(FLOOD_WORD);
-  });
-
-  it('ends the flood with the flood word and hides it during the ebb', () => {
-    const { battle, commands } = setup();
-
-    expect(commands.complete(FLOOD_WORD)).toEqual({ type: 'endFlood' });
-    expect(battle.phase).toBe('ebb');
-    expect(commands.words).not.toContain(FLOOD_WORD);
+    expect(commands.words).toHaveLength(LEVEL_1.sites.length);
   });
 
   it('works through the typing engine from the first keystroke', () => {

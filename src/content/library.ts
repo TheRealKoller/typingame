@@ -23,7 +23,8 @@ export const LIBRARY_SITES: readonly BuildSite[] = [
   { id: 'b', x: 450, y: 300 },
   { id: 'c', x: 580, y: 290 },
   { id: 'd', x: 850, y: 300 },
-  { id: 'e', x: 1020, y: 310 },
+  // Left of the wave prompt below the ward circle.
+  { id: 'e', x: 975, y: 330 },
 ];
 
 /** Gentle waves per tutorial section: few, slow golems, enough ink for two towers at the start. */
