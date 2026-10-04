@@ -1,13 +1,10 @@
 import * as Phaser from 'phaser';
-import { playOrder } from './content/chapters';
 import { Progress } from './progress/progress';
 import { createStorage } from './progress/storage';
-import { RoomScene, type RoomSceneData } from './scenes/RoomScene';
+import { HomeRowScene, type HomeRowSceneData } from './scenes/HomeRowScene';
 
 async function start(): Promise<void> {
-  const first = playOrder[0];
-  if (!first) throw new Error('there are no sections');
-  const progress = await Progress.load(createStorage(), first.section.id);
+  const progress = await Progress.load(createStorage());
 
   const game = new Phaser.Game({
     type: Phaser.AUTO,
@@ -22,7 +19,7 @@ async function start(): Promise<void> {
     // Scenes read typing from native keydown events.
     input: { keyboard: false },
   });
-  game.scene.add('RoomScene', RoomScene, true, { progress } satisfies RoomSceneData);
+  game.scene.add('HomeRowScene', HomeRowScene, true, { progress } satisfies HomeRowSceneData);
 }
 
 void start();

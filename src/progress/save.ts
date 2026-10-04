@@ -1,7 +1,7 @@
 import { z } from 'zod';
 import type { KeyStats, SessionStats } from './stats';
 
-export const SAVE_VERSION = 1;
+export const SAVE_VERSION = 2;
 
 const count = z.number().int().nonnegative();
 
@@ -15,10 +15,6 @@ const SessionSummarySchema = z.object({
 
 const SaveGameSchema = z.object({
   version: z.literal(SAVE_VERSION),
-  /** Id of the current section, e.g. "1b". */
-  section: z.string(),
-  /** Words typed at least once. */
-  discovered: z.array(z.string()),
   /** Hits and misses per character over all sessions. */
   keys: z.record(z.string(), z.object({ hits: count, misses: count })),
   /** One entry per session with keystrokes, oldest first. */
@@ -29,8 +25,8 @@ export type SessionSummary = z.infer<typeof SessionSummarySchema>;
 /** Everything that survives a restart, stored as JSON. */
 export type SaveGame = z.infer<typeof SaveGameSchema>;
 
-export function emptySave(firstSection: string): SaveGame {
-  return { version: SAVE_VERSION, section: firstSection, discovered: [], keys: {}, sessions: [] };
+export function emptySave(): SaveGame {
+  return { version: SAVE_VERSION, keys: {}, sessions: [] };
 }
 
 /** Reads a save from JSON text; returns null if it is not a valid save of this version. */
@@ -46,8 +42,6 @@ export function parseSave(json: string): SaveGame | null {
 }
 
 export interface CurrentProgress {
-  readonly section: string;
-  readonly discovered: Iterable<string>;
   readonly session: SessionStats;
   /** ISO timestamp of the current session start. */
   readonly startedAt: string;
@@ -75,8 +69,6 @@ export function buildSave(base: SaveGame, current: CurrentProgress): SaveGame {
 
   return {
     version: SAVE_VERSION,
-    section: current.section,
-    discovered: [...new Set([...base.discovered, ...current.discovered])],
     keys,
     sessions: typed ? [...base.sessions, summary] : base.sessions,
   };

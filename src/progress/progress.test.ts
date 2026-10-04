@@ -23,29 +23,24 @@ function typeInto(progress: Progress, words: readonly string[], chars: string): 
 }
 
 describe('Progress', () => {
-  it('starts in the first section without a save', async () => {
-    const progress = await Progress.load(memoryStorage().storage, '1a');
+  it('starts empty without a save', async () => {
+    const progress = await Progress.load(memoryStorage().storage);
 
-    expect(progress.section).toBe('1a');
-    expect(progress.discovered.size).toBe(0);
+    expect(progress.keys).toEqual({});
+    expect(progress.snapshot().sessions).toEqual([]);
   });
 
   it('continues where the last session stopped', async () => {
     const { storage } = memoryStorage();
-    const first = await Progress.load(storage, '1a', new Date('2026-09-28T10:00:00Z'));
+    const first = await Progress.load(storage, new Date('2026-09-28T10:00:00Z'));
     typeInto(first, ['lala', 'dada'], 'lalakdada');
-    first.discover('lala');
-    first.discover('dada');
-    first.section = '1b';
     await first.save();
 
-    const second = await Progress.load(storage, '1a', new Date('2026-09-29T10:00:00Z'));
+    const second = await Progress.load(storage, new Date('2026-09-29T10:00:00Z'));
     typeInto(second, ['haha'], 'haha');
     await second.save();
-    const third = await Progress.load(storage, '1a');
+    const third = await Progress.load(storage);
 
-    expect(third.section).toBe('1b');
-    expect([...third.discovered]).toEqual(['lala', 'dada']);
     expect(third.keys.h).toEqual({ hits: 2, misses: 0 });
     expect(third.keys.l).toEqual({ hits: 2, misses: 0 });
     expect(third.snapshot().sessions.map((s) => [s.startedAt, s.correct, s.wrong])).toEqual([
@@ -55,22 +50,22 @@ describe('Progress', () => {
   });
 
   it('starts over when the save cannot be read', async () => {
-    const progress = await Progress.load(memoryStorage('not json').storage, '1a');
+    const progress = await Progress.load(memoryStorage('not json').storage);
 
-    expect(progress.section).toBe('1a');
+    expect(progress.keys).toEqual({});
   });
 
   it('keeps the newest state when an earlier write finishes late', async () => {
     const hold = Promise.withResolvers<void>();
     const { storage, read } = memoryStorage(null, hold.promise);
-    const progress = await Progress.load(storage, '1a');
+    const progress = await Progress.load(storage);
 
     const earlier = progress.save();
-    progress.section = '1b';
+    typeInto(progress, ['lala'], 'la');
     const later = progress.save();
     hold.resolve();
     await Promise.all([earlier, later]);
 
-    expect(JSON.parse(read() ?? '{}').section).toBe('1b');
+    expect(JSON.parse(read() ?? '{}').sessions[0].correct).toBe(2);
   });
 });

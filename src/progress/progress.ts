@@ -11,47 +11,25 @@ export class Progress {
   readonly #storage: SaveStorage;
   readonly #base: SaveGame;
   readonly #startedAt: string;
-  readonly #discovered: Set<string>;
-  #section: string;
   #pending: Promise<void> = Promise.resolve();
 
   constructor(storage: SaveStorage, base: SaveGame, startedAt: Date) {
     this.#storage = storage;
     this.#base = base;
     this.#startedAt = startedAt.toISOString();
-    this.#discovered = new Set(base.discovered);
-    this.#section = base.section;
   }
 
-  /** Loads the saved progress; starts at `firstSection` if there is no valid save. */
-  static async load(storage: SaveStorage, firstSection: string, now = new Date()): Promise<Progress> {
+  /** Loads the saved progress; starts empty if there is no valid save. */
+  static async load(storage: SaveStorage, now = new Date()): Promise<Progress> {
     const json = await storage.load();
     const save = json === null ? null : parseSave(json);
     if (json !== null && save === null) console.warn('Ignoring unreadable save game');
-    return new Progress(storage, save ?? emptySave(firstSection), now);
-  }
-
-  get section(): string {
-    return this.#section;
-  }
-
-  set section(id: string) {
-    this.#section = id;
-  }
-
-  get discovered(): ReadonlySet<string> {
-    return this.#discovered;
-  }
-
-  discover(word: string): void {
-    this.#discovered.add(word);
+    return new Progress(storage, save ?? emptySave(), now);
   }
 
   /** The complete save as it would be written now. */
   snapshot(): SaveGame {
     return buildSave(this.#base, {
-      section: this.#section,
-      discovered: this.#discovered,
       session: this.session,
       startedAt: this.#startedAt,
     });
