@@ -1,5 +1,5 @@
 import type { EnemyKind, Level } from '../battle/level';
-import { LIBRARY_PATH, LIBRARY_SITES } from './library';
+import { READING_ROOM } from './library';
 
 /** Creatures of the Silence; the ids match the sprite sheets in `src/scenes/battleArt.ts`. */
 export const SILENT_SCORPION: EnemyKind = { id: 'scorpion', speed: 50, wardDamage: 1, health: 40, ink: 15 };
@@ -18,8 +18,8 @@ export const SHADOW: EnemyKind = { id: 'shadow', speed: 42, wardDamage: 2, healt
  */
 export const RAID_LEVEL: Level = {
   id: 'raid',
-  path: LIBRARY_PATH,
-  sites: LIBRARY_SITES,
+  path: READING_ROOM.path,
+  sites: READING_ROOM.sites,
   ward: 10,
   ink: 150,
   waves: [
