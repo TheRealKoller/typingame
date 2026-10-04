@@ -46,7 +46,8 @@ Stack: Tauri 2, TypeScript, Phaser, Vite.
 - `src/content/` – Spielinhalte als Daten: Wortliste (`words.ts`), Tutorial-Stufen mit freigeschalteten Tasten, Wörtern und Schlüsselwörtern je Stufe (`tutorial.ts`, `tutorial.test.ts` prüft Tastenregel und Präfix-Paare), Zwischensequenzen mit Texten (`cutscenes.ts`) und das erste Level mit Gegnern und Armbrustturm (`level1.ts`)
 - `src/progress/` – Fortschritt ohne Phaser: Freischaltung nach Genauigkeit (`unlock.ts`), Sitzungsstatistik (`stats.ts`), gewichtete Wortauswahl nach Fehlerquote ohne Präfix-Paare (`practice.ts`), Eingabe des Namens (`name.ts`), Spielstand (`save.ts` Format, `progress.ts` Laden/Speichern, `storage.ts` Datei bzw. localStorage)
 - `src/ui/` – wiederverwendbare Phaser-Bausteine: `KeyboardView` (Bildschirmtastatur), `StatsView` (Statistik), `WordLabel` (Wort mit getipptem Anfang)
-- `src/assets/` – Grafik: `spire/` (Foozle „Spire“, CC0: `tileset/`, `effects/`, `towers/`, `enemies/`, `builder/`); Quellen und Lizenzen in `LICENSES.md`
+- `src/assets/` – Grafik: `spire/` (Foozle „Spire“, CC0: `tileset/`, `effects/`, `towers/`, `enemies/`, `builder/`), `lucifer/` (Foozle „Lucifer“-Kacheln, CC0: `dungeon/`, `lava/`), `traps/` (Feuerfalle aus dem Foozle „Pixel Trap Pack“, CC0), `library/` (eigene Bibliotheks-Requisiten und Papiergolems, erzeugt von `src/tools/library_sprites.py`); Quellen und Lizenzen in `LICENSES.md`
+- `src/tools/` – Hilfsskripte außerhalb des Spiels: `library_sprites.py` (Python 3 + Pillow) zeichnet `src/assets/library/*.png` und die Übersicht `docs/images/bibliothek-entwurf.png`, deterministisch
 - Tests liegen neben dem Code als `*.test.ts` unter `src/` und laufen mit [Vitest](https://vitest.dev) in Node, ohne Phaser.
 - `src-tauri/` – Desktop-Hülle (Rust, Tauri 2), Konfiguration in `src-tauri/tauri.conf.json`
 
