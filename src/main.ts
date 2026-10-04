@@ -2,8 +2,10 @@ import * as Phaser from 'phaser';
 import { STAGES } from './content/tutorial';
 import { Progress } from './progress/progress';
 import { createStorage } from './progress/storage';
-import { BattleScene, type BattleSceneData } from './scenes/BattleScene';
-import { NameScene, type NameSceneData } from './scenes/NameScene';
+import { BattleScene } from './scenes/BattleScene';
+import { CutsceneScene } from './scenes/CutsceneScene';
+import { nextScene } from './scenes/flow';
+import { NameScene } from './scenes/NameScene';
 
 async function start(): Promise<void> {
   const progress = await Progress.load(createStorage(), STAGES[0]!.id);
@@ -23,10 +25,12 @@ async function start(): Promise<void> {
     // Scenes read typing from native keydown events.
     input: { keyboard: false },
   });
-  // A new game asks for the apprentice's name first.
-  const named = progress.name !== '';
-  game.scene.add('NameScene', NameScene, !named, { progress } satisfies NameSceneData);
-  game.scene.add('BattleScene', BattleScene, named, { progress } satisfies BattleSceneData);
+  game.scene.add('NameScene', NameScene);
+  game.scene.add('CutsceneScene', CutsceneScene);
+  game.scene.add('BattleScene', BattleScene);
+  // A new game asks for the name first; a cutscene not seen yet comes before its stage.
+  const first = nextScene(progress);
+  game.scene.start(first.key, first.data);
 }
 
 void start();

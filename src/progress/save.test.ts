@@ -14,6 +14,7 @@ const saved: SaveGame = {
   version: 3,
   stage: '2c',
   name: 'Ada',
+  seen: ['intro'],
   keys: { l: { hits: 4, misses: 1 }, a: { hits: 4, misses: 0 } },
   sessions: [{ startedAt: '2026-09-28T10:00:00.000Z', correct: 8, wrong: 1, activeMs: 4000 }],
 };
@@ -24,13 +25,13 @@ describe('parseSave', () => {
   });
 
   it('keeps the statistics of a save from before the tutorial stages and starts at the first stage', () => {
-    const { stage: _, name: __, ...v2 } = { ...saved, version: 2 };
-    expect(parseSave(JSON.stringify(v2), '1a')).toEqual({ ...saved, stage: '1a', name: '' });
+    const { stage: _, name: __, seen: ___, ...v2 } = { ...saved, version: 2 };
+    expect(parseSave(JSON.stringify(v2), '1a')).toEqual({ ...saved, stage: '1a', name: '', seen: [] });
   });
 
-  it('reads a save from before the name with an empty one', () => {
-    const { name: _, ...withoutName } = saved;
-    expect(parseSave(JSON.stringify(withoutName), '1a')).toEqual({ ...saved, name: '' });
+  it('reads a save from before name and cutscenes with empty ones', () => {
+    const { name: _, seen: __, ...older } = saved;
+    expect(parseSave(JSON.stringify(older), '1a')).toEqual({ ...saved, name: '', seen: [] });
   });
 
   it.each([
@@ -51,6 +52,7 @@ describe('buildSave', () => {
     const result = buildSave(saved, {
       stage: '2c',
       name: 'Ada',
+      seen: [],
       session: sessionTyping(['lala'], 'lakla'),
       startedAt: '2026-09-29T10:00:00.000Z',
     });
@@ -60,7 +62,7 @@ describe('buildSave', () => {
 
   it('appends the running session and replaces it on the next build', () => {
     const session = sessionTyping(['lala'], 'la');
-    const current = { stage: '2c', name: 'Ada', session, startedAt: '2026-09-29T10:00:00.000Z' };
+    const current = { stage: '2c', name: 'Ada', seen: [], session, startedAt: '2026-09-29T10:00:00.000Z' };
     buildSave(saved, current);
     session.record(new TypingEngine(['la']).type('l'), 1500);
 
@@ -76,6 +78,7 @@ describe('buildSave', () => {
     const result = buildSave(saved, {
       stage: '2c',
       name: 'Ada',
+      seen: [],
       session: new SessionStats(),
       startedAt: '2026-09-29T10:00:00.000Z',
     });
@@ -83,12 +86,18 @@ describe('buildSave', () => {
     expect(result.sessions).toEqual(saved.sessions);
   });
 
-  it('stores the current stage and name', () => {
-    const result = buildSave(saved, { stage: '2d', name: 'Bert', session: new SessionStats(), startedAt: '' });
-    expect([result.stage, result.name]).toEqual(['2d', 'Bert']);
+  it('stores stage, name and the cutscenes seen so far, each once', () => {
+    const result = buildSave(saved, {
+      stage: '2d',
+      name: 'Bert',
+      seen: ['intro', 'top-row'],
+      session: new SessionStats(),
+      startedAt: '',
+    });
+    expect([result.stage, result.name, result.seen]).toEqual(['2d', 'Bert', ['intro', 'top-row']]);
   });
 
   it('starts empty at the given stage', () => {
-    expect(emptySave('1a')).toEqual({ version: 3, stage: '1a', name: '', keys: {}, sessions: [] });
+    expect(emptySave('1a')).toEqual({ version: 3, stage: '1a', name: '', seen: [], keys: {}, sessions: [] });
   });
 });
