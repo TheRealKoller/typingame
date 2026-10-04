@@ -1,7 +1,7 @@
 import * as Phaser from 'phaser';
 import { Progress } from './progress/progress';
 import { createStorage } from './progress/storage';
-import { HomeRowScene, type HomeRowSceneData } from './scenes/HomeRowScene';
+import { BattleScene, type BattleSceneData } from './scenes/BattleScene';
 
 async function start(): Promise<void> {
   const progress = await Progress.load(createStorage());
@@ -16,10 +16,12 @@ async function start(): Promise<void> {
       width: 1280,
       height: 720,
     },
+    // Sharp pixels for the Spire art when the canvas is scaled.
+    pixelArt: true,
     // Scenes read typing from native keydown events.
     input: { keyboard: false },
   });
-  game.scene.add('HomeRowScene', HomeRowScene, true, { progress } satisfies HomeRowSceneData);
+  game.scene.add('BattleScene', BattleScene, true, { progress } satisfies BattleSceneData);
 }
 
 void start();

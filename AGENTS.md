@@ -39,7 +39,7 @@ Stack: Tauri 2, TypeScript, Phaser, Vite.
 
 ### Aufbau
 
-- `src/` – Spiel (TypeScript, Phaser); Einstieg `src/main.ts`; `src/scenes/HomeRowScene.ts` ist vorläufig die einzige Szene: Tippen auf der Grundreihe mit Bildschirmtastatur und Statistik, bis der Kampf-Prototyp (M2) sie ablöst
+- `src/` – Spiel (TypeScript, Phaser); Einstieg `src/main.ts`; `src/scenes/BattleScene.ts` spielt das erste Level (Karte, Bauplätze mit Wörtern, Türme, Gegner, Anzeige, Sieg und Niederlage), `src/scenes/battleArt.ts` lädt die Spire-Grafik und legt Animationen an
 - `src/keyboard/` – Tastaturlayouts als Daten (physische Taste → Zeichen, Reihe, Finger); zuerst `qwertz-de.ts`
 - `src/typing/` – Tipp-Engine: Zielauswahl per Präfix, Fehler, Wortabschluss (ohne Phaser)
 - `src/battle/` – Kampflogik ohne Phaser: Level, Gegner- und Turmtypen als Daten (`level.ts`), Wege (`path.ts`), Ablauf mit Flut und Ebbe, Wellen, Bannkreis, Türmen, Tinte, Sieg und Niederlage (`battle.ts`; die Zeit läuft nur über `update(deltaMs)`), getippte Wörter als Befehle – Bauplatz wählen, Turm bauen, Flut beenden (`commands.ts`)

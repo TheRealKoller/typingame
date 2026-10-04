@@ -6,7 +6,7 @@ import type { BuildSite, TowerKind } from './level';
 export type Command =
   | { readonly type: 'select'; readonly site: BuildSite }
   | { readonly type: 'build'; readonly site: BuildSite; readonly tower: TowerKind }
-  /** The keyword was typed but the ink did not suffice; the site stays selected. */
+  /** The keyword was typed but the ink did not suffice; the selection is released. */
   | { readonly type: 'tooExpensive'; readonly site: BuildSite; readonly tower: TowerKind }
   | { readonly type: 'endFlood' };
 
@@ -76,8 +76,9 @@ export class Commands {
       const site = this.#selected;
       const tower = this.#towers.find((kind) => kind.keyword === word);
       if (!tower) return null;
-      if (!this.#battle.build(site, tower)) return { type: 'tooExpensive', site, tower };
+      // Built or not, the player is back at the site words; staying selected without ink would only block.
       this.#selected = null;
+      if (!this.#battle.build(site, tower)) return { type: 'tooExpensive', site, tower };
       return { type: 'build', site, tower };
     }
     if (word === this.#floodWord && this.#battle.phase === 'flood') {
