@@ -45,6 +45,18 @@ export interface TowerKind {
   readonly upgrade?: TowerKind;
 }
 
+/** A special attack learnt from a scroll: typing its word hits every enemy on the path, then it needs time to return. */
+export interface Spell {
+  readonly id: string;
+  /** Shown in the battle, e.g. »Tintenregen«. */
+  readonly name: string;
+  readonly word: string;
+  /** Damage to each enemy on the path; armor does not stop it. */
+  readonly damage: number;
+  /** Time after a cast until it can be cast again, counted while the enemies advance. */
+  readonly cooldownMs: number;
+}
+
 /** Enemies of one kind within a wave, entering one after another. */
 export interface Squad {
   readonly kind: EnemyKind;

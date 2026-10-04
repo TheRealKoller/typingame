@@ -1,7 +1,8 @@
-import type { EnemyKind, Level, TowerKind } from '../battle/level';
+import type { EnemyKind, Level, Spell, TowerKind } from '../battle/level';
 import { wallShelves, type BattleMap } from './library';
 import { generateAshMap, generateWaves, type Foes, type Random } from './mapgen';
 import { SILENT_FIREBUG, SILENT_SCORPION } from './raid';
+import { INK_RAIN } from './spells';
 import { CROSSBOW, FROST_CRYSTAL, INK_SLINGER } from './towers';
 
 /** A place on the world map held by the Silence; typing its word selects it. */
@@ -16,7 +17,12 @@ export interface WorldPoint {
   readonly difficulty: number;
   /** A fixed map for special places; the others get a fresh one each time. */
   readonly map?: BattleMap;
+  /** Found when the place is freed the first time; kept for every later battle. */
+  readonly reward?: Reward;
 }
+
+/** A book cart brings a new kind of tower; a lost scroll teaches a spell. */
+export type Reward = { readonly kind: 'cart'; readonly tower: TowerKind } | { readonly kind: 'scroll'; readonly spell: Spell };
 
 /** A region of the world map; only the ash fields can be entered so far. */
 export interface Region {
@@ -28,13 +34,6 @@ export interface Region {
 
 /** Ink at the start of a battle on the journey: enough for two towers. */
 const START_INK = 100;
-
-/** Towers on the journey and the difficulty from which each can be built: one more at each of the first places. */
-const JOURNEY_TOWERS: readonly { readonly tower: TowerKind; readonly from: number }[] = [
-  { tower: CROSSBOW, from: 1 },
-  { tower: INK_SLINGER, from: 2 },
-  { tower: FROST_CRYSTAL, from: 3 },
-];
 
 /** A wasp of the Silence: fast and frail, in swarms that slip past slow towers. */
 export const SILENT_WASP: EnemyKind = { id: 'firewasp', speed: 75, wardDamage: 1, health: 12, ink: 8 };
@@ -124,9 +123,9 @@ export const CELLAR: BattleMap = {
 
 /** The ash fields around the burnt library, in the order they open up. */
 export const WORLD_POINTS: readonly WorldPoint[] = [
-  { id: 'ruin', name: 'Bibliotheksruine', word: 'ruine', x: 170, y: 470, difficulty: 1, map: RUIN },
-  { id: 'smoke', name: 'Rauchsenke', word: 'rauch', x: 360, y: 300, difficulty: 2 },
-  { id: 'cellar', name: 'Kellergewölbe', word: 'keller', x: 400, y: 580, difficulty: 3, map: CELLAR },
+  { id: 'ruin', name: 'Bibliotheksruine', word: 'ruine', x: 170, y: 470, difficulty: 1, map: RUIN, reward: { kind: 'cart', tower: INK_SLINGER } },
+  { id: 'smoke', name: 'Rauchsenke', word: 'rauch', x: 360, y: 300, difficulty: 2, reward: { kind: 'scroll', spell: INK_RAIN } },
+  { id: 'cellar', name: 'Kellergewölbe', word: 'keller', x: 400, y: 580, difficulty: 3, map: CELLAR, reward: { kind: 'cart', tower: FROST_CRYSTAL } },
   { id: 'embers', name: 'Glutfeld', word: 'glut', x: 600, y: 430, difficulty: 4 },
 ];
 
@@ -155,19 +154,38 @@ export function worldPoint(id: string): WorldPoint {
   return point;
 }
 
-/** A battle at a place of the world map: where it is fought, what comes and what can be built. */
+/** A battle at a place of the world map: where it is fought, what comes, what can be built and cast. */
 export interface JourneyBattle {
   readonly map: BattleMap;
   readonly level: Level;
   readonly towers: readonly TowerKind[];
+  readonly spells: readonly Spell[];
 }
 
-/** The battle at `point`: its fixed map or a fresh one, and fresh waves for its difficulty. */
-export function journeyBattle(point: WorldPoint, random: Random): JourneyBattle {
+/** What a reward brings, as the apprentice notes it after the battle. */
+export function rewardText(reward: Reward): string {
+  return reward.kind === 'cart'
+    ? `Gefunden: ein Bücherkarren mit Bauplänen. Neu baubar: ${reward.tower.name} (»${reward.tower.keyword}«).`
+    : `Gefunden: eine verlorene Schriftrolle. Neuer Zauber: ${reward.spell.name} (»${reward.spell.word}«) – trifft bei Ebbe jeden Gegner auf dem Weg.`;
+}
+
+/** Rewards of the places freed so far, in the order of the world map. */
+export function rewardsFor(freed: ReadonlySet<string>): Reward[] {
+  return WORLD_POINTS.flatMap((point) => (point.reward && freed.has(point.id) ? [point.reward] : []));
+}
+
+/**
+ * The battle at `point`: its fixed map or a fresh one, fresh waves for its
+ * difficulty, the crossbow plus every tower from a book cart and every spell
+ * from a scroll found at the places in `freed`.
+ */
+export function journeyBattle(point: WorldPoint, random: Random, freed: ReadonlySet<string>): JourneyBattle {
   const map = point.map ?? generateAshMap(random, point.id, point.name);
   const waves = generateWaves(random, point.difficulty, ASH_FOES);
-  const towers = JOURNEY_TOWERS.filter((entry) => point.difficulty >= entry.from).map((entry) => entry.tower);
-  return { map, towers, level: { id: `journey-${point.id}`, path: map.path, sites: map.sites, ward: 10, ink: START_INK, waves } };
+  const rewards = rewardsFor(freed);
+  const towers = [CROSSBOW, ...rewards.flatMap((reward) => (reward.kind === 'cart' ? [reward.tower] : []))];
+  const spells = rewards.flatMap((reward) => (reward.kind === 'scroll' ? [reward.spell] : []));
+  return { map, towers, spells, level: { id: `journey-${point.id}`, path: map.path, sites: map.sites, ward: 10, ink: START_INK, waves } };
 }
 
 /** Freed points are won; open ones can be fought next; the rest stay locked. */

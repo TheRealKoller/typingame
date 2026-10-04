@@ -1,4 +1,4 @@
-import type { BuildSite, EnemyKind, Level, TowerKind } from './level';
+import type { BuildSite, EnemyKind, Level, Spell, TowerKind } from './level';
 import { pathLength, pointAt, type Point } from './path';
 
 /**
@@ -69,6 +69,8 @@ export class Battle {
   #spawned: number[] = [];
   /** Time since the current wave began. */
   #waveMs = 0;
+  /** Time until each spell cast so far can be cast again, by spell id. */
+  readonly #spellCooldowns = new Map<string, number>();
 
   constructor(level: Level) {
     if (level.path.length < 2) throw new Error(`level ${level.id}: the path needs at least two points`);
@@ -146,6 +148,21 @@ export class Battle {
     return true;
   }
 
+  /** Time until `spell` can be cast again; 0 when it is ready. */
+  spellReadyIn(spell: Spell): number {
+    return this.#spellCooldowns.get(spell.id) ?? 0;
+  }
+
+  /**
+   * Casts `spell` on every enemy on the path while a wave advances; the
+   * defeated leave their ink. Null if it is not ready or no wave advances.
+   */
+  cast(spell: Spell): Hit[] | null {
+    if (this.#phase !== 'ebb' || this.spellReadyIn(spell) > 0) return null;
+    this.#spellCooldowns.set(spell.id, spell.cooldownMs);
+    return [...this.#enemies].map((enemy) => this.#damage(enemy, spell.damage));
+  }
+
   /** Ends the flood when the player is ready; the next wave starts to advance. */
   endFlood(): void {
     if (this.#phase !== 'flood') return;
@@ -172,6 +189,7 @@ export class Battle {
       this.#spawned[i] = spawned;
     });
     this.#waveMs += deltaMs;
+    for (const [id, left] of this.#spellCooldowns) this.#spellCooldowns.set(id, Math.max(0, left - deltaMs));
 
     for (const enemy of this.#enemies) {
       // The slowed part of the step runs at the reduced speed, the rest at full speed.
@@ -228,13 +246,18 @@ export class Battle {
     return shots;
   }
 
-  /** `kind` hits `enemy`: damage, maybe a slowdown; a defeated enemy leaves its ink and the battle. */
+  /** `kind` hits `enemy`: damage through its armor, maybe a slowdown. */
   #hit(enemy: Enemy, kind: TowerKind): Hit {
-    enemy.health -= kind.damage * (1 - (enemy.kind.armor ?? 0));
     if (kind.slow) {
       enemy.slowMs = kind.slow.durationMs;
       enemy.slowFactor = kind.slow.factor;
     }
+    return this.#damage(enemy, kind.damage * (1 - (enemy.kind.armor ?? 0)));
+  }
+
+  /** `enemy` loses `amount` health; a defeated enemy leaves its ink and the battle. */
+  #damage(enemy: Enemy, amount: number): Hit {
+    enemy.health -= amount;
     const defeated = enemy.health <= 0;
     if (defeated) {
       this.#ink += enemy.kind.ink;

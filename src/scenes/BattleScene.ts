@@ -1,10 +1,10 @@
 import * as Phaser from 'phaser';
 import { Battle, type Enemy, type Hit, type Shot, type Tower } from '../battle/battle';
 import { Commands, type Command } from '../battle/commands';
-import type { BuildSite, TowerKind } from '../battle/level';
+import type { BuildSite, Spell, TowerKind } from '../battle/level';
 import type { Point } from '../battle/path';
 import { MASTER_NAME, MASTER_VERDICTS, pageText } from '../content/cutscenes';
-import { JOURNEY_VERDICTS, journeyBattle, worldPoint, type WorldPoint } from '../content/journey';
+import { JOURNEY_VERDICTS, journeyBattle, rewardText, worldPoint, type Reward, type WorldPoint } from '../content/journey';
 import { practiceLevel, practiceMap, READING_ROOM, type BattleMap, type Prop } from '../content/library';
 import { RAID_LEVEL } from '../content/raid';
 import { JOURNEY, RAID, allKeysSetup, STAGES, stageIndex, stageSetup, type StageSetup } from '../content/tutorial';
@@ -72,11 +72,15 @@ const LABEL_OFFSET = 52;
 /** Over a built tower the word sits higher, clear of the weapon, but stays on screen. */
 const TOWER_LABEL_OFFSET = 112;
 const TOWER_LABEL_OFFSET_MIN = 20;
+/** Ready spells stand this far above the ward circle. */
+const SPELL_LABEL_OFFSET = 70;
 const WORD_SIZE = 30;
 /** Distance between the tower keywords shown side by side at a selected site. */
 const KEYWORD_SPACING = 130;
 /** Tint of an enemy slowed by frost. */
 const FROST_TINT = 0x9fd4ff;
+/** Spells and rewards are written in ink blue. */
+const SPELL_TEXT = '#2b3a6b';
 /** Longest step fed to the battle, so a hidden window does not make enemies jump. */
 const MAX_STEP_MS = 100;
 const PROJECTILE_SPEED = 900;
@@ -161,6 +165,9 @@ export class BattleScene extends Phaser.Scene {
   /** Position in `STAGES` and what it unlocks. */
   #stage = 0;
   #setup!: StageSetup;
+  /** Spells from the scrolls found so far; only on the journey. */
+  #spells: readonly Spell[] = [];
+  #spellText!: Phaser.GameObjects.Text;
   /** Null in the raid and on the journey: there is nothing left to unlock. */
   #unlock: UnlockTracker | null = null;
   #unlockReached = false;
@@ -186,7 +193,8 @@ export class BattleScene extends Phaser.Scene {
     this.#point = this.#progress.stage === JOURNEY && data.point ? worldPoint(data.point) : null;
     const tutorial = !this.#raid && !this.#point;
     // The raid and the journey are fought with every key of the tutorial; a place of the journey brings its own map and towers.
-    const journey = this.#point ? journeyBattle(this.#point, Math.random) : null;
+    const journey = this.#point ? journeyBattle(this.#point, Math.random, this.#progress.freed) : null;
+    this.#spells = journey?.spells ?? [];
     this.#stage = tutorial ? stageIndex(this.#progress.stage) : STAGES.length - 1;
     const setup = tutorial ? stageSetup(this.#stage) : allKeysSetup();
     this.#setup = journey ? { ...setup, towers: journey.towers } : setup;
@@ -302,7 +310,7 @@ export class BattleScene extends Phaser.Scene {
 
   #newCommands(): Commands {
     const { towers, words } = this.#setup;
-    return new Commands(this.#battle, towers, words, { keys: this.#progress.keys });
+    return new Commands(this.#battle, towers, words, { keys: this.#progress.keys }, this.#spells);
   }
 
   /**
@@ -361,6 +369,7 @@ export class BattleScene extends Phaser.Scene {
     if (command?.type === 'build' || command?.type === 'upgrade') this.#showTower(this.#battle.towerAt(command.site));
     if (command?.type === 'tooExpensive') this.#float(command.site, 'Zu wenig Tinte', '#8a2f2f');
     if (command?.type === 'strike') this.#showStrike(command.enemy, command.defeated);
+    if (command?.type === 'cast') this.#showCast(command.hits);
   }
 
   /** Brings words, typing engine, keyboard and HUD in line with the battle. */
@@ -382,9 +391,20 @@ export class BattleScene extends Phaser.Scene {
     this.#updateHud();
   }
 
-  /** Words standing on the map: site words, or the tower keywords at a selected site. Enemy words follow their enemies (`#syncEnemyLabels`). */
+  /** Words standing on the map: site words or the choices at a selected site, and ready spells. Enemy words follow their enemies (`#syncEnemyLabels`). */
   #placedWords(): Placed[] {
     if (this.#ended()) return [];
+    return [...this.#siteAndKeywords(), ...this.#spellWords()];
+  }
+
+  /** Ready spells stand over the ward circle, one above the other. */
+  #spellWords(): Placed[] {
+    const end = this.#battle.level.path[this.#battle.level.path.length - 1]!;
+    const x = Math.min(end.x, this.scale.width - KEYWORD_SPACING / 2 - 20);
+    return this.#commands.readySpells.map((spell, i) => ({ word: spell.word, x, y: Math.max(TOWER_LABEL_OFFSET_MIN, end.y - SPELL_LABEL_OFFSET - i * 36) }));
+  }
+
+  #siteAndKeywords(): Placed[] {
     const selected = this.#commands.selected;
     if (selected) {
       // The keywords, or the upgrade word of a tower, stand side by side above the site, kept on screen.
@@ -581,6 +601,7 @@ export class BattleScene extends Phaser.Scene {
     this.#phaseText = this.add.text(28, 502, '', { ...style, wordWrap: { width: 400 } }).setDepth(ON_DESK_DEPTH);
     this.#inkText = this.add.text(28, 636, '', style).setDepth(ON_DESK_DEPTH);
     this.#wardText = this.add.text(28, 668, '', style).setDepth(ON_DESK_DEPTH);
+    this.#spellText = this.add.text(28, 604, '', { ...style, color: SPELL_TEXT }).setDepth(ON_DESK_DEPTH);
   }
 
   #updateHud(): void {
@@ -603,6 +624,15 @@ export class BattleScene extends Phaser.Scene {
     this.#wavePrompt.setVisible(battle.phase === 'flood');
     this.#inkText.setText(`Tinte: ${battle.ink}`);
     this.#wardText.setText(`Bannkreis: ${battle.ward} / ${battle.level.ward}`);
+    this.#spellText.setText(
+      this.#spells
+        .map((spell) => {
+          const left = battle.spellReadyIn(spell);
+          if (left > 0) return `${spell.name}: wieder in ${Math.ceil(left / 1000)} s`;
+          return battle.phase === 'ebb' ? `${spell.name}: bereit – »${spell.word}«` : `${spell.name}: bei Ebbe bereit`;
+        })
+        .join('\n'),
+    );
 
     const strength = battle.ward / battle.level.ward;
     this.#ward
@@ -615,10 +645,13 @@ export class BattleScene extends Phaser.Scene {
       .strokeCircle(0, 0, WARD_RADIUS - 10);
 
     if (this.#ended() && !this.#endPanel) {
+      // A place freed for the first time hands over its reward.
+      const point = battle.phase === 'won' ? this.#point : null;
+      const reward = point && !this.#progress.freed.has(point.id) ? (point.reward ?? null) : null;
       if (this.#raid) this.#endRaid();
-      else this.#showEnd();
-      if (this.#point && battle.phase === 'won') {
-        this.#progress.free(this.#point.id);
+      else this.#showEnd(reward);
+      if (point) {
+        this.#progress.free(point.id);
         void this.#progress.save();
       }
     }
@@ -701,6 +734,26 @@ export class BattleScene extends Phaser.Scene {
       this.tweens.add({ targets: view.sprite, alpha: 0, duration: 400, onComplete: () => view.sprite.destroy() });
     });
     this.#float(view.sprite, `+${enemy.kind.ink} Tinte`, '#2b3a6b');
+  }
+
+  /** A spell was cast: ink rains on every enemy hit, and the hits land at once. */
+  #showCast(hits: readonly Hit[]): void {
+    this.cameras.main.flash(250, 43, 58, 107);
+    for (const hit of hits) {
+      const view = this.#enemies.get(hit.enemy.id);
+      if (!view) continue;
+      if (hit.defeated) this.#enemies.delete(hit.enemy.id);
+      const drop = this.add.circle(view.sprite.x, view.sprite.y - 60, 10, 0x2b3a6b, 0.9).setDepth(902);
+      this.tweens.add({
+        targets: drop,
+        y: view.sprite.y,
+        duration: 220,
+        onComplete: () => {
+          drop.destroy();
+          this.#land(hit, view);
+        },
+      });
+    }
   }
 
   #drawHealth(view: EnemyView, enemy: Enemy, at: Point): void {
@@ -875,9 +928,10 @@ export class BattleScene extends Phaser.Scene {
 
   /**
    * After a practice battle the master has a word for it, on the journey the
-   * apprentice; Enter starts the next practice battle or returns to the map.
+   * apprentice, together with a reward found; Enter starts the next practice
+   * battle or returns to the map.
    */
-  #showEnd(): void {
+  #showEnd(reward: Reward | null): void {
     const outcome = this.#battle.phase === 'won' ? 'won' : 'lost';
     const lines = this.#point ? JOURNEY_VERDICTS[outcome] : MASTER_VERDICTS[outcome];
     const line = lines[Math.floor(Math.random() * lines.length)] ?? '';
@@ -897,8 +951,17 @@ export class BattleScene extends Phaser.Scene {
     const hint = this.add
       .text(250, 70, this.#point ? 'Enter: zur Karte' : 'Enter: weiter', { fontFamily: 'sans-serif', fontSize: '18px', color: '#7a6a5a' })
       .setOrigin(1, 1);
-    const panel = this.add.rectangle(0, 0, 560, 180, PAPER, 0.97).setStrokeStyle(3, PAPER_EDGE);
-    this.#endPanel = this.add.container(this.scale.width / 2, 230, [panel, speaker, text, hint]).setDepth(1000);
+    const found = reward
+      ? this.add
+          .text(-250, text.y + text.height + 12, rewardText(reward), { fontFamily: 'serif', fontSize: '22px', color: SPELL_TEXT, wordWrap: { width: 500 } })
+          .setOrigin(0, 0)
+      : null;
+    // A reward makes the panel taller; the hint stays at its bottom edge.
+    const extra = found ? Math.max(0, found.y + found.height + 20 - 40) : 0;
+    hint.setY(70 + extra);
+    const panel = this.add.rectangle(0, extra / 2, 560, 180 + extra, PAPER, 0.97).setStrokeStyle(3, PAPER_EDGE);
+    const parts = found ? [panel, speaker, text, found, hint] : [panel, speaker, text, hint];
+    this.#endPanel = this.add.container(this.scale.width / 2, 230 - extra / 2, parts).setDepth(1000);
   }
 
   #showOverview(): void {
