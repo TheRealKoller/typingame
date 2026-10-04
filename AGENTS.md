@@ -4,7 +4,7 @@ Diese Datei gilt für jede KI-Sitzung in diesem Repository. Sie beschreibt, **wi
 
 ## Projekt
 
-Ein ruhiges Desktop-Spiel zum Lernen des Zehnfingersystems (Deutsch, QWERTZ). Man beginnt als Baby, das sprechen lernt; mit jeder neuen Taste wächst die Welt.
+Ein Tower-Defense-Spiel zum Lernen des Zehnfingersystems (Deutsch, QWERTZ). Getippte Worte bauen Türme, rüsten sie auf und greifen an; man beginnt als Lehrling in einer Bibliothek und lernt Reihe für Reihe.
 Stack: Tauri 2, TypeScript, Phaser, Vite.
 
 ## Entwicklung
@@ -93,7 +93,7 @@ Issue → Branch → Umsetzung + Test → Pull Request → Nutzer testet → Nut
 ## Issues
 
 - **Labels:** `bug`, `feature`, `idee`, `experiment`, `grafik`, `inhalt`, `documentation`
-- **Milestones:** `M0` bis `M7`, siehe Designdokument Abschnitt 8. Ideen ohne klare Zuordnung bleiben ohne Milestone.
+- **Milestones:** `M0` bis `M7`, siehe Designdokument Abschnitt 9. Ideen ohne klare Zuordnung bleiben ohne Milestone.
 - **Bugs** enthalten: was passiert ist, was erwartet war, Schritte zum Nachstellen.
 - **Features** enthalten: Umfang und Akzeptanzkriterien.
 
