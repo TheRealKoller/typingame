@@ -74,6 +74,12 @@ export class HomeRowScene extends Phaser.Scene {
       this.#showOverview();
       return;
     }
+    if (event.key === 'Escape') {
+      // Cancelling is no keystroke: it counts neither as right nor as wrong.
+      this.#engine.cancel();
+      this.#render();
+      return;
+    }
     // Only printable single characters count as typing; shortcuts and named keys are ignored.
     if (event.repeat || event.ctrlKey || event.altKey || event.metaKey || [...event.key].length !== 1) return;
 

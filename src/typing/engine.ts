@@ -12,8 +12,8 @@ export type TypingEvent =
  * Targets are chosen by prefix: every visible word that starts with the typed
  * prefix stays a candidate. A word completes as soon as the prefix equals it,
  * so a word that is the prefix of another visible word ("da", "dada") wins and
- * the longer one cannot be typed while both are visible. There is no way to
- * abandon a started word.
+ * the longer one cannot be typed while both are visible. `cancel()` abandons a
+ * started word so another target can be chosen.
  */
 export class TypingEngine {
   #words: readonly string[];
@@ -45,6 +45,11 @@ export class TypingEngine {
     if (this.candidates.length === 0) {
       this.#typed = '';
     }
+  }
+
+  /** Abandons the started word; every visible word is a candidate again. */
+  cancel(): void {
+    this.#typed = '';
   }
 
   /** Processes one typed character. */
