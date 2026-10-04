@@ -137,10 +137,18 @@ export interface TowerArt {
   readonly weaponAttack: string;
   readonly projectile: string;
   readonly impact: string;
+  readonly shotScale: number;
 }
 
-function towerArt(id: string): TowerArt {
-  return { base: `${id}-base`, weapon: `${id}-weapon`, weaponAttack: `${id}-weapon-attack`, projectile: `${id}-projectile`, impact: `${id}-impact` };
+function towerArt(id: string, source: TowerSource): TowerArt {
+  return {
+    base: `${id}-base`,
+    weapon: `${id}-weapon`,
+    weaponAttack: `${id}-weapon-attack`,
+    projectile: `${id}-projectile`,
+    impact: `${id}-impact`,
+    shotScale: source.shotScale ?? 1,
+  };
 }
 
 /** Spire tower sheets: bases 64 px wide, weapons 96 × 96, impacts 64 × 64 per frame. */
@@ -151,6 +159,8 @@ interface TowerSource {
   readonly projectile: string;
   readonly projectileSize: { readonly width: number; readonly height: number };
   readonly impact: string;
+  /** Drawing scale of projectile and impact; the slinger's blot is drawn larger than its sheet. */
+  readonly shotScale?: number;
 }
 
 const TOWER_SOURCES: Readonly<Record<string, TowerSource>> = {
@@ -180,10 +190,14 @@ const TOWER_SOURCES: Readonly<Record<string, TowerSource>> = {
     projectile: tower03ProjectileImage,
     projectileSize: { width: 10, height: 10 },
     impact: tower03ImpactImage,
+    // The blot splashes 70 px around its target; drawn this large, the impact shows about that much.
+    shotScale: 2.2,
   },
 };
 
-export const TOWER_ART: Readonly<Record<string, TowerArt>> = Object.fromEntries(Object.keys(TOWER_SOURCES).map((id) => [id, towerArt(id)]));
+export const TOWER_ART: Readonly<Record<string, TowerArt>> = Object.fromEntries(
+  Object.entries(TOWER_SOURCES).map(([id, source]) => [id, towerArt(id, source)]),
+);
 
 export function walkAnimation(kind: string, heading: Heading): string {
   return `${kind}-walk-${heading}`;

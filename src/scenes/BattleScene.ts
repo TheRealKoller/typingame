@@ -798,7 +798,7 @@ export class BattleScene extends Phaser.Scene {
     // The Spire weapons and projectiles point up.
     view.weapon.setRotation(angle + Math.PI / 2).play(art.weaponAttack);
 
-    const projectile = this.add.image(from.x, from.y, art.projectile).setRotation(angle + Math.PI / 2).setDepth(900);
+    const projectile = this.add.image(from.x, from.y, art.projectile).setRotation(angle + Math.PI / 2).setScale(art.shotScale).setDepth(900);
     const duration = (Phaser.Math.Distance.Between(from.x, from.y, target.x, target.y) / PROJECTILE_SPEED) * 1000;
     this.tweens.addCounter({
       from: 0,
@@ -812,7 +812,7 @@ export class BattleScene extends Phaser.Scene {
       },
       onComplete: () => {
         projectile.destroy();
-        const impact = this.add.sprite(target.x, target.y, art.impact).setDepth(901).play(art.impact);
+        const impact = this.add.sprite(target.x, target.y, art.impact).setScale(art.shotScale).setDepth(901).play(art.impact);
         impact.once(Phaser.Animations.Events.ANIMATION_COMPLETE, () => impact.destroy());
         for (const { hit, enemyView: other } of hits) this.#land(hit, other);
       },
