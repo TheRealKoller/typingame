@@ -128,6 +128,14 @@ Wie sich Atramentus zeigt (vorläufig, ein Schritt je Gebiet):
 - Zwischendurch oder nach einem Bosskampf gewinnt man Belohnungen, z. B. einen **Bücherkarren** oder eine **verlorene Schriftrolle**.
 - Eine **Schriftrolle** schaltet einen neuen Spezialangriff frei, ein **Bücherkarren** einen neuen Turmtyp.
 
+### 4.9 Weltkarte
+
+- Nach dem Überfall zeigt die Weltkarte die Gebiete; zunächst sind nur die **Aschefelder** betretbar, die übrigen stehen blass und verborgen da.
+- Jeder Ort trägt ein Wort; tippt man es, ist er gewählt, **Enter** startet den Kampf, Esc wählt ab. Das Wählen ist keine Übung und zählt nicht zur Statistik.
+- Am Anfang ist nur die **Bibliotheksruine** offen. Ein Sieg befreit den Ort und öffnet die verbundenen Orte; befreite Orte lassen sich erneut spielen.
+- Nach dem Kampf kommentiert der Lehrling das Ergebnis; Enter führt zurück zur Karte.
+- Die Orte der Aschefelder leihen sich vorerst die Karten der Bibliothek, eigene Karten folgen mit #107.
+
 ## 5. Progression
 
 Bis alle Buchstaben beherrscht sind, ist das Spiel ein **Tutorial** in der Bibliothek. Erst danach beginnt das Hauptspiel auf der Weltkarte. **Groß-/Kleinschreibung kommt erst auf der Reise** – vorher wird alles kleingeschrieben.
