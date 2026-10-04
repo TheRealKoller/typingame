@@ -165,6 +165,15 @@ export interface Foes {
   readonly large: EnemyKind;
 }
 
+/** Enemies carry words only from this difficulty on; the first places are about building. */
+export const MARKED_FROM = 3;
+/** On the journey defeated enemies leave less ink than in the library, so towers stay scarce. */
+const INK_SHARE = 0.6;
+
+function leaner(kind: EnemyKind): EnemyKind {
+  return { ...kind, ink: Math.round(kind.ink * INK_SHARE) };
+}
+
 /** How many waves a battle of `difficulty` (1 for the first place, higher further on) has. */
 export function waveCount(difficulty: number): number {
   return 1 + Math.ceil((difficulty + 1) / 2);
@@ -173,26 +182,26 @@ export function waveCount(difficulty: number): number {
 /**
  * Waves for a battle of `difficulty`: more and tougher enemies from wave to
  * wave and from place to place. Large ones join from the second place on, in
- * later waves together with the small ones. Every third small one glows and
- * carries a word.
+ * later waves together with the small ones. From `MARKED_FROM` on every third
+ * small one glows and carries a word. They all leave less ink than in the library.
  */
 export function generateWaves(random: Random, difficulty: number, foes: Foes): Wave[] {
   const waves: Wave[] = [];
   const count = waveCount(difficulty);
   for (let i = 0; i < count; i++) {
-    const factor = 1 + 0.2 * (difficulty - 1) + 0.15 * i;
+    const factor = 1.4 + 0.07 * (difficulty - 1) + 0.15 * i;
     const small: Squad = {
-      kind: stronger(foes.small, factor),
+      kind: leaner(stronger(foes.small, factor)),
       count: 4 + difficulty + 2 * i + Math.floor(random() * 2),
       spacingMs: Math.max(900, 1700 - 120 * difficulty - 80 * i),
-      markEvery: 3,
+      ...(difficulty >= MARKED_FROM ? { markEvery: 3 } : {}),
     };
-    const largeCount = Math.min(i, difficulty - 1);
+    const largeCount = Math.min(i, difficulty - 1, 2);
     if (largeCount === 0) {
       waves.push([small]);
       continue;
     }
-    const large: Squad = { kind: stronger(foes.large, factor), count: largeCount, spacingMs: 2600, delayMs: 1500 + Math.floor(random() * 1500) };
+    const large: Squad = { kind: leaner(stronger(foes.large, factor)), count: largeCount, spacingMs: 2600, delayMs: 1500 + Math.floor(random() * 1500) };
     waves.push(i === count - 1 || random() < 0.5 ? [small, large] : [large]);
   }
   return waves;

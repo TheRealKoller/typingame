@@ -1,7 +1,7 @@
 import { describe, expect, it } from 'vitest';
 import { CELLAR, RUIN } from './journey';
 import { PRACTICE_MAPS, type BattleMap } from './library';
-import { distanceToPath, generateAshMap, generateWaves, LAYOUT, seededRandom, siteFits, touchesPath, waveCount } from './mapgen';
+import { distanceToPath, generateAshMap, generateWaves, LAYOUT, MARKED_FROM, seededRandom, siteFits, touchesPath, waveCount } from './mapgen';
 import { SILENT_FIREBUG, SILENT_SCORPION } from './raid';
 
 const FIXED_MAPS: readonly BattleMap[] = [...PRACTICE_MAPS, RUIN, CELLAR];
@@ -67,6 +67,12 @@ describe('generated waves', () => {
     const first = [1, 2, 3, 4].map((difficulty) => generateWaves(seededRandom(1), difficulty, foes)[0]![0]!.kind.health);
     expect(new Set(first).size).toBe(first.length);
     expect(first).toEqual([...first].sort((a, b) => a - b));
+  });
+
+  it('let enemies carry words only at later places', () => {
+    const marked = (difficulty: number) => generateWaves(seededRandom(3), difficulty, foes).flat().some((squad) => squad.markEvery);
+    expect([1, 2, 3, 4].map(marked)).toEqual([1, 2, 3, 4].map((difficulty) => difficulty >= MARKED_FROM));
+    expect(marked(1)).toBe(false);
   });
 
   it('send large enemies only from the second place on, never in the first wave', () => {

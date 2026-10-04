@@ -25,6 +25,9 @@ export interface Region {
   readonly open: boolean;
 }
 
+/** Ink at the start of a battle on the journey: enough for two towers. */
+const START_INK = 100;
+
 /** The creatures of the Silence in the ash fields. */
 const ASH_FOES: Foes = { small: SILENT_SCORPION, large: SILENT_FIREBUG };
 
@@ -136,7 +139,7 @@ export interface JourneyBattle {
 export function journeyBattle(point: WorldPoint, random: Random): JourneyBattle {
   const map = point.map ?? generateAshMap(random, point.id, point.name);
   const waves = generateWaves(random, point.difficulty, ASH_FOES);
-  return { map, level: { id: `journey-${point.id}`, path: map.path, sites: map.sites, ward: 10, ink: 150, waves } };
+  return { map, level: { id: `journey-${point.id}`, path: map.path, sites: map.sites, ward: 10, ink: START_INK, waves } };
 }
 
 /** Freed points are won; open ones can be fought next; the rest stay locked. */
