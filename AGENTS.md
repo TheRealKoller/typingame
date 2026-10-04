@@ -42,7 +42,8 @@ Stack: Tauri 2, TypeScript, Phaser, Vite.
 - `src/` – Spiel (TypeScript, Phaser); Einstieg `src/main.ts`; `src/scenes/HomeRowScene.ts` ist vorläufig die einzige Szene: Tippen auf der Grundreihe mit Bildschirmtastatur und Statistik, bis der Kampf-Prototyp (M2) sie ablöst
 - `src/keyboard/` – Tastaturlayouts als Daten (physische Taste → Zeichen, Reihe, Finger); zuerst `qwertz-de.ts`
 - `src/typing/` – Tipp-Engine: Zielauswahl per Präfix, Fehler, Wortabschluss (ohne Phaser)
-- `src/content/` – Spielinhalte als Daten, vorerst die Wortliste der Grundreihe (`words.ts`); `words.test.ts` prüft die Tastenregel
+- `src/battle/` – Kampflogik ohne Phaser: Level als Daten (`level.ts`), Wege (`path.ts`), Ablauf mit Flut und Ebbe, Wellen, Bannkreis, Sieg und Niederlage (`battle.ts`); die Zeit läuft nur über `update(deltaMs)`
+- `src/content/` – Spielinhalte als Daten: Wortliste der Grundreihe (`words.ts`, `words.test.ts` prüft die Tastenregel) und das erste Level (`level1.ts`)
 - `src/progress/` – Fortschritt ohne Phaser: Freischaltung nach Genauigkeit (`unlock.ts`), Sitzungsstatistik (`stats.ts`), gewichtete Wortauswahl nach Fehlerquote ohne Präfix-Paare (`practice.ts`), Spielstand (`save.ts` Format, `progress.ts` Laden/Speichern, `storage.ts` Datei bzw. localStorage)
 - `src/ui/` – wiederverwendbare Phaser-Bausteine: `KeyboardView` (Bildschirmtastatur), `StatsView` (Statistik), `WordLabel` (Wort mit getipptem Anfang)
 - Tests liegen neben dem Code als `*.test.ts` unter `src/` und laufen mit [Vitest](https://vitest.dev) in Node, ohne Phaser.
