@@ -1,3 +1,5 @@
+import { JOURNEY, RAID } from './tutorial';
+
 /** Who speaks a page; the narrator has no name on screen. */
 export type Speaker = 'narrator' | 'master' | 'apprentice';
 
@@ -9,8 +11,8 @@ export interface CutscenePage {
 
 export interface Cutscene {
   readonly id: string;
-  /** Shown before the battle of this tutorial stage starts; none for scenes the story triggers itself. */
-  readonly beforeStage?: string;
+  /** Shown once play reaches this stage: a tutorial stage, the raid or the journey. */
+  readonly beforeStage: string;
   readonly pages: readonly CutscenePage[];
 }
 
@@ -56,6 +58,7 @@ export const CUTSCENES: readonly Cutscene[] = [
   },
   {
     id: 'raid-before',
+    beforeStage: RAID,
     pages: [
       { speaker: 'narrator', text: 'Es war der Abend, an dem {name} das letzte Zeichen lernte. Draußen verstummten die Vögel. Dann die Glocken. Dann der Wind.' },
       { speaker: 'apprentice', text: 'Meisterin? Hört Ihr das?' },
@@ -65,6 +68,7 @@ export const CUTSCENES: readonly Cutscene[] = [
   },
   {
     id: 'raid-after',
+    beforeStage: JOURNEY,
     pages: [
       { speaker: 'narrator', text: 'Die Bibliothek brannte bis zum Morgen. Bücher, die dreihundert Jahre überdauert hatten, wurden in einer Nacht zu Asche.' },
       { speaker: 'narrator', text: 'Kalliope stand im Lesesaal, als die Schatten kamen. Ihr letztes Wort hallte noch, als sie schon fort war – ein Bann, der über das Land rollte wie eine Flut.' },

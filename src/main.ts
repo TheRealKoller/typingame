@@ -4,6 +4,7 @@ import { Progress } from './progress/progress';
 import { createStorage } from './progress/storage';
 import { BattleScene } from './scenes/BattleScene';
 import { CutsceneScene } from './scenes/CutsceneScene';
+import { EndScene } from './scenes/EndScene';
 import { nextScene } from './scenes/flow';
 import { NameScene } from './scenes/NameScene';
 
@@ -27,6 +28,7 @@ async function start(): Promise<void> {
   });
   game.scene.add('NameScene', NameScene);
   game.scene.add('CutsceneScene', CutsceneScene);
+  game.scene.add('EndScene', EndScene);
   game.scene.add('BattleScene', BattleScene);
   // A new game asks for the name first; a cutscene not seen yet comes before its stage.
   const first = nextScene(progress);

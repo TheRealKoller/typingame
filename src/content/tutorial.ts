@@ -25,9 +25,12 @@ export const STAGES: readonly Stage[] = [
   { id: '3d', section: 3, newKeys: [' '] },
 ];
 
+/** Progress after the last stage: the raid on the library, then the journey (world map, milestone 4). */
+export const RAID = 'raid';
+export const JOURNEY = 'journey';
+
 /** Keyword choices, most fitting first; a stage uses the first one it can type. */
 const TOWER_KEYWORDS = ['jagd', 'lass'];
-const FLOOD_WORDS = ['los', 'ja'];
 /** A stage shows only words with its new keys if there are at least this many. */
 const MIN_FOCUSED_WORDS = 8;
 
@@ -57,11 +60,10 @@ export interface StageSetup {
   readonly words: string[];
   /** The towers that can be built, with the keyword this stage can type. */
   readonly towers: TowerKind[];
-  readonly floodWord: string;
 }
 
 /**
- * Keys, words, towers and flood word at stage `index`. The words practise the
+ * Keys, words and towers at stage `index`. The words practise the
  * new keys: only those containing one of them, unless there are too few.
  */
 export function stageSetup(index: number): StageSetup {
@@ -73,6 +75,11 @@ export function stageSetup(index: number): StageSetup {
     keys,
     words: focused.length >= MIN_FOCUSED_WORDS ? focused : all,
     towers: [{ ...CROSSBOW, keyword: firstTypeable(TOWER_KEYWORDS, keys) }],
-    floodWord: firstTypeable(FLOOD_WORDS, keys),
   };
+}
+
+/** The raid uses every key of the tutorial and every word, not only those of the last stage. */
+export function raidSetup(): StageSetup {
+  const setup = stageSetup(STAGES.length - 1);
+  return { ...setup, words: wordsFor(setup.keys) };
 }
