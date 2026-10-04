@@ -43,6 +43,17 @@ const WARD_RADIUS = 46;
 const WARD_COLOR = 0x9fd4ff;
 const HUD_TEXT = '#2f2a24';
 const HUD_OUTLINE = '#f6efe6';
+/** The desk with keyboard and notes covers the screen below this line; the map stays above it. */
+const DESK_TOP = 470;
+const DESK_DEPTH = 1500;
+/** Keyboard and the text on the notes lie on the desk. */
+const ON_DESK_DEPTH = 1600;
+const WOOD = 0x7a4a2e;
+const WOOD_DARK = 0x5e3820;
+const WOOD_LIGHT = 0x9a6640;
+const WOOD_EDGE = 0xb57d50;
+const PAPER = 0xf4ead6;
+const PAPER_EDGE = 0xcbb894;
 /** Typed after the level has ended to play it again. */
 const AGAIN_WORD = FLOOD_WORD;
 
@@ -57,7 +68,7 @@ const DECORATION: readonly { frame: string; x: number; y: number }[] = [
   { frame: TREE_FRAMES[2], x: 960, y: 40 },
   { frame: ROCK_FRAMES[0], x: 430, y: 40 },
   { frame: ROCK_FRAMES[1], x: 880, y: 420 },
-  { frame: ROCK_FRAMES[0], x: 660, y: 440 },
+  { frame: ROCK_FRAMES[0], x: 660, y: 425 },
 ];
 
 export interface BattleSceneData {
@@ -67,6 +78,8 @@ export interface BattleSceneData {
 interface EnemyView {
   readonly sprite: Phaser.GameObjects.Sprite;
   readonly health: Phaser.GameObjects.Graphics;
+  /** Health as far as the hits have landed on screen; a bolt in flight has not hit yet. */
+  shownHealth: number;
   last: Point;
 }
 
@@ -119,10 +132,11 @@ export class BattleScene extends Phaser.Scene {
     this.#endPanel = null;
 
     this.#drawMap();
+    this.#drawDesk();
     this.#drawHud();
     this.#keyboard = new KeyboardView(this, this.scale.width / 2, 540, qwertzDe).setScale(0.5).setUnlocked(HOME_ROW_KEYS);
-    this.#keyboard.setDepth(20);
-    this.#statsView = new StatsView(this, this.scale.width / 2, 260);
+    this.#keyboard.setDepth(ON_DESK_DEPTH);
+    this.#statsView = new StatsView(this, { x: this.scale.width - 28, y: 502 }, { x: this.scale.width / 2, y: 240 });
     this.#statsView.update(this.#progress);
     this.#engine = new TypingEngine(this.#words());
 
@@ -144,9 +158,11 @@ export class BattleScene extends Phaser.Scene {
   }
 
   override update(_time: number, delta: number): void {
-    const shots = this.#battle.update(Math.min(delta, MAX_STEP_MS));
+    const step = this.#battle.update(Math.min(delta, MAX_STEP_MS));
+    // Shots and arrivals first: they take their enemies out of the walking ones.
+    for (const shot of step.shots) this.#showShot(shot);
+    for (const enemy of step.arrived) this.#showArrival(enemy);
     this.#drawEnemies();
-    for (const shot of shots) this.#showShot(shot);
     this.#sync();
   }
 
@@ -274,12 +290,43 @@ export class BattleScene extends Phaser.Scene {
     this.tweens.add({ targets: this.#ward, alpha: { from: 1, to: 0.6 }, duration: 1200, yoyo: true, repeat: -1 });
   }
 
+  /** Wooden desk below the map: the keyboard lies on it, the notes left and right carry the texts. */
+  #drawDesk(): void {
+    const { width, height } = this.scale;
+    const desk = this.add.graphics().setDepth(DESK_DEPTH);
+    // Shadow on the grass, then the front edge and the boards.
+    desk.fillStyle(0x000000, 0.25).fillRect(0, DESK_TOP - 6, width, 6);
+    desk.fillStyle(WOOD_LIGHT, 1).fillRect(0, DESK_TOP, width, 12);
+    desk.fillStyle(WOOD_EDGE, 1).fillRect(0, DESK_TOP, width, 3);
+    desk.fillStyle(WOOD_DARK, 1).fillRect(0, DESK_TOP + 12, width, 3);
+    desk.fillStyle(WOOD, 1).fillRect(0, DESK_TOP + 15, width, height - DESK_TOP - 15);
+    const boardHeight = 44;
+    for (let y = DESK_TOP + 15 + boardHeight; y < height; y += boardHeight) {
+      desk.fillStyle(WOOD_DARK, 1).fillRect(0, y, width, 3);
+    }
+    // Grain: short darker and lighter strokes in a fixed pattern, so the desk looks the same every time.
+    for (let i = 0; i < 160; i++) {
+      const x = (i * 197) % width;
+      const y = DESK_TOP + 22 + ((i * 53) % (height - DESK_TOP - 30));
+      desk.fillStyle(i % 3 === 0 ? WOOD_LIGHT : WOOD_DARK, 0.6).fillRect(x, y, 18 + ((i * 7) % 30), 2);
+    }
+
+    for (const note of [
+      { x: 12, width: 432 },
+      { x: width - 444, width: 432 },
+    ]) {
+      desk.fillStyle(0x000000, 0.25).fillRect(note.x + 4, 492, note.width, 216);
+      desk.fillStyle(PAPER, 1).fillRect(note.x, 488, note.width, 216);
+      desk.lineStyle(2, PAPER_EDGE, 1).strokeRect(note.x, 488, note.width, 216);
+    }
+  }
+
   #drawHud(): void {
-    // Bottom left, beside the keyboard: the path runs along the top edge.
-    const style = { fontFamily: 'sans-serif', fontSize: '20px', color: HUD_TEXT, stroke: HUD_OUTLINE, strokeThickness: 4 };
-    this.#phaseText = this.add.text(16, 520, '', { ...style, wordWrap: { width: 420 } }).setDepth(30);
-    this.#inkText = this.add.text(16, 640, '', style).setDepth(30);
-    this.#wardText = this.add.text(16, 672, '', style).setDepth(30);
+    // On the left note of the desk.
+    const style = { fontFamily: 'sans-serif', fontSize: '20px', color: HUD_TEXT };
+    this.#phaseText = this.add.text(28, 502, '', { ...style, wordWrap: { width: 400 } }).setDepth(ON_DESK_DEPTH);
+    this.#inkText = this.add.text(28, 636, '', style).setDepth(ON_DESK_DEPTH);
+    this.#wardText = this.add.text(28, 668, '', style).setDepth(ON_DESK_DEPTH);
   }
 
   #updateHud(): void {
@@ -312,38 +359,46 @@ export class BattleScene extends Phaser.Scene {
   }
 
   #drawEnemies(): void {
-    const alive = new Set<number>();
     for (const enemy of this.#battle.enemies) {
-      alive.add(enemy.id);
       const at = this.#battle.positionOf(enemy);
       let view = this.#enemies.get(enemy.id);
       if (!view) {
-        view = { sprite: this.add.sprite(at.x, at.y, enemy.kind.id), health: this.add.graphics(), last: at };
+        view = {
+          sprite: this.add.sprite(at.x, at.y, enemy.kind.id),
+          health: this.add.graphics(),
+          shownHealth: enemy.kind.health,
+          last: at,
+        };
         this.#enemies.set(enemy.id, view);
       }
       const heading = this.#heading(view, enemy, at);
       view.sprite.setPosition(at.x, at.y).setDepth(at.y + 100);
       view.sprite.play(walkAnimation(enemy.kind.id, heading), true);
       view.last = at;
-
-      const share = Math.max(0, enemy.health / enemy.kind.health);
-      view.health
-        .clear()
-        .setDepth(at.y + 101)
-        .fillStyle(0x2f2a24, 0.8)
-        .fillRect(at.x - 18, at.y - 36, 36, 5)
-        .fillStyle(share > 0.5 ? 0x8fd16a : 0xe0a040, 1)
-        .fillRect(at.x - 17, at.y - 35, 34 * share, 3);
+      this.#drawHealth(view, enemy, at);
     }
+  }
 
-    // Enemies that reached the ward circle vanish into it; defeated ones play their death in `#showShot`.
-    for (const [id, view] of this.#enemies) {
-      if (alive.has(id) || view.sprite.anims.currentAnim?.key.includes('-death-')) continue;
+  #drawHealth(view: EnemyView, enemy: Enemy, at: Point): void {
+    const share = view.shownHealth / enemy.kind.health;
+    view.health
+      .clear()
+      .setDepth(at.y + 101)
+      .fillStyle(0x2f2a24, 0.8)
+      .fillRect(at.x - 18, at.y - 36, 36, 5)
+      .fillStyle(share > 0.5 ? 0x8fd16a : 0xe0a040, 1)
+      .fillRect(at.x - 17, at.y - 35, 34 * share, 3);
+  }
+
+  /** An enemy reached the ward circle: it fades into the circle, and the circle shudders. */
+  #showArrival(enemy: Enemy): void {
+    const view = this.#enemies.get(enemy.id);
+    if (view) {
+      this.#enemies.delete(enemy.id);
       view.health.destroy();
       this.tweens.add({ targets: view.sprite, alpha: 0, scale: 0.4, duration: 300, onComplete: () => view.sprite.destroy() });
-      this.#enemies.delete(id);
-      this.cameras.main.flash(150, 160, 210, 255);
     }
+    this.tweens.add({ targets: this.#ward, scale: { from: 1.25, to: 1 }, duration: 350, ease: 'Back.easeOut' });
   }
 
   /** Picks the sprite row from the direction of travel and flips side views as needed. */
@@ -380,44 +435,56 @@ export class BattleScene extends Phaser.Scene {
     this.#towers.set(tower.site.id, { weapon });
   }
 
+  /**
+   * The tower turns and shoots; the bolt follows its target. The hit counts on
+   * screen only when the bolt lands: then the health bar drops or the enemy dies.
+   */
   #showShot(shot: Shot): void {
     const art = TOWER_ART[shot.tower.kind.id];
     const view = this.#towers.get(shot.tower.site.id);
     const enemyView = this.#enemies.get(shot.enemy.id);
     if (!art || !view || !enemyView) return;
+    // A defeated enemy leaves the battle now; it stays on screen until the bolt arrives.
+    if (shot.defeated) this.#enemies.delete(shot.enemy.id);
 
     const from = { x: view.weapon.x, y: view.weapon.y };
-    const to = this.#battle.positionOf(shot.enemy);
-    const angle = Phaser.Math.Angle.Between(from.x, from.y, to.x, to.y);
+    const target = enemyView.sprite;
+    const angle = Phaser.Math.Angle.Between(from.x, from.y, target.x, target.y);
     // The Spire weapons and projectiles point up.
     view.weapon.setRotation(angle + Math.PI / 2).play(art.weaponAttack);
 
     const projectile = this.add.image(from.x, from.y, art.projectile).setRotation(angle + Math.PI / 2).setDepth(900);
-    const duration = (Phaser.Math.Distance.Between(from.x, from.y, to.x, to.y) / PROJECTILE_SPEED) * 1000;
-    this.tweens.add({
-      targets: projectile,
-      x: to.x,
-      y: to.y,
+    const duration = (Phaser.Math.Distance.Between(from.x, from.y, target.x, target.y) / PROJECTILE_SPEED) * 1000;
+    this.tweens.addCounter({
+      from: 0,
+      to: 1,
       duration,
+      onUpdate: (tween) => {
+        const t = tween.getValue() ?? 0;
+        const x = from.x + (target.x - from.x) * t;
+        const y = from.y + (target.y - from.y) * t;
+        projectile.setPosition(x, y).setRotation(Phaser.Math.Angle.Between(from.x, from.y, target.x, target.y) + Math.PI / 2);
+      },
       onComplete: () => {
         projectile.destroy();
-        const impact = this.add.sprite(to.x, to.y, art.impact).setDepth(901).play(art.impact);
+        const impact = this.add.sprite(target.x, target.y, art.impact).setDepth(901).play(art.impact);
         impact.once(Phaser.Animations.Events.ANIMATION_COMPLETE, () => impact.destroy());
+        this.#land(shot, enemyView);
       },
     });
+  }
 
-    if (shot.defeated) {
-      this.#enemies.delete(shot.enemy.id);
-      enemyView.health.destroy();
-      const heading = (enemyView.sprite.getData('heading') as Heading | undefined) ?? 'side';
-      this.time.delayedCall(duration, () => {
-        enemyView.sprite.play(deathAnimation(shot.enemy.kind.id, heading));
-        enemyView.sprite.once(Phaser.Animations.Events.ANIMATION_COMPLETE, () => {
-          this.tweens.add({ targets: enemyView.sprite, alpha: 0, duration: 400, onComplete: () => enemyView.sprite.destroy() });
-        });
-        this.#float(to, `+${shot.enemy.kind.ink} Tinte`, '#2b3a6b');
-      });
-    }
+  #land(shot: Shot, enemyView: EnemyView): void {
+    // Bolts can land out of order; the bar never grows back.
+    enemyView.shownHealth = Math.min(enemyView.shownHealth, shot.health);
+    if (!shot.defeated) return;
+    enemyView.health.destroy();
+    const heading = (enemyView.sprite.getData('heading') as Heading | undefined) ?? 'side';
+    enemyView.sprite.play(deathAnimation(shot.enemy.kind.id, heading));
+    enemyView.sprite.once(Phaser.Animations.Events.ANIMATION_COMPLETE, () => {
+      this.tweens.add({ targets: enemyView.sprite, alpha: 0, duration: 400, onComplete: () => enemyView.sprite.destroy() });
+    });
+    this.#float(enemyView.sprite, `+${shot.enemy.kind.ink} Tinte`, '#2b3a6b');
   }
 
   /** Short text that rises and fades at `at`. */

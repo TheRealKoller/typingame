@@ -144,23 +144,27 @@ describe('towers', () => {
     battle.build(battle.level.sites[0]!, BOW);
     battle.endFlood();
 
-    const shots = Array.from({ length: 12 }, () => battle.update(100)).flat();
+    const shots = Array.from({ length: 12 }, () => battle.update(100).shots).flat();
 
-    expect(shots.map((shot) => shot.defeated)).toEqual([false, true]);
+    expect(shots.map((shot) => [shot.health, shot.defeated])).toEqual([
+      [10, false],
+      [0, true],
+    ]);
     expect(battle.enemies).toEqual([]);
     expect(battle.ink).toBe(25);
     expect(battle.ward).toBe(5);
     expect(battle.phase).toBe('won');
   });
 
-  it('leaves enemies out of range alone', () => {
+  it('leaves enemies out of range alone and reports them at the ward circle', () => {
     const battle = new Battle(level({ waves: [{ kind: BUG, count: 1, spacingMs: 1000 }] }));
     battle.build(battle.level.sites[1]!, BOW);
     battle.endFlood();
 
-    const shots = Array.from({ length: 40 }, () => battle.update(100)).flat();
+    const steps = Array.from({ length: 40 }, () => battle.update(100));
 
-    expect(shots).toEqual([]);
+    expect(steps.flatMap((step) => step.shots)).toEqual([]);
+    expect(steps.flatMap((step) => step.arrived.map((enemy) => enemy.kind))).toEqual([BUG]);
     expect(battle.ward).toBe(4);
   });
 
@@ -171,7 +175,7 @@ describe('towers', () => {
 
     // Run until the second shot: by then both beetles are in range.
     const shots = [];
-    while (shots.length < 2) shots.push(...battle.update(100));
+    while (shots.length < 2) shots.push(...battle.update(100).shots);
 
     const [leader, follower] = battle.enemies;
     expect(Math.hypot(battle.positionOf(follower!).x - 100, battle.positionOf(follower!).y - 40)).toBeLessThanOrEqual(60);
