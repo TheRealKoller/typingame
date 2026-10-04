@@ -7,6 +7,23 @@ export interface EnemyKind {
   readonly speed: number;
   /** Ward strength lost when one enemy of this kind reaches the ward circle. */
   readonly wardDamage: number;
+  readonly health: number;
+  /** Ink left behind when an enemy of this kind is defeated. */
+  readonly ink: number;
+}
+
+/** A kind of tower; it attacks on its own once built. */
+export interface TowerKind {
+  readonly id: string;
+  /** Typed on a selected build site to build this tower there. */
+  readonly keyword: string;
+  /** Ink it costs to build. */
+  readonly cost: number;
+  /** Reach in pixels from the build site. */
+  readonly range: number;
+  readonly damage: number;
+  /** Time between two attacks. */
+  readonly cooldownMs: number;
 }
 
 /** Enemies that advance together during one ebb. */

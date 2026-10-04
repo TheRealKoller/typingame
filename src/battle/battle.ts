@@ -1,4 +1,4 @@
-import type { EnemyKind, Level } from './level';
+import type { BuildSite, EnemyKind, Level, TowerKind } from './level';
 import { pathLength, pointAt, type Point } from './path';
 
 /**
@@ -12,6 +12,21 @@ export interface Enemy {
   readonly kind: EnemyKind;
   /** Pixels travelled along the path. */
   distance: number;
+  health: number;
+}
+
+export interface Tower {
+  readonly site: BuildSite;
+  readonly kind: TowerKind;
+  /** Time until the tower can attack again. */
+  cooldownMs: number;
+}
+
+/** One attack of a tower in an `update` step, for the scene to show. */
+export interface Shot {
+  readonly tower: Tower;
+  readonly enemy: Enemy;
+  readonly defeated: boolean;
 }
 
 /**
@@ -26,6 +41,7 @@ export class Battle {
   #ward: number;
   #ink: number;
   #enemies: Enemy[] = [];
+  readonly #towers: Tower[] = [];
   #nextId = 1;
   #spawned = 0;
   #sinceSpawnMs = 0;
@@ -60,8 +76,25 @@ export class Battle {
     return this.#enemies;
   }
 
+  get towers(): readonly Tower[] {
+    return this.#towers;
+  }
+
   positionOf(enemy: Enemy): Point {
     return pointAt(this.level.path, enemy.distance);
+  }
+
+  towerAt(site: BuildSite): Tower | undefined {
+    return this.#towers.find((tower) => tower.site.id === site.id);
+  }
+
+  /** Builds `kind` on `site` if the site is free, there is enough ink and the level still runs. */
+  build(site: BuildSite, kind: TowerKind): boolean {
+    if (this.#phase === 'won' || this.#phase === 'lost') return false;
+    if (this.towerAt(site) || this.#ink < kind.cost) return false;
+    this.#ink -= kind.cost;
+    this.#towers.push({ site, kind, cooldownMs: 0 });
+    return true;
   }
 
   /** Ends the flood when the player is ready; the next wave starts to advance. */
@@ -72,16 +105,17 @@ export class Battle {
     this.#sinceSpawnMs = 0;
   }
 
-  update(deltaMs: number): void {
-    if (this.#phase !== 'ebb') return;
+  /** Advances the battle by `deltaMs`; returns the attacks made in this step. */
+  update(deltaMs: number): Shot[] {
+    if (this.#phase !== 'ebb') return [];
     const wave = this.level.waves[this.#wave];
-    if (!wave) return;
+    if (!wave) return [];
 
     // The first enemy enters at once, the others one spacing apart.
     if (this.#spawned > 0) this.#sinceSpawnMs += deltaMs;
     while (this.#spawned < wave.count && (this.#spawned === 0 || this.#sinceSpawnMs >= wave.spacingMs)) {
       if (this.#spawned > 0) this.#sinceSpawnMs -= wave.spacingMs;
-      this.#enemies.push({ id: this.#nextId++, kind: wave.kind, distance: 0 });
+      this.#enemies.push({ id: this.#nextId++, kind: wave.kind, distance: 0, health: wave.kind.health });
       this.#spawned++;
     }
 
@@ -90,11 +124,40 @@ export class Battle {
     this.#enemies = this.#enemies.filter((enemy) => enemy.distance < this.#length);
     for (const enemy of arrived) this.#ward = Math.max(0, this.#ward - enemy.kind.wardDamage);
 
+    const shots = this.#attack(deltaMs);
+
     if (this.#ward === 0) {
       this.#phase = 'lost';
     } else if (this.#spawned === wave.count && this.#enemies.length === 0) {
       this.#wave++;
       this.#phase = this.#wave < this.level.waves.length ? 'flood' : 'won';
     }
+    return shots;
+  }
+
+  /** Every ready tower hits the enemy in range that is furthest along the path. */
+  #attack(deltaMs: number): Shot[] {
+    const shots: Shot[] = [];
+    for (const tower of this.#towers) {
+      tower.cooldownMs = Math.max(0, tower.cooldownMs - deltaMs);
+      if (tower.cooldownMs > 0) continue;
+      const target = this.#enemies
+        .filter((enemy) => {
+          const at = this.positionOf(enemy);
+          return Math.hypot(at.x - tower.site.x, at.y - tower.site.y) <= tower.kind.range;
+        })
+        .reduce<Enemy | undefined>((best, enemy) => (best && best.distance >= enemy.distance ? best : enemy), undefined);
+      if (!target) continue;
+
+      tower.cooldownMs = tower.kind.cooldownMs;
+      target.health -= tower.kind.damage;
+      const defeated = target.health <= 0;
+      if (defeated) {
+        this.#ink += target.kind.ink;
+        this.#enemies = this.#enemies.filter((enemy) => enemy !== target);
+      }
+      shots.push({ tower, enemy: target, defeated });
+    }
+    return shots;
   }
 }
