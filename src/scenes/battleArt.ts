@@ -282,3 +282,14 @@ export function layPath(scene: Phaser.Scene, points: readonly Point[], style: Pa
     scene.add.tileSprite(s.x, s.y, s.width, s.height, style.texture, style.frame).setOrigin(0).setTileScale(style.tileScale).setDepth(style.depth);
   }
 }
+
+/** Soot over the ground of the ash fields (world map and battles there). */
+export const ASH_COLOR = 0x6e6966;
+/** Trees burnt in the ash fields. */
+export const BURNT_TINT = 0x4a4240;
+
+/** A fixed pseudo-random number in [0, 1) per tile, so patchy ground looks the same every time. */
+export function tileNoise(x: number, y: number): number {
+  const n = Math.sin(x * 12.9898 + y * 78.233) * 43758.5453;
+  return n - Math.floor(n);
+}

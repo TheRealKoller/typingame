@@ -5,13 +5,13 @@ import type { Point } from '../battle/path';
 export const PAPER_GOLEM: EnemyKind = { id: 'paper-golem', speed: 35, wardDamage: 1, health: 20, ink: 10 };
 export const LARGE_PAPER_GOLEM: EnemyKind = { id: 'paper-golem-large', speed: 28, wardDamage: 2, health: 60, ink: 25 };
 
-/** `kind` folded more firmly: `factor` times the health; it leaves a little more ink too. */
-function stronger(kind: EnemyKind, factor: number): EnemyKind {
+/** `kind` made tougher: `factor` times the health; it leaves a little more ink too. */
+export function stronger(kind: EnemyKind, factor: number): EnemyKind {
   return { ...kind, health: Math.round(kind.health * factor), ink: Math.round(kind.ink * (1 + (factor - 1) / 2)) };
 }
 
 /** Things placed on a map; the scene knows how to draw each. */
-export type PropKind = 'bookshelf' | 'lectern' | 'reading-desk' | 'book-pile' | 'scroll' | 'tree' | 'rock';
+export type PropKind = 'bookshelf' | 'burnt-bookshelf' | 'lectern' | 'reading-desk' | 'book-pile' | 'scroll' | 'tree' | 'rock';
 
 export interface Prop {
   readonly kind: PropKind;
@@ -23,11 +23,12 @@ export interface Prop {
 }
 
 /**
- * One place for practice battles, on a 1280 × 720 screen kept above the desk
+ * One place for a battle, on a 1280 × 720 screen kept above the desk
  * (y < 470). `indoor` maps have a stone floor, a back wall with banners and
- * torches and a carpet as the path; the courtyard has grass and a sand path.
+ * torches and a carpet as the path; outdoor maps have grass and a sand path.
+ * Maps of the ash fields lie under soot, their trees burnt.
  */
-export interface PracticeMap {
+export interface BattleMap {
   readonly id: string;
   readonly name: string;
   readonly indoor: boolean;
@@ -39,15 +40,16 @@ export interface PracticeMap {
   /** Banners and torches on the back wall of an indoor map, by x. */
   readonly banners?: readonly number[];
   readonly torches?: readonly number[];
+  readonly ash?: boolean;
 }
 
 /** Shelves along the back wall of an indoor map, three looks in turn. */
-function wallShelves(xs: readonly number[]): Prop[] {
-  return xs.map((x, i) => ({ kind: 'bookshelf', variant: i % 3, x, y: 86 }));
+export function wallShelves(xs: readonly number[], kind: 'bookshelf' | 'burnt-bookshelf' = 'bookshelf'): Prop[] {
+  return xs.map((x, i) => ({ kind, variant: i % 3, x, y: 86 }));
 }
 
 /** The reading room: a carpet from the door on the left to the ward circle on the right. */
-export const READING_ROOM: PracticeMap = {
+export const READING_ROOM: BattleMap = {
   id: 'reading-room',
   name: 'Lesesaal',
   indoor: true,
@@ -80,7 +82,7 @@ export const READING_ROOM: PracticeMap = {
 };
 
 /** The archive: stone slabs, rows of shelves, the carpet winds between them. */
-export const ARCHIVE: PracticeMap = {
+export const ARCHIVE: BattleMap = {
   id: 'archive',
   name: 'Archiv',
   indoor: true,
@@ -116,7 +118,7 @@ export const ARCHIVE: PracticeMap = {
 };
 
 /** The courtyard of the library: grass, a sand path, trees and rocks. */
-export const COURTYARD: PracticeMap = {
+export const COURTYARD: BattleMap = {
   id: 'courtyard',
   name: 'Innenhof',
   indoor: false,
@@ -152,10 +154,10 @@ export const COURTYARD: PracticeMap = {
 };
 
 /** Practice battles take turns between these maps. */
-export const PRACTICE_MAPS: readonly PracticeMap[] = [READING_ROOM, ARCHIVE, COURTYARD];
+export const PRACTICE_MAPS: readonly BattleMap[] = [READING_ROOM, ARCHIVE, COURTYARD];
 
 /** The map of the `round`-th practice battle (0 for the first). */
-export function practiceMap(round: number): PracticeMap {
+export function practiceMap(round: number): BattleMap {
   return PRACTICE_MAPS[round % PRACTICE_MAPS.length]!;
 }
 
@@ -183,7 +185,7 @@ const PRACTICE_WAVES: Readonly<Record<number, readonly Wave[]>> = {
 };
 
 /** The practice battle of tutorial section `section` (1–3) on `map`. */
-export function practiceLevel(section: number, map: PracticeMap = READING_ROOM): Level {
+export function practiceLevel(section: number, map: BattleMap = READING_ROOM): Level {
   const waves = PRACTICE_WAVES[section];
   if (!waves) throw new Error(`no practice battle for section ${section}`);
   return { id: `practice-${section}-${map.id}`, path: map.path, sites: map.sites, ward: 10, ink: 100, waves };

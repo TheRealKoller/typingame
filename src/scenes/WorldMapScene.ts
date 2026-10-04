@@ -8,7 +8,10 @@ import type { BattleSceneData } from './BattleScene';
 import {
   BOOKSHELF_BURNT,
   BRIDGE_FRAME,
+  ASH_COLOR,
+  BURNT_TINT,
   createBattleArt,
+  tileNoise,
   FLAG_DAMAGED,
   FLAG_DAMAGED_WAVING,
   GRASS_FRAME,
@@ -32,9 +35,6 @@ const PAPER_EDGE = 0xcbb894;
 const TILE_SCALE = 0.5;
 const TILE = 64 * TILE_SCALE;
 const ROAD_WIDTH = 28;
-/** Soot over the grass of the ash fields, and over the trees burnt there. */
-const ASH_COLOR = 0x6e6966;
-const BURNT_TINT = 0x4a4240;
 /** The ash fields: an ellipse of sooty tiles around the library ruin, frayed at the edge. */
 const ASH = { x: 390, y: 430, rx: 350, ry: 270 };
 /** A river runs from north to south; beyond it the Silence still hides the land. */
@@ -83,12 +83,6 @@ function road(a: Point, b: Point): Point[] {
 /** Whether (x, y) lies in the ash fields, their ellipse scaled by `reach`. */
 function inAsh(x: number, y: number, reach = 1): boolean {
   return ((x - ASH.x) / ASH.rx) ** 2 + ((y - ASH.y) / ASH.ry) ** 2 <= reach * reach;
-}
-
-/** A fixed pseudo-random number in [0, 1) per tile, so the map looks the same every time. */
-function hash(x: number, y: number): number {
-  const n = Math.sin(x * 12.9898 + y * 78.233) * 43758.5453;
-  return n - Math.floor(n);
 }
 
 /**
@@ -146,7 +140,7 @@ export class WorldMapScene extends Phaser.Scene {
     const soot = this.add.graphics();
     for (let y = 0; y < height; y += TILE) {
       for (let x = 0; x < RIVER.x - RIVER.width; x += TILE) {
-        const noise = hash(x, y);
+        const noise = tileNoise(x, y);
         if (!inAsh(x + TILE / 2, y + TILE / 2, 0.85 + 0.25 * noise)) continue;
         soot.fillStyle(ASH_COLOR, noise < 0.2 ? 0.88 : 0.75).fillRect(x, y, TILE, TILE);
       }

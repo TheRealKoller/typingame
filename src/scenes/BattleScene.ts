@@ -4,8 +4,8 @@ import { Commands, type Command } from '../battle/commands';
 import type { BuildSite } from '../battle/level';
 import type { Point } from '../battle/path';
 import { MASTER_NAME, MASTER_VERDICTS, pageText } from '../content/cutscenes';
-import { JOURNEY_VERDICTS, journeyLevel, worldPoint, type WorldPoint } from '../content/journey';
-import { practiceLevel, practiceMap, READING_ROOM, type PracticeMap, type Prop } from '../content/library';
+import { JOURNEY_VERDICTS, journeyBattle, worldPoint, type WorldPoint } from '../content/journey';
+import { practiceLevel, practiceMap, READING_ROOM, type BattleMap, type Prop } from '../content/library';
 import { RAID_LEVEL } from '../content/raid';
 import { JOURNEY, RAID, allKeysSetup, STAGES, stageIndex, stageSetup, type StageSetup } from '../content/tutorial';
 import { FINGER_NAME } from '../keyboard/fingers';
@@ -45,7 +45,10 @@ import {
   TORCH_FLAME,
   TOWER_ART,
   WALL_EDGE_FRAME,
+  ASH_COLOR,
+  BURNT_TINT,
   createBattleArt,
+  tileNoise,
   layPath,
   SAND_EDGE,
   deathAnimation,
@@ -55,6 +58,10 @@ import {
 } from './battleArt';
 
 const PATH_WIDTH = 64;
+/** Soot of the ash fields is laid in patches of this size. */
+const SOOT_TILE = 32;
+/** Blackened stone where the library burnt. */
+const CHARRED = 0x1a1412;
 const CARPET_EDGE = 0x5a1414;
 const PAD_COLOR = 0xd9cdb8;
 const PAD_EDGE = 0x6e6252;
@@ -158,7 +165,7 @@ export class BattleScene extends Phaser.Scene {
   #darkness: Phaser.GameObjects.Rectangle | null = null;
   /** Practice battles played in a row so far; picks the next map. */
   #round = 0;
-  #map!: PracticeMap;
+  #map!: BattleMap;
 
   preload(): void {
     preloadBattleArt(this);
@@ -176,11 +183,10 @@ export class BattleScene extends Phaser.Scene {
     this.#unlock = tutorial ? new UnlockTracker() : null;
     this.#unlockReached = false;
     this.#round = data.round ?? 0;
-    // The raid always strikes the reading room.
-    this.#map = this.#point?.map ?? (this.#raid ? READING_ROOM : practiceMap(this.#round));
-    this.#battle = new Battle(
-      this.#point ? journeyLevel(this.#point) : this.#raid ? RAID_LEVEL : practiceLevel(STAGES[this.#stage]!.section, this.#map),
-    );
+    // A place of the journey brings its own map; the raid always strikes the reading room.
+    const journey = this.#point ? journeyBattle(this.#point, Math.random) : null;
+    this.#map = journey?.map ?? (this.#raid ? READING_ROOM : practiceMap(this.#round));
+    this.#battle = new Battle(journey?.level ?? (this.#raid ? RAID_LEVEL : practiceLevel(STAGES[this.#stage]!.section, this.#map)));
     this.#shelves = [];
     this.#darkness = null;
     this.#commands = this.#newCommands();
@@ -386,6 +392,7 @@ export class BattleScene extends Phaser.Scene {
   #drawMap(): void {
     if (this.#map.indoor) this.#drawRoom();
     else this.#drawCourtyard();
+    if (this.#map.ash) this.#drawSoot();
 
     for (const prop of this.#map.props) {
       const image = this.#propImage(prop);
@@ -431,6 +438,8 @@ export class BattleScene extends Phaser.Scene {
     switch (prop.kind) {
       case 'bookshelf':
         return this.add.image(x, y, BOOKSHELF, variant % 3);
+      case 'burnt-bookshelf':
+        return this.add.image(x, y, BOOKSHELF_BURNT, variant % 3);
       case 'book-pile':
         return this.add.image(x, y, BOOK_PILE, variant % 2);
       case 'lectern':
@@ -439,8 +448,12 @@ export class BattleScene extends Phaser.Scene {
         return this.add.image(x, y, READING_DESK);
       case 'scroll':
         return this.add.image(x, y, SCROLL);
-      case 'tree':
-        return this.add.image(x, y, GRASS_TILESET, TREE_FRAMES[variant % TREE_FRAMES.length]);
+      case 'tree': {
+        // Burnt trees are the autumn ones darkened: green ones would stay green under the tint.
+        const frame = this.#map.ash ? TREE_FRAMES[2 + (variant % 2)] : TREE_FRAMES[variant % TREE_FRAMES.length];
+        const tree = this.add.image(x, y, GRASS_TILESET, frame);
+        return this.#map.ash ? tree.setTint(BURNT_TINT) : tree;
+      }
       case 'rock':
         return this.add.image(x, y, GRASS_TILESET, ROCK_FRAMES[variant % ROCK_FRAMES.length]);
     }
@@ -487,6 +500,23 @@ export class BattleScene extends Phaser.Scene {
       width: PATH_WIDTH,
       depth: 1,
     });
+  }
+
+  /**
+   * Soot over the ground of the ash fields, patchy from tile to tile; the path
+   * lies on top. Grey ash covers grass; a stone floor is blackened instead.
+   */
+  #drawSoot(): void {
+    const soot = this.add.graphics().setDepth(0.5);
+    const { indoor } = this.#map;
+    const top = indoor ? WALL_HEIGHT : 0;
+    const [color, alphas] = indoor ? [CHARRED, [0.55, 0.4, 0.25]] : [ASH_COLOR, [0.9, 0.82, 0.74]];
+    for (let y = top; y < DESK_TOP; y += SOOT_TILE) {
+      for (let x = 0; x < this.scale.width; x += SOOT_TILE) {
+        const noise = tileNoise(x, y);
+        soot.fillStyle(color, alphas[noise < 0.25 ? 0 : noise < 0.7 ? 1 : 2]!).fillRect(x, y, SOOT_TILE, SOOT_TILE);
+      }
+    }
   }
 
   /** Wooden desk below the map: the keyboard lies on it, the notes left and right carry the texts. */
