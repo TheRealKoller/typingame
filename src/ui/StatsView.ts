@@ -14,7 +14,7 @@ function minutes(ms: number): string {
 const DEPTH = 2000;
 
 /**
- * Session statistics: a quiet line, right-aligned at `line`, while playing and
+ * Session statistics: a few quiet lines, right-aligned at `line`, while playing and
  * an overview panel at `overview` on demand.
  */
 export class StatsView {
@@ -25,7 +25,7 @@ export class StatsView {
 
   constructor(scene: Phaser.Scene, line: { x: number; y: number }, overview: { x: number; y: number }) {
     this.#line = scene.add
-      .text(line.x, line.y, '', { fontFamily: 'sans-serif', fontSize: '18px', color: QUIET_TEXT })
+      .text(line.x, line.y, '', { fontFamily: 'sans-serif', fontSize: '20px', color: QUIET_TEXT, align: 'right', lineSpacing: 6 })
       .setOrigin(1, 0)
       .setDepth(DEPTH);
     this.#overviewText = scene.add
@@ -43,7 +43,8 @@ export class StatsView {
     const strokes = session.correctStrokes + session.wrongStrokes;
     const speed = Math.round(session.strokesPerMinute);
     const accuracy = Math.round(session.accuracy * 100);
-    this.#line.setText(strokes === 0 ? 'Tab: Übersicht' : `${speed} Anschläge/min · ${accuracy} % richtig · Tab: Übersicht`);
+    // One fact per line, so it fits a narrow note.
+    this.#line.setText(strokes === 0 ? 'Tab: Übersicht' : [`${speed} Anschläge/min`, `${accuracy} % richtig`, 'Tab: Übersicht']);
 
     const sessions = progress.snapshot().sessions;
     const totalCorrect = sessions.reduce((sum, s) => sum + s.correct, 0);

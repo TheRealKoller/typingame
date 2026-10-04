@@ -132,8 +132,8 @@ export class BattleScene extends Phaser.Scene {
   #enemies = new Map<number, EnemyView>();
   #towers = new Map<string, TowerView>();
   #ward!: Phaser.GameObjects.Graphics;
-  /** Highlighted prompt below the ward circle during a flood: Enter calls the next wave. */
-  #wavePrompt!: Phaser.GameObjects.Container;
+  /** »Enter« in the middle of the ward circle during a flood: Enter calls the next wave. */
+  #wavePrompt!: Phaser.GameObjects.Text;
   #phaseText!: Phaser.GameObjects.Text;
   #inkText!: Phaser.GameObjects.Text;
   #wardText!: Phaser.GameObjects.Text;
@@ -416,17 +416,13 @@ export class BattleScene extends Phaser.Scene {
     this.#ward = this.add.graphics({ x: end.x, y: end.y }).setDepth(3);
     this.tweens.add({ targets: this.#ward, alpha: { from: 1, to: 0.6 }, duration: 1200, yoyo: true, repeat: -1 });
 
-    const label = this.add
-      .text(0, 0, 'Enter ⏎  Welle rufen', { fontFamily: 'sans-serif', fontSize: '22px', color: '#2f2a24', fontStyle: 'bold' })
-      .setOrigin(0.5);
-    const pill = this.add
-      .rectangle(0, 0, label.width + 32, label.height + 16, 0xf2d27a)
-      .setRounded(14)
-      .setStrokeStyle(3, 0x8a5a1a);
-    const glow = this.add.rectangle(0, 0, pill.width + 14, pill.height + 14, 0xffe9a8, 0.45).setRounded(20);
-    // Below the circle, but pulled left so it stays on screen.
-    this.#wavePrompt = this.add.container(Math.min(end.x, this.scale.width - pill.width / 2 - 16), end.y + 72, [glow, pill, label]).setDepth(1002);
-    this.tweens.add({ targets: glow, alpha: { from: 0.45, to: 0.05 }, scale: { from: 1, to: 1.12 }, duration: 900, yoyo: true, repeat: -1 });
+    this.#wavePrompt = this.add
+      .text(end.x, end.y, 'Enter', { fontFamily: 'sans-serif', fontSize: '20px', color: '#ffffff', fontStyle: 'bold' })
+      .setOrigin(0.5)
+      .setShadow(0, 0, '#5ab4ff', 10, true, true)
+      .setDepth(1002);
+    // The blue glow breathes, so the prompt is noticed without shouting.
+    this.tweens.add({ targets: this.#wavePrompt, alpha: { from: 1, to: 0.65 }, duration: 900, yoyo: true, repeat: -1 });
   }
 
   /** Wooden desk below the map: the keyboard lies on it, the notes left and right carry the texts. */
