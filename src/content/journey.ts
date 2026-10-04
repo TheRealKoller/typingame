@@ -1,4 +1,4 @@
-import type { Level, TowerKind } from '../battle/level';
+import type { EnemyKind, Level, TowerKind } from '../battle/level';
 import { wallShelves, type BattleMap } from './library';
 import { generateAshMap, generateWaves, type Foes, type Random } from './mapgen';
 import { SILENT_FIREBUG, SILENT_SCORPION } from './raid';
@@ -36,8 +36,26 @@ const JOURNEY_TOWERS: readonly { readonly tower: TowerKind; readonly from: numbe
   { tower: FROST_CRYSTAL, from: 3 },
 ];
 
+/** A wasp of the Silence: fast and frail, in swarms that slip past slow towers. */
+export const SILENT_WASP: EnemyKind = { id: 'firewasp', speed: 75, wardDamage: 1, health: 12, ink: 8 };
+
+/**
+ * A beetle of the Silence in a shell of hardened ink: towers barely scratch
+ * it, but every typed word cracks it. It always glows and carries long words.
+ */
+export const SHELLED_BEETLE: EnemyKind = {
+  id: 'clampbeetle',
+  speed: 24,
+  wardDamage: 3,
+  health: 210,
+  ink: 40,
+  armor: 0.8,
+  wordDamage: 70,
+  minWordLength: 7,
+};
+
 /** The creatures of the Silence in the ash fields. */
-const ASH_FOES: Foes = { small: SILENT_SCORPION, large: SILENT_FIREBUG };
+const ASH_FOES: Foes = { small: SILENT_SCORPION, large: SILENT_FIREBUG, swift: SILENT_WASP, armored: SHELLED_BEETLE };
 
 /** What is left of the reading room: soot on the floor, burnt shelves, no banners, no torches. */
 export const RUIN: BattleMap = {

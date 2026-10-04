@@ -131,12 +131,18 @@ export class Battle {
     return true;
   }
 
-  /** Strikes a marked enemy down at once, for the ink it leaves; false if it is not marked or already gone. */
+  /**
+   * Hits a marked enemy with a typed word: it falls at once, or takes its
+   * kind's `wordDamage`. A defeated enemy leaves its ink. False if it is not
+   * marked or already gone.
+   */
   strike(enemy: Enemy): boolean {
     if (!enemy.marked || !this.#enemies.includes(enemy)) return false;
-    enemy.health = 0;
-    this.#ink += enemy.kind.ink;
-    this.#enemies = this.#enemies.filter((other) => other !== enemy);
+    enemy.health = Math.max(0, enemy.health - (enemy.kind.wordDamage ?? enemy.health));
+    if (enemy.health === 0) {
+      this.#ink += enemy.kind.ink;
+      this.#enemies = this.#enemies.filter((other) => other !== enemy);
+    }
     return true;
   }
 
@@ -224,7 +230,7 @@ export class Battle {
 
   /** `kind` hits `enemy`: damage, maybe a slowdown; a defeated enemy leaves its ink and the battle. */
   #hit(enemy: Enemy, kind: TowerKind): Hit {
-    enemy.health -= kind.damage;
+    enemy.health -= kind.damage * (1 - (enemy.kind.armor ?? 0));
     if (kind.slow) {
       enemy.slowMs = kind.slow.durationMs;
       enemy.slowFactor = kind.slow.factor;

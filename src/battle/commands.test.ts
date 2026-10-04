@@ -111,7 +111,7 @@ describe('enemy words', () => {
     const target = battle.enemies.find((enemy) => enemy.marked)!;
     commands.complete(commands.siteWord(battle.level.sites[0]!)!);
 
-    expect(commands.complete(commands.enemyWord(target)!)).toEqual({ type: 'strike', enemy: target });
+    expect(commands.complete(commands.enemyWord(target)!)).toEqual({ type: 'strike', enemy: target, defeated: true });
     expect(battle.enemies).not.toContain(target);
     expect(commands.selected).toBe(battle.level.sites[0]);
   });

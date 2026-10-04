@@ -10,6 +10,15 @@ export interface EnemyKind {
   readonly health: number;
   /** Ink left behind when an enemy of this kind is defeated. */
   readonly ink: number;
+  /** Share of tower damage its shell turns aside, from 0 (none) to 1 (all); none if omitted. */
+  readonly armor?: number;
+  /**
+   * Damage a typed word deals to it. Without it, a glowing enemy falls to its
+   * word at once; with it, it takes this much and carries a new word if it survives.
+   */
+  readonly wordDamage?: number;
+  /** Shortest word it carries when it glows: tough enemies want longer words. */
+  readonly minWordLength?: number;
 }
 
 /** A kind of tower; it attacks on its own once built. */

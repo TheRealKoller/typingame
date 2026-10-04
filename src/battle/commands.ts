@@ -10,8 +10,8 @@ export type Command =
   | { readonly type: 'upgrade'; readonly site: BuildSite; readonly tower: TowerKind }
   /** The keyword or upgrade word was typed but the ink did not suffice; the selection is released. */
   | { readonly type: 'tooExpensive'; readonly site: BuildSite; readonly tower: TowerKind }
-  /** The word of a glowing enemy was typed; it is struck down. */
-  | { readonly type: 'strike'; readonly enemy: Enemy };
+  /** The word of a glowing enemy was typed; it is hit, and maybe defeated. */
+  | { readonly type: 'strike'; readonly enemy: Enemy; readonly defeated: boolean };
 
 /** A tower kind and every stage it can be upgraded to. */
 function withUpgrades(kind: TowerKind): TowerKind[] {
@@ -23,7 +23,7 @@ function withUpgrades(kind: TowerKind): TowerKind[] {
  * word; typing it selects the site, then a tower keyword builds there. A
  * tower keeps the word of its site while it can be upgraded; typing it
  * selects the tower, then its upgrade word upgrades it. Glowing enemies
- * carry a word as well; typing it strikes them down.
+ * carry a word as well; typing it strikes them down, or wounds the tough ones.
  */
 export class Commands {
   readonly #battle: Battle;
@@ -82,7 +82,9 @@ export class Commands {
     for (const enemy of this.#battle.enemies) {
       if (!enemy.marked || this.#enemyWords.has(enemy)) continue;
       const taken = [...this.#siteWords.values(), ...this.#keywords, ...this.#enemyWords.values()];
-      const word = pickWord(this.#pool, taken, this.#context);
+      // Tough enemies carry long words, if there are any left.
+      const long = this.#pool.filter((candidate) => candidate.length >= (enemy.kind.minWordLength ?? 0));
+      const word = pickWord(long, taken, this.#context) ?? pickWord(this.#pool, taken, this.#context);
       if (word !== null) this.#enemyWords.set(enemy, word);
     }
   }
@@ -108,7 +110,7 @@ export class Commands {
     const enemy = [...this.#enemyWords].find(([, enemyWord]) => enemyWord === word)?.[0];
     if (enemy) {
       this.#enemyWords.delete(enemy);
-      return this.#battle.strike(enemy) ? { type: 'strike', enemy } : null;
+      return this.#battle.strike(enemy) ? { type: 'strike', enemy, defeated: enemy.health === 0 } : null;
     }
     if (this.#selected) {
       const site = this.#selected;

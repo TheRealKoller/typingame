@@ -266,3 +266,32 @@ describe('glowing enemies', () => {
     expect(battle.strike(marked!)).toBe(false);
   });
 });
+
+describe('tough enemies', () => {
+  const SHELLED: EnemyKind = { ...BEETLE, armor: 0.75, wordDamage: 40 };
+
+  it('turn aside part of every tower hit with their armor', () => {
+    const battle = new Battle(level({ waves: [[{ kind: SHELLED, count: 1, spacingMs: 1000 }]] }));
+    battle.build(battle.level.sites[1]!, { ...BOW, range: 500, cooldownMs: 100_000 });
+    battle.endFlood();
+
+    const [shot] = battle.update(100).shots;
+
+    expect(shot!.health).toBe(SHELLED.health - BOW.damage * 0.25);
+  });
+
+  it('are only wounded by a typed word, keep their glow, and fall to enough words for their ink', () => {
+    const battle = new Battle(level({ ink: 0, waves: [[{ kind: SHELLED, count: 1, spacingMs: 1000, markEvery: 1 }]] }));
+    battle.endFlood();
+    battle.update(100);
+    const enemy = battle.enemies[0]!;
+
+    expect(battle.strike(enemy)).toBe(true);
+    expect([enemy.health, battle.enemies]).toEqual([60, [enemy]]);
+    battle.strike(enemy);
+    battle.strike(enemy);
+
+    expect(battle.enemies).toEqual([]);
+    expect(battle.ink).toBe(SHELLED.ink);
+  });
+});
