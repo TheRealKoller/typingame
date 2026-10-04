@@ -22,7 +22,8 @@ export interface Enemy {
 
 export interface Tower {
   readonly site: BuildSite;
-  readonly kind: TowerKind;
+  /** Changes when the tower is upgraded. */
+  kind: TowerKind;
   /** Time until the tower can attack again. */
   cooldownMs: number;
 }
@@ -117,6 +118,16 @@ export class Battle {
     if (this.towerAt(site) || this.#ink < kind.cost) return false;
     this.#ink -= kind.cost;
     this.#towers.push({ site, kind, cooldownMs: 0 });
+    return true;
+  }
+
+  /** Upgrades the tower on `site` to its next stage if there is one, there is enough ink and the level still runs. */
+  upgrade(site: BuildSite): boolean {
+    const tower = this.towerAt(site);
+    const next = tower?.kind.upgrade;
+    if (!tower || !next || this.#phase === 'won' || this.#phase === 'lost' || this.#ink < next.cost) return false;
+    this.#ink -= next.cost;
+    tower.kind = next;
     return true;
   }
 

@@ -93,6 +93,14 @@ Wie sich Atramentus zeigt (vorläufig, ein Schritt je Gebiet):
 | Tintenschleuder | *klecks* | 70 | langsam, der Klecks trifft jeden Gegner nahe am Ziel |
 | Frostkristall | *frost* | 60 | schwache Treffer, die Gegner 1,5 s auf halbe Geschwindigkeit bremsen |
 
+- **Aufrüsten:** Ein Turm behält das Wort seines Bauplatzes, solange er sich aufrüsten lässt. Tippt man es, ist der Turm gewählt; sein Aufrüstwort bringt ihn auf die nächste Stufe (Stufen I–III, Grafik der Spire-Stufen). Auf der letzten Stufe verschwindet das Wort. Im Tutorial wird nicht aufgerüstet: Die Aufrüstwörter brauchen Tasten, die erst später kommen.
+
+| Turm | Stufe II | Stufe III |
+|---|---|---|
+| Armbrust | *bolzen* Doppelarmbrust, 60: Schaden 16, Reichweite 180 | *salve* Salvenarmbrust, 90: Schaden 24, Reichweite 190, schneller |
+| Tintenschleuder | *spritzer* Tintenwerfer, 70: Schaden 14, Klecks 80 px | *sintflut* Tintenflut, 100: Schaden 20, Klecks 90 px, schneller |
+| Frostkristall | *raureif* Raureifkristall, 60: 40 % Tempo für 2 s | *gletscher* Gletscherkristall, 90: 30 % Tempo für 2,5 s, Reichweite 160 |
+
 - Ein gewählter Bauplatz zeigt die Schlüsselwörter nebeneinander, die Notiz links nennt Turm und Kosten. Im Tutorial gibt es nur die Armbrust; auf der Reise kommt an jedem der ersten Orte ein Turm dazu (Rauchsenke: Tintenschleuder, Kellergewölbe: Frostkristall). Später schalten Bücherkarren weitere frei (siehe 4.8).
 - **Aufrüsten** funktioniert ähnlich: den Turm über sein Wort wählen, dann ein Aufrüstwort tippen.
 - Türme und Aufrüstungen kosten **Tinte**. Die Monster sind aus Tinte gemacht; besiegt zerfließen sie und hinterlassen sie.

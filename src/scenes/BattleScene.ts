@@ -1,7 +1,7 @@
 import * as Phaser from 'phaser';
 import { Battle, type Enemy, type Hit, type Shot, type Tower } from '../battle/battle';
 import { Commands, type Command } from '../battle/commands';
-import type { BuildSite } from '../battle/level';
+import type { BuildSite, TowerKind } from '../battle/level';
 import type { Point } from '../battle/path';
 import { MASTER_NAME, MASTER_VERDICTS, pageText } from '../content/cutscenes';
 import { JOURNEY_VERDICTS, journeyBattle, worldPoint, type WorldPoint } from '../content/journey';
@@ -43,7 +43,7 @@ import {
   SCROLL,
   TORCH,
   TORCH_FLAME,
-  TOWER_ART,
+  towerArt,
   WALL_EDGE_FRAME,
   ASH_COLOR,
   BURNT_TINT,
@@ -69,6 +69,9 @@ const PAD_EDGE = 0x6e6252;
 const WALL_HEIGHT = 96;
 /** Word labels sit this far above the centre of their build site. */
 const LABEL_OFFSET = 52;
+/** Over a built tower the word sits higher, clear of the weapon, but stays on screen. */
+const TOWER_LABEL_OFFSET = 112;
+const TOWER_LABEL_OFFSET_MIN = 20;
 const WORD_SIZE = 30;
 /** Distance between the tower keywords shown side by side at a selected site. */
 const KEYWORD_SPACING = 130;
@@ -119,6 +122,7 @@ interface EnemyView {
 }
 
 interface TowerView {
+  readonly base: Phaser.GameObjects.Sprite;
   readonly weapon: Phaser.GameObjects.Sprite;
 }
 
@@ -354,7 +358,7 @@ export class BattleScene extends Phaser.Scene {
   };
 
   #apply(command: Command | null): void {
-    if (command?.type === 'build') this.#showTower(this.#battle.towerAt(command.site));
+    if (command?.type === 'build' || command?.type === 'upgrade') this.#showTower(this.#battle.towerAt(command.site));
     if (command?.type === 'tooExpensive') this.#float(command.site, 'Zu wenig Tinte', '#8a2f2f');
     if (command?.type === 'strike') this.#showStrike(command.enemy);
   }
@@ -383,17 +387,30 @@ export class BattleScene extends Phaser.Scene {
     if (this.#ended()) return [];
     const selected = this.#commands.selected;
     if (selected) {
-      // The keywords stand side by side above the site, kept on screen.
-      const { towers } = this.#setup;
-      const left = Math.min(Math.max(selected.x - ((towers.length - 1) * KEYWORD_SPACING) / 2, KEYWORD_SPACING / 2), this.scale.width - KEYWORD_SPACING / 2 - (towers.length - 1) * KEYWORD_SPACING);
-      return towers.map((tower, i) => ({ word: tower.keyword, x: left + i * KEYWORD_SPACING, y: selected.y - LABEL_OFFSET }));
+      // The keywords, or the upgrade word of a tower, stand side by side above the site, kept on screen.
+      const choices = this.#choices(selected);
+      const y = this.#labelY(selected);
+      const left = Math.min(Math.max(selected.x - ((choices.length - 1) * KEYWORD_SPACING) / 2, KEYWORD_SPACING / 2), this.scale.width - KEYWORD_SPACING / 2 - (choices.length - 1) * KEYWORD_SPACING);
+      return choices.map((tower, i) => ({ word: tower.keyword, x: left + i * KEYWORD_SPACING, y }));
     }
     const placed: Placed[] = [];
     for (const site of this.#battle.level.sites) {
       const word = this.#commands.siteWord(site);
-      if (word !== null) placed.push({ word, x: site.x, y: site.y - LABEL_OFFSET });
+      if (word !== null) placed.push({ word, x: site.x, y: this.#labelY(site) });
     }
     return placed;
+  }
+
+  /** What can be built on `site`, or what its tower can become. */
+  #choices(site: BuildSite): readonly TowerKind[] {
+    const tower = this.#battle.towerAt(site);
+    if (!tower) return this.#setup.towers;
+    return tower.kind.upgrade ? [tower.kind.upgrade] : [];
+  }
+
+  /** Words above a free site sit just over its pad; over a tower they clear its top. */
+  #labelY(site: BuildSite): number {
+    return this.#battle.towerAt(site) ? Math.max(TOWER_LABEL_OFFSET_MIN, site.y - TOWER_LABEL_OFFSET) : site.y - LABEL_OFFSET;
   }
 
   /** The map of this battle: floor, walls or grass, the path, its props, the build sites and the ward circle. */
@@ -575,8 +592,13 @@ export class BattleScene extends Phaser.Scene {
       won: this.#point ? 'Das Verstummen weicht zurück.' : 'Alle Golems besiegt.',
       lost: 'Der Bannkreis ist gebrochen.',
     }[battle.phase];
-    const choices = this.#setup.towers.map((tower) => `»${tower.keyword}« ${tower.name} (${tower.cost} Tinte)`);
-    const selected = this.#commands.selected ? `Bauplatz gewählt – ${choices.join(', ')}. Esc geht zurück.` : null;
+    const site = this.#commands.selected;
+    const choices = site ? this.#choices(site).map((tower) => `»${tower.keyword}« ${tower.name} (${tower.cost} Tinte)`) : [];
+    const selected = site
+      ? this.#battle.towerAt(site)
+        ? `Turm gewählt – ${choices.join(', ')} rüstet auf. Esc geht zurück.`
+        : `Bauplatz gewählt – ${choices.join(', ')}. Esc geht zurück.`
+      : null;
     this.#phaseText.setText(selected ?? phase);
     this.#wavePrompt.setVisible(battle.phase === 'flood');
     this.#inkText.setText(`Tinte: ${battle.ink}`);
@@ -755,22 +777,26 @@ export class BattleScene extends Phaser.Scene {
     return heading;
   }
 
+  /** A new tower, or one at its next stage, appears in a cloud of dust; an older stage vanishes behind it. */
   #showTower(tower: Tower | undefined): void {
     if (!tower) return;
-    const art = TOWER_ART[tower.kind.id];
+    const art = towerArt(tower.kind);
     if (!art) return;
     const { x, y } = tower.site;
     // The base stands on the pad; its top square carries the weapon.
-    const base = this.add.sprite(x, y + 32, art.base, 0).setOrigin(0.5, 1).setDepth(y + 50);
+    const base = this.add.sprite(x, y + 32, art.base, art.baseFrame).setOrigin(0.5, 1).setDepth(y + 50);
     const weapon = this.add.sprite(x, y - 51, art.weapon, 0).setDepth(y + 51);
     for (const part of [base, weapon]) part.setAlpha(0);
     const cloud = this.add.sprite(x, y - 32, CONSTRUCTION, 6).setDepth(y + 52);
     cloud.play(CONSTRUCTION_REVEAL);
+    const before = this.#towers.get(tower.site.id);
     this.time.delayedCall(150, () => {
       for (const part of [base, weapon]) part.setAlpha(1);
+      before?.base.destroy();
+      before?.weapon.destroy();
     });
     cloud.once(Phaser.Animations.Events.ANIMATION_COMPLETE, () => cloud.destroy());
-    this.#towers.set(tower.site.id, { weapon });
+    this.#towers.set(tower.site.id, { base, weapon });
   }
 
   /**
@@ -778,7 +804,7 @@ export class BattleScene extends Phaser.Scene {
    * screen only when the bolt lands: then the health bar drops or the enemy dies.
    */
   #showShot(shot: Shot): void {
-    const art = TOWER_ART[shot.tower.kind.id];
+    const art = towerArt(shot.tower.kind);
     const view = this.#towers.get(shot.tower.site.id);
     // Defeated enemies leave the battle now; they stay on screen until the shot arrives.
     const hits = [shot, ...shot.splash].flatMap((hit) => {
