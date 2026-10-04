@@ -13,6 +13,7 @@ export class Progress {
   readonly #startedAt: string;
   #stage: string;
   #name: string;
+  readonly #seen: Set<string>;
   #pending: Promise<void> = Promise.resolve();
 
   constructor(storage: SaveStorage, base: SaveGame, startedAt: Date) {
@@ -21,6 +22,7 @@ export class Progress {
     this.#startedAt = startedAt.toISOString();
     this.#stage = base.stage;
     this.#name = base.name;
+    this.#seen = new Set(base.seen);
   }
 
   /** Loads the saved progress; starts at `firstStage` if there is no valid save. */
@@ -49,11 +51,21 @@ export class Progress {
     this.#name = name;
   }
 
+  /** Ids of the cutscenes already shown. */
+  get seen(): ReadonlySet<string> {
+    return this.#seen;
+  }
+
+  markSeen(id: string): void {
+    this.#seen.add(id);
+  }
+
   /** The complete save as it would be written now. */
   snapshot(): SaveGame {
     return buildSave(this.#base, {
       stage: this.#stage,
       name: this.#name,
+      seen: this.#seen,
       session: this.session,
       startedAt: this.#startedAt,
     });

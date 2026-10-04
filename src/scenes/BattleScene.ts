@@ -14,6 +14,7 @@ import { TypingEngine } from '../typing/engine';
 import { KeyboardView } from '../ui/KeyboardView';
 import { StatsView } from '../ui/StatsView';
 import { WordLabel } from '../ui/WordLabel';
+import { nextScene } from './flow';
 import {
   CONSTRUCTION,
   CONSTRUCTION_REVEAL,
@@ -73,6 +74,8 @@ const DECORATION: readonly { frame: string; x: number; y: number }[] = [
 
 export interface BattleSceneData {
   readonly progress: Progress;
+  /** Set when the stage has just begun: a hint names its new keys. */
+  readonly announce?: boolean;
 }
 
 interface EnemyView {
@@ -165,6 +168,7 @@ export class BattleScene extends Phaser.Scene {
       window.removeEventListener('pagehide', this.#save);
     });
     this.#sync();
+    if (data.announce) this.#showNewKeys(STAGES[this.#stage]!.newKeys);
   }
 
   override update(_time: number, delta: number): void {
@@ -227,13 +231,22 @@ export class BattleScene extends Phaser.Scene {
     return new Commands(this.#battle, towers, floodWord, words, { keys: this.#progress.keys });
   }
 
-  /** Unlocks the next stage: new keys on the keyboard, new words on the free build sites, a hint naming the keys. */
+  /**
+   * Unlocks the next stage: new keys on the keyboard, new words on the free
+   * build sites, a hint naming the keys. A new section starts with its cutscene
+   * and a fresh battle instead.
+   */
   #advance(): void {
     this.#stage++;
     const stage = STAGES[this.#stage]!;
-    this.#setup = stageSetup(this.#stage);
     this.#progress.stage = stage.id;
     void this.#progress.save();
+    const next = nextScene(this.#progress, true);
+    if (next.key !== 'BattleScene') {
+      this.scene.start(next.key, next.data);
+      return;
+    }
+    this.#setup = stageSetup(this.#stage);
     this.#commands = this.#newCommands();
     this.#keyboard.setUnlocked(this.#setup.keys);
     this.#unlock = this.#stage + 1 < STAGES.length ? new UnlockTracker() : null;

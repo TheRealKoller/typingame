@@ -1,7 +1,7 @@
 import * as Phaser from 'phaser';
 import { editName, finishName } from '../progress/name';
 import type { Progress } from '../progress/progress';
-import type { BattleSceneData } from './BattleScene';
+import { nextScene } from './flow';
 
 const TEXT = '#2f2a24';
 const QUIET = '#7a6a5a';
@@ -68,6 +68,7 @@ export class NameScene extends Phaser.Scene {
     }
     this.#progress.name = name;
     void this.#progress.save();
-    this.scene.start('BattleScene', { progress: this.#progress } satisfies BattleSceneData);
+    const next = nextScene(this.#progress);
+    this.scene.start(next.key, next.data);
   }
 }
