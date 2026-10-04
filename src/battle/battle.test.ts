@@ -1,11 +1,12 @@
 import { describe, expect, it } from 'vitest';
 import { LEVEL_1 } from '../content/level1';
 import { Battle } from './battle';
-import type { EnemyKind, Level } from './level';
+import type { EnemyKind, Level, TowerKind } from './level';
 import { pointAt } from './path';
 
-const BUG: EnemyKind = { id: 'bug', speed: 100, wardDamage: 1 };
-const BEETLE: EnemyKind = { id: 'beetle', speed: 50, wardDamage: 3 };
+const BUG: EnemyKind = { id: 'bug', speed: 100, wardDamage: 1, health: 20, ink: 5 };
+const BEETLE: EnemyKind = { id: 'beetle', speed: 50, wardDamage: 3, health: 100, ink: 40 };
+const BOW: TowerKind = { id: 'bow', keyword: 'jagd', cost: 30, range: 60, damage: 10, cooldownMs: 500 };
 
 /** Straight path of 300 px; a bug needs 3 s, a beetle 6 s. */
 function level(overrides: Partial<Level> = {}): Level {
@@ -16,7 +17,10 @@ function level(overrides: Partial<Level> = {}): Level {
       { x: 200, y: 0 },
       { x: 200, y: 100 },
     ],
-    sites: [],
+    sites: [
+      { id: 'near', x: 100, y: 40 },
+      { id: 'far', x: 100, y: 400 },
+    ],
     ward: 5,
     ink: 50,
     waves: [
@@ -119,5 +123,58 @@ describe('Battle', () => {
     }
     const enemies = LEVEL_1.waves.reduce((sum, wave) => sum + wave.count * wave.kind.wardDamage, 0);
     expect(battle.ward).toBe(1000 - enemies);
+  });
+});
+
+describe('towers', () => {
+  it('costs ink and needs a free site', () => {
+    const battle = new Battle(level());
+    const [near, far] = battle.level.sites;
+
+    expect(battle.build(near!, BOW)).toBe(true);
+    expect(battle.ink).toBe(20);
+    expect(battle.build(near!, BOW)).toBe(false);
+    expect(battle.build(far!, BOW)).toBe(false);
+    expect(battle.towers).toHaveLength(1);
+    expect(battle.ink).toBe(20);
+  });
+
+  it('attacks enemies in range and turns the defeated into ink', () => {
+    const battle = new Battle(level({ waves: [{ kind: BUG, count: 1, spacingMs: 1000 }] }));
+    battle.build(battle.level.sites[0]!, BOW);
+    battle.endFlood();
+
+    const shots = Array.from({ length: 12 }, () => battle.update(100)).flat();
+
+    expect(shots.map((shot) => shot.defeated)).toEqual([false, true]);
+    expect(battle.enemies).toEqual([]);
+    expect(battle.ink).toBe(25);
+    expect(battle.ward).toBe(5);
+    expect(battle.phase).toBe('won');
+  });
+
+  it('leaves enemies out of range alone', () => {
+    const battle = new Battle(level({ waves: [{ kind: BUG, count: 1, spacingMs: 1000 }] }));
+    battle.build(battle.level.sites[1]!, BOW);
+    battle.endFlood();
+
+    const shots = Array.from({ length: 40 }, () => battle.update(100)).flat();
+
+    expect(shots).toEqual([]);
+    expect(battle.ward).toBe(4);
+  });
+
+  it('aims at the enemy furthest along the path when several are in range', () => {
+    const battle = new Battle(level({ waves: [{ kind: BEETLE, count: 2, spacingMs: 400 }] }));
+    battle.build(battle.level.sites[0]!, BOW);
+    battle.endFlood();
+
+    // Run until the second shot: by then both beetles are in range.
+    const shots = [];
+    while (shots.length < 2) shots.push(...battle.update(100));
+
+    const [leader, follower] = battle.enemies;
+    expect(Math.hypot(battle.positionOf(follower!).x - 100, battle.positionOf(follower!).y - 40)).toBeLessThanOrEqual(60);
+    expect(shots.map((shot) => shot.enemy.id)).toEqual([leader!.id, leader!.id]);
   });
 });
