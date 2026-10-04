@@ -98,3 +98,19 @@ export function pageText(page: CutscenePage, name: string): string {
 export function speakerName(speaker: Speaker, name: string): string | null {
   return { narrator: null, master: MASTER_NAME, apprentice: name }[speaker];
 }
+
+/** What the master says after a practice battle; `{name}` stands for the apprentice's name. */
+export const MASTER_VERDICTS: Readonly<Record<'won' | 'lost', readonly string[]>> = {
+  won: [
+    'Gut gemacht, {name}. Noch einmal – diesmal ohne zu zittern.',
+    'Nicht schlecht. Die Golems sind beleidigt. Ich falte neue.',
+    'Sauber getippt. Fast schon elegant. Weiter.',
+    'Das war ordentlich. Ordentlich ist der Anfang von gut.',
+  ],
+  lost: [
+    'Die Golems sind durch. Ich falte sie neu, du tippst neu.',
+    'Fußnoten warten auf dich, {name}. Oder du versuchst es noch einmal.',
+    'Langsam und genau schlägt schnell und falsch. Noch einmal.',
+    'Kopf hoch. Papier verzeiht. Ich nicht – aber Papier schon.',
+  ],
+};
