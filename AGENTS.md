@@ -43,7 +43,7 @@ Stack: Tauri 2, TypeScript, Phaser, Vite.
 - `src/keyboard/` – Tastaturlayouts als Daten (physische Taste → Zeichen, Reihe, Finger); zuerst `qwertz-de.ts`
 - `src/typing/` – Tipp-Engine: Zielauswahl per Präfix, Fehler, Wortabschluss (ohne Phaser)
 - `src/battle/` – Kampflogik ohne Phaser: Level, Gegner- und Turmtypen als Daten (`level.ts`), Wege (`path.ts`), Ablauf mit Flut und Ebbe, Wellen, Bannkreis, Türmen, Tinte, Sieg und Niederlage (`battle.ts`; die Zeit läuft nur über `update(deltaMs)`), getippte Wörter als Befehle – Bauplatz wählen, Turm bauen, Flut beenden (`commands.ts`)
-- `src/content/` – Spielinhalte als Daten: Wortliste der Grundreihe (`words.ts`, `words.test.ts` prüft die Tastenregel) und das erste Level mit Gegnern, Armbrustturm und Flutwort (`level1.ts`)
+- `src/content/` – Spielinhalte als Daten: Wortliste (`words.ts`), Tutorial-Stufen mit freigeschalteten Tasten, Wörtern und Schlüsselwörtern je Stufe (`tutorial.ts`, `tutorial.test.ts` prüft Tastenregel und Präfix-Paare) und das erste Level mit Gegnern und Armbrustturm (`level1.ts`)
 - `src/progress/` – Fortschritt ohne Phaser: Freischaltung nach Genauigkeit (`unlock.ts`), Sitzungsstatistik (`stats.ts`), gewichtete Wortauswahl nach Fehlerquote ohne Präfix-Paare (`practice.ts`), Spielstand (`save.ts` Format, `progress.ts` Laden/Speichern, `storage.ts` Datei bzw. localStorage)
 - `src/ui/` – wiederverwendbare Phaser-Bausteine: `KeyboardView` (Bildschirmtastatur), `StatsView` (Statistik), `WordLabel` (Wort mit getipptem Anfang)
 - `src/assets/` – Grafik: `spire/` (Foozle „Spire“, CC0: `tileset/`, `effects/`, `towers/`, `enemies/`, `builder/`); Quellen und Lizenzen in `LICENSES.md`
