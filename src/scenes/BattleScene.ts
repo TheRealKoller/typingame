@@ -354,11 +354,12 @@ export class BattleScene extends Phaser.Scene {
     this.#updateHud();
   }
 
+  /** Words standing on the map: site words, or the tower keywords at a selected site. Enemy words follow their enemies (`#syncEnemyLabels`). */
   #placedWords(): Placed[] {
     if (this.#ended()) return [];
     const selected = this.#commands.selected;
     if (selected) {
-      return this.#commands.words.map((word) => ({ word, x: selected.x, y: selected.y - LABEL_OFFSET }));
+      return this.#setup.towers.map((tower) => ({ word: tower.keyword, x: selected.x, y: selected.y - LABEL_OFFSET }));
     }
     const placed: Placed[] = [];
     for (const site of this.#battle.level.sites) {
