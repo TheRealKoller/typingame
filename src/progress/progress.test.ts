@@ -36,6 +36,7 @@ describe('Progress', () => {
     const first = await Progress.load(storage, '1a', new Date('2026-09-28T10:00:00Z'));
     typeInto(first, ['lala', 'dada'], 'lalakdada');
     first.stage = '1b';
+    first.name = 'Ada';
     await first.save();
 
     const second = await Progress.load(storage, '1a', new Date('2026-09-29T10:00:00Z'));
@@ -44,6 +45,7 @@ describe('Progress', () => {
     const third = await Progress.load(storage, '1a');
 
     expect(third.stage).toBe('1b');
+    expect(third.name).toBe('Ada');
     expect(third.keys.h).toEqual({ hits: 2, misses: 0 });
     expect(third.keys.l).toEqual({ hits: 2, misses: 0 });
     expect(third.snapshot().sessions.map((s) => [s.startedAt, s.correct, s.wrong])).toEqual([

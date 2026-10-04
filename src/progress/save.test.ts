@@ -13,6 +13,7 @@ function sessionTyping(words: readonly string[], chars: string): SessionStats {
 const saved: SaveGame = {
   version: 3,
   stage: '2c',
+  name: 'Ada',
   keys: { l: { hits: 4, misses: 1 }, a: { hits: 4, misses: 0 } },
   sessions: [{ startedAt: '2026-09-28T10:00:00.000Z', correct: 8, wrong: 1, activeMs: 4000 }],
 };
@@ -23,8 +24,13 @@ describe('parseSave', () => {
   });
 
   it('keeps the statistics of a save from before the tutorial stages and starts at the first stage', () => {
-    const { stage: _, ...v2 } = { ...saved, version: 2 };
-    expect(parseSave(JSON.stringify(v2), '1a')).toEqual({ ...saved, stage: '1a' });
+    const { stage: _, name: __, ...v2 } = { ...saved, version: 2 };
+    expect(parseSave(JSON.stringify(v2), '1a')).toEqual({ ...saved, stage: '1a', name: '' });
+  });
+
+  it('reads a save from before the name with an empty one', () => {
+    const { name: _, ...withoutName } = saved;
+    expect(parseSave(JSON.stringify(withoutName), '1a')).toEqual({ ...saved, name: '' });
   });
 
   it.each([
@@ -44,6 +50,7 @@ describe('buildSave', () => {
     // l a k l a: "k" is a miss for the expected "l".
     const result = buildSave(saved, {
       stage: '2c',
+      name: 'Ada',
       session: sessionTyping(['lala'], 'lakla'),
       startedAt: '2026-09-29T10:00:00.000Z',
     });
@@ -53,7 +60,7 @@ describe('buildSave', () => {
 
   it('appends the running session and replaces it on the next build', () => {
     const session = sessionTyping(['lala'], 'la');
-    const current = { stage: '2c', session, startedAt: '2026-09-29T10:00:00.000Z' };
+    const current = { stage: '2c', name: 'Ada', session, startedAt: '2026-09-29T10:00:00.000Z' };
     buildSave(saved, current);
     session.record(new TypingEngine(['la']).type('l'), 1500);
 
@@ -68,6 +75,7 @@ describe('buildSave', () => {
   it('adds no session entry before the first keystroke', () => {
     const result = buildSave(saved, {
       stage: '2c',
+      name: 'Ada',
       session: new SessionStats(),
       startedAt: '2026-09-29T10:00:00.000Z',
     });
@@ -75,11 +83,12 @@ describe('buildSave', () => {
     expect(result.sessions).toEqual(saved.sessions);
   });
 
-  it('stores the current stage', () => {
-    expect(buildSave(saved, { stage: '2d', session: new SessionStats(), startedAt: '' }).stage).toBe('2d');
+  it('stores the current stage and name', () => {
+    const result = buildSave(saved, { stage: '2d', name: 'Bert', session: new SessionStats(), startedAt: '' });
+    expect([result.stage, result.name]).toEqual(['2d', 'Bert']);
   });
 
   it('starts empty at the given stage', () => {
-    expect(emptySave('1a')).toEqual({ version: 3, stage: '1a', keys: {}, sessions: [] });
+    expect(emptySave('1a')).toEqual({ version: 3, stage: '1a', name: '', keys: {}, sessions: [] });
   });
 });

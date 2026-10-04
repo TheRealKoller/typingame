@@ -25,6 +25,8 @@ const SaveGameSchema = SaveGameV2Schema.extend({
   version: z.literal(SAVE_VERSION),
   /** Id of the current tutorial stage, e.g. "2c". */
   stage: z.string(),
+  /** Name the player gave the apprentice; empty until chosen. Saves from before the name have none. */
+  name: z.string().default(''),
 });
 
 export type SessionSummary = z.infer<typeof SessionSummarySchema>;
@@ -32,7 +34,7 @@ export type SessionSummary = z.infer<typeof SessionSummarySchema>;
 export type SaveGame = z.infer<typeof SaveGameSchema>;
 
 export function emptySave(firstStage: string): SaveGame {
-  return { version: SAVE_VERSION, stage: firstStage, keys: {}, sessions: [] };
+  return { version: SAVE_VERSION, stage: firstStage, name: '', keys: {}, sessions: [] };
 }
 
 /**
@@ -49,11 +51,12 @@ export function parseSave(json: string, firstStage: string): SaveGame | null {
   const current = SaveGameSchema.safeParse(data);
   if (current.success) return current.data;
   const v2 = SaveGameV2Schema.safeParse(data);
-  return v2.success ? { ...v2.data, version: SAVE_VERSION, stage: firstStage } : null;
+  return v2.success ? { ...v2.data, version: SAVE_VERSION, stage: firstStage, name: '' } : null;
 }
 
 export interface CurrentProgress {
   readonly stage: string;
+  readonly name: string;
   readonly session: SessionStats;
   /** ISO timestamp of the current session start. */
   readonly startedAt: string;
@@ -82,6 +85,7 @@ export function buildSave(base: SaveGame, current: CurrentProgress): SaveGame {
   return {
     version: SAVE_VERSION,
     stage: current.stage,
+    name: current.name,
     keys,
     sessions: typed ? [...base.sessions, summary] : base.sessions,
   };

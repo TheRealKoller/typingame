@@ -39,12 +39,12 @@ Stack: Tauri 2, TypeScript, Phaser, Vite.
 
 ### Aufbau
 
-- `src/` – Spiel (TypeScript, Phaser); Einstieg `src/main.ts`; `src/scenes/BattleScene.ts` spielt das erste Level (Karte, Bauplätze mit Wörtern, Türme, Gegner, Anzeige, Sieg und Niederlage), `src/scenes/battleArt.ts` lädt die Spire-Grafik und legt Animationen an
+- `src/` – Spiel (TypeScript, Phaser); Einstieg `src/main.ts`; `src/scenes/NameScene.ts` fragt bei einem neuen Spiel nach dem Namen des Lehrlings, `src/scenes/BattleScene.ts` spielt das erste Level (Karte, Bauplätze mit Wörtern, Türme, Gegner, Anzeige, Sieg und Niederlage), `src/scenes/battleArt.ts` lädt die Spire-Grafik und legt Animationen an
 - `src/keyboard/` – Tastaturlayouts als Daten (physische Taste → Zeichen, Reihe, Finger); zuerst `qwertz-de.ts`
 - `src/typing/` – Tipp-Engine: Zielauswahl per Präfix, Fehler, Wortabschluss (ohne Phaser)
 - `src/battle/` – Kampflogik ohne Phaser: Level, Gegner- und Turmtypen als Daten (`level.ts`), Wege (`path.ts`), Ablauf mit Flut und Ebbe, Wellen, Bannkreis, Türmen, Tinte, Sieg und Niederlage (`battle.ts`; die Zeit läuft nur über `update(deltaMs)`), getippte Wörter als Befehle – Bauplatz wählen, Turm bauen, Flut beenden (`commands.ts`)
 - `src/content/` – Spielinhalte als Daten: Wortliste (`words.ts`), Tutorial-Stufen mit freigeschalteten Tasten, Wörtern und Schlüsselwörtern je Stufe (`tutorial.ts`, `tutorial.test.ts` prüft Tastenregel und Präfix-Paare) und das erste Level mit Gegnern und Armbrustturm (`level1.ts`)
-- `src/progress/` – Fortschritt ohne Phaser: Freischaltung nach Genauigkeit (`unlock.ts`), Sitzungsstatistik (`stats.ts`), gewichtete Wortauswahl nach Fehlerquote ohne Präfix-Paare (`practice.ts`), Spielstand (`save.ts` Format, `progress.ts` Laden/Speichern, `storage.ts` Datei bzw. localStorage)
+- `src/progress/` – Fortschritt ohne Phaser: Freischaltung nach Genauigkeit (`unlock.ts`), Sitzungsstatistik (`stats.ts`), gewichtete Wortauswahl nach Fehlerquote ohne Präfix-Paare (`practice.ts`), Eingabe des Namens (`name.ts`), Spielstand (`save.ts` Format, `progress.ts` Laden/Speichern, `storage.ts` Datei bzw. localStorage)
 - `src/ui/` – wiederverwendbare Phaser-Bausteine: `KeyboardView` (Bildschirmtastatur), `StatsView` (Statistik), `WordLabel` (Wort mit getipptem Anfang)
 - `src/assets/` – Grafik: `spire/` (Foozle „Spire“, CC0: `tileset/`, `effects/`, `towers/`, `enemies/`, `builder/`); Quellen und Lizenzen in `LICENSES.md`
 - Tests liegen neben dem Code als `*.test.ts` unter `src/` und laufen mit [Vitest](https://vitest.dev) in Node, ohne Phaser.
