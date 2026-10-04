@@ -127,4 +127,17 @@ describe('TypingEngine', () => {
       expect(engine.candidates).toEqual(['lala', 'dada']);
     });
   });
+
+  describe('cancelling', () => {
+    it('abandons the started word so another one can be chosen', () => {
+      const engine = new TypingEngine(['haha', 'lala']);
+      typeAll(engine, 'ha');
+
+      engine.cancel();
+
+      expect(engine.typed).toBe('');
+      expect(engine.candidates).toEqual(['haha', 'lala']);
+      expect(typeAll(engine, 'lala').at(-1)).toEqual({ type: 'complete', word: 'lala' });
+    });
+  });
 });
