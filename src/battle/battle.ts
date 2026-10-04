@@ -26,8 +26,19 @@ export interface Tower {
 export interface Shot {
   readonly tower: Tower;
   readonly enemy: Enemy;
+  /** Health of the enemy right after this hit; the enemy itself may take more hits before the scene shows this one. */
+  readonly health: number;
   readonly defeated: boolean;
 }
+
+/** What happened in one `update` step. */
+export interface Step {
+  readonly shots: readonly Shot[];
+  /** Enemies that reached the ward circle and weakened it. */
+  readonly arrived: readonly Enemy[];
+}
+
+const NOTHING: Step = { shots: [], arrived: [] };
 
 /**
  * One running level without rendering. Time advances only through `update`,
@@ -105,11 +116,11 @@ export class Battle {
     this.#sinceSpawnMs = 0;
   }
 
-  /** Advances the battle by `deltaMs`; returns the attacks made in this step. */
-  update(deltaMs: number): Shot[] {
-    if (this.#phase !== 'ebb') return [];
+  /** Advances the battle by `deltaMs`. */
+  update(deltaMs: number): Step {
+    if (this.#phase !== 'ebb') return NOTHING;
     const wave = this.level.waves[this.#wave];
-    if (!wave) return [];
+    if (!wave) return NOTHING;
 
     // The first enemy enters at once, the others one spacing apart.
     if (this.#spawned > 0) this.#sinceSpawnMs += deltaMs;
@@ -132,7 +143,7 @@ export class Battle {
       this.#wave++;
       this.#phase = this.#wave < this.level.waves.length ? 'flood' : 'won';
     }
-    return shots;
+    return { shots, arrived };
   }
 
   /** Every ready tower hits the enemy in range that is furthest along the path. */
@@ -156,7 +167,7 @@ export class Battle {
         this.#ink += target.kind.ink;
         this.#enemies = this.#enemies.filter((enemy) => enemy !== target);
       }
-      shots.push({ tower, enemy: target, defeated });
+      shots.push({ tower, enemy: target, health: Math.max(0, target.health), defeated });
     }
     return shots;
   }

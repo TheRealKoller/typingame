@@ -42,13 +42,14 @@ describe('Commands', () => {
     expect(commands.words).toHaveLength(LEVEL_1.sites.length);
   });
 
-  it('keeps the site selected when the ink does not suffice', () => {
+  it('releases the site when the ink does not suffice', () => {
     const { battle, commands } = setup(CROSSBOW.cost - 1);
     const site = battle.level.sites[0]!;
     commands.complete(commands.siteWord(site)!);
 
     expect(commands.complete(CROSSBOW.keyword)).toEqual({ type: 'tooExpensive', site, tower: CROSSBOW });
-    expect(commands.selected).toBe(site);
+    expect(commands.selected).toBeNull();
+    expect(commands.words).toContain(FLOOD_WORD);
     expect(battle.towers).toEqual([]);
   });
 
