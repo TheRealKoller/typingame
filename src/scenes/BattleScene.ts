@@ -4,7 +4,8 @@ import { Commands, type Command } from '../battle/commands';
 import type { BuildSite } from '../battle/level';
 import type { Point } from '../battle/path';
 import { practiceLevel } from '../content/library';
-import { STAGES, stageIndex, stageSetup, type StageSetup } from '../content/tutorial';
+import { RAID_LEVEL } from '../content/raid';
+import { JOURNEY, RAID, raidSetup, STAGES, stageIndex, stageSetup, type StageSetup } from '../content/tutorial';
 import { FINGER_NAME } from '../keyboard/fingers';
 import { qwertzDe } from '../keyboard/qwertz-de';
 import { UnlockTracker } from '../progress/unlock';
@@ -19,6 +20,9 @@ import {
   BANNER_FRAME,
   BOOK_PILE,
   BOOKSHELF,
+  BOOKSHELF_BURNT,
+  FIRE,
+  FIRE_BURNING,
   BRICK_FRAME,
   CARPET_FRAME,
   CONSTRUCTION,
@@ -135,9 +139,14 @@ export class BattleScene extends Phaser.Scene {
   /** Position in `STAGES` and what it unlocks. */
   #stage = 0;
   #setup!: StageSetup;
-  /** Null in the last stage: there is nothing left to unlock. */
+  /** Null during the raid: there is nothing left to unlock. */
   #unlock: UnlockTracker | null = null;
   #unlockReached = false;
+  /** The raid on the library instead of a practice battle. */
+  #raid = false;
+  /** Shelves that can still catch fire in the raid, in the order they burn. */
+  #shelves: Phaser.GameObjects.Image[] = [];
+  #darkness: Phaser.GameObjects.Rectangle | null = null;
 
   preload(): void {
     preloadBattleArt(this);
@@ -146,11 +155,15 @@ export class BattleScene extends Phaser.Scene {
   create(data: BattleSceneData): void {
     createBattleArt(this);
     this.#progress = data.progress;
-    this.#stage = stageIndex(this.#progress.stage);
-    this.#setup = stageSetup(this.#stage);
-    this.#unlock = this.#stage + 1 < STAGES.length ? new UnlockTracker() : null;
+    this.#raid = this.#progress.stage === RAID;
+    // The raid is fought with every key of the tutorial.
+    this.#stage = this.#raid ? STAGES.length - 1 : stageIndex(this.#progress.stage);
+    this.#setup = this.#raid ? raidSetup() : stageSetup(this.#stage);
+    this.#unlock = this.#raid ? null : new UnlockTracker();
     this.#unlockReached = false;
-    this.#battle = new Battle(practiceLevel(STAGES[this.#stage]!.section));
+    this.#battle = new Battle(this.#raid ? RAID_LEVEL : practiceLevel(STAGES[this.#stage]!.section));
+    this.#shelves = [];
+    this.#darkness = null;
     this.#commands = this.#newCommands();
     this.#labels = [];
     this.#labelKey = '';
@@ -182,7 +195,7 @@ export class BattleScene extends Phaser.Scene {
       window.removeEventListener('pagehide', this.#save);
     });
     this.#sync();
-    if (data.announce) this.#showNewKeys(STAGES[this.#stage]!.newKeys);
+    if (data.announce && !this.#raid) this.#showNewKeys(STAGES[this.#stage]!.newKeys);
   }
 
   override update(_time: number, delta: number): void {
@@ -196,9 +209,13 @@ export class BattleScene extends Phaser.Scene {
     this.#sync();
   }
 
-  /** Words that can be typed now: the commands while the level runs, then the flood word to play again. */
+  /**
+   * Words that can be typed now: the commands while the level runs, then the
+   * flood word to play again – except after the raid, where the story goes on.
+   */
   #words(): readonly string[] {
-    return this.#ended() ? [this.#setup.floodWord] : this.#commands.words;
+    if (!this.#ended()) return this.#commands.words;
+    return this.#raid ? [] : [this.#setup.floodWord];
   }
 
   #ended(): boolean {
@@ -221,6 +238,8 @@ export class BattleScene extends Phaser.Scene {
     }
     // Only printable single characters count as typing; shortcuts and named keys are ignored.
     if (event.repeat || event.ctrlKey || event.altKey || event.metaKey || [...event.key].length !== 1) return;
+    // After the raid nothing is left to type; keystrokes would only count as mistakes.
+    if (this.#raid && this.#ended()) return;
 
     const events = this.#engine.type(event.key);
     const correct = events[0]?.type === 'correct';
@@ -248,22 +267,22 @@ export class BattleScene extends Phaser.Scene {
   /**
    * Unlocks the next stage: new keys on the keyboard, new words on the free
    * build sites, a hint naming the keys. A new section starts with its cutscene
-   * and a fresh battle instead.
+   * and a fresh battle instead; after the last stage comes the raid.
    */
   #advance(): void {
     this.#stage++;
-    const stage = STAGES[this.#stage]!;
-    this.#progress.stage = stage.id;
+    const stage = STAGES[this.#stage];
+    this.#progress.stage = stage?.id ?? RAID;
     void this.#progress.save();
     const next = nextScene(this.#progress, true);
-    if (next.key !== 'BattleScene') {
+    if (!stage || next.key !== 'BattleScene') {
       this.scene.start(next.key, next.data);
       return;
     }
     this.#setup = stageSetup(this.#stage);
     this.#commands = this.#newCommands();
     this.#keyboard.setUnlocked(this.#setup.keys);
-    this.#unlock = this.#stage + 1 < STAGES.length ? new UnlockTracker() : null;
+    this.#unlock = new UnlockTracker();
     this.#unlockReached = false;
     this.#showNewKeys(stage.newKeys);
   }
@@ -321,7 +340,7 @@ export class BattleScene extends Phaser.Scene {
   }
 
   #placedWords(): Placed[] {
-    if (this.#ended()) return [{ word: this.#setup.floodWord, x: this.scale.width / 2, y: 290 }];
+    if (this.#ended()) return this.#words().map((word) => ({ word, x: this.scale.width / 2, y: 290 }));
     const selected = this.#commands.selected;
     if (selected) {
       return this.#commands.words.map((word) => ({ word, x: selected.x, y: selected.y - LABEL_OFFSET }));
@@ -373,6 +392,12 @@ export class BattleScene extends Phaser.Scene {
       // Furniture stands on its lower edge, so it sorts with towers and golems by that line.
       const image = this.add.image(x, y, key, frame).setOrigin(0.5, 1);
       image.setY(y + image.height / 2).setDepth(y + image.height / 2);
+      if (key === BOOKSHELF) this.#shelves.push(image);
+    }
+    // In the raid the fire spreads from the ward circle towards the door.
+    this.#shelves.sort((a, b) => b.x - a.x);
+    if (this.#raid) {
+      this.#darkness = this.add.rectangle(0, 0, this.scale.width, DESK_TOP, 0x120808, 0).setOrigin(0).setDepth(990);
     }
 
     for (const site of this.#battle.level.sites) {
@@ -453,7 +478,10 @@ export class BattleScene extends Phaser.Scene {
       .lineStyle(2, 0xffffff, 0.6 * strength)
       .strokeCircle(0, 0, WARD_RADIUS - 10);
 
-    if (this.#ended() && !this.#endPanel) this.#showEnd();
+    if (this.#ended() && !this.#endPanel) {
+      if (this.#raid) this.#endRaid();
+      else this.#showEnd();
+    }
   }
 
   #drawEnemies(): void {
@@ -462,7 +490,7 @@ export class BattleScene extends Phaser.Scene {
       let view = this.#enemies.get(enemy.id);
       if (!view) {
         view = {
-          sprite: this.add.sprite(at.x, at.y, enemy.kind.id).setScale(ENEMY_SHEETS[enemy.kind.id]?.scale ?? 1),
+          sprite: this.#enemySprite(enemy, at),
           health: this.add.graphics(),
           shownHealth: enemy.kind.health,
           last: at,
@@ -488,7 +516,14 @@ export class BattleScene extends Phaser.Scene {
       .fillRect(at.x - 17, at.y - 35, 34 * share, 3);
   }
 
-  /** An enemy reached the ward circle: it fades into the circle, and the circle shudders. */
+  #enemySprite(enemy: Enemy, at: Point): Phaser.GameObjects.Sprite {
+    const sheet = ENEMY_SHEETS[enemy.kind.id];
+    const sprite = this.add.sprite(at.x, at.y, enemy.kind.id).setScale(sheet?.scale ?? 1);
+    if (sheet?.tint !== undefined) sprite.setTint(sheet.tint);
+    return sprite;
+  }
+
+  /** An enemy reached the ward circle: it fades into the circle, and the circle shudders. In the raid, a shelf catches fire. */
   #showArrival(enemy: Enemy): void {
     const view = this.#enemies.get(enemy.id);
     if (view) {
@@ -497,6 +532,39 @@ export class BattleScene extends Phaser.Scene {
       this.tweens.add({ targets: view.sprite, alpha: 0, scale: 0.4, duration: 300, onComplete: () => view.sprite.destroy() });
     }
     this.tweens.add({ targets: this.#ward, scale: { from: 1.25, to: 1 }, duration: 350, ease: 'Back.easeOut' });
+    if (this.#raid) this.#ignite(enemy.kind.wardDamage);
+  }
+
+  /** Sets the next `count` shelves on fire and lets the room grow darker with the weakening ward. */
+  #ignite(count: number): void {
+    for (const shelf of this.#shelves.splice(0, count)) {
+      shelf.setTexture(BOOKSHELF_BURNT, shelf.frame.name);
+      this.add
+        .sprite(shelf.x, shelf.y, FIRE)
+        .setOrigin(0.5, 1)
+        .setScale(LIBRARY_SCALE)
+        .setDepth(shelf.depth + 1)
+        .play({ key: FIRE_BURNING, startFrame: Math.floor(Math.random() * 2) });
+    }
+    const lost = 1 - this.#battle.ward / this.#battle.level.ward;
+    this.#darkness?.setFillStyle(0x120808, 0.55 * lost);
+  }
+
+  /**
+   * The raid always ends with the ward broken: the room goes dark, Kalliope is
+   * gone, and the story goes on with the cutscene after the raid.
+   */
+  #endRaid(): void {
+    this.#endPanel = this.add.container();
+    this.#progress.stage = JOURNEY;
+    void this.#progress.save();
+    this.time.delayedCall(2000, () => {
+      this.cameras.main.fadeOut(1500, 18, 8, 8);
+      this.cameras.main.once(Phaser.Cameras.Scene2D.Events.FADE_OUT_COMPLETE, () => {
+        const next = nextScene(this.#progress);
+        this.scene.start(next.key, next.data);
+      });
+    });
   }
 
   /** Picks the sprite row from the direction of travel and flips side views as needed. */

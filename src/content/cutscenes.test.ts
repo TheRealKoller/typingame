@@ -1,11 +1,12 @@
 import { describe, expect, it } from 'vitest';
 import { CUTSCENES, cutsceneBefore, pageText, speakerName } from './cutscenes';
-import { STAGES } from './tutorial';
+import { JOURNEY, RAID, STAGES } from './tutorial';
 
 describe('cutscenes', () => {
-  it('start before existing stages only, at most one per stage', () => {
-    const stages = CUTSCENES.flatMap((scene) => (scene.beforeStage ? [scene.beforeStage] : []));
-    expect(stages.filter((id) => !STAGES.some((stage) => stage.id === id))).toEqual([]);
+  it('start before existing stages, the raid or the journey only, at most one per stage', () => {
+    const stages = CUTSCENES.map((scene) => scene.beforeStage);
+    const known = [...STAGES.map((stage) => stage.id), RAID, JOURNEY];
+    expect(stages.filter((id) => !known.includes(id))).toEqual([]);
     expect(new Set(stages).size).toBe(stages.length);
   });
 

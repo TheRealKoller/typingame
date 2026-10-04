@@ -1,5 +1,6 @@
 import * as Phaser from 'phaser';
 import bookPileImage from '../assets/library/book-pile.png';
+import bookshelfBurntImage from '../assets/library/bookshelf-burnt.png';
 import bookshelfImage from '../assets/library/bookshelf.png';
 import lecternImage from '../assets/library/lectern.png';
 import largePaperGolemImage from '../assets/library/paper-golem-large.png';
@@ -9,10 +10,13 @@ import scrollImage from '../assets/library/scroll.png';
 import dungeonImage from '../assets/lucifer/dungeon/dungeon-tileset.png';
 import torchImage from '../assets/lucifer/lava/torch.png';
 import constructionImage from '../assets/spire/builder/tower-construction.png';
+import firebugImage from '../assets/spire/enemies/firebug.png';
+import scorpionImage from '../assets/spire/enemies/scorpion.png';
 import baseTower01Image from '../assets/spire/towers/base-tower-01.png';
 import tower01ImpactImage from '../assets/spire/towers/tower-01-weapon-impact.png';
 import tower01ProjectileImage from '../assets/spire/towers/tower-01-level-01-projectile.png';
 import tower01WeaponImage from '../assets/spire/towers/tower-01-level-01-weapon.png';
+import fireImage from '../assets/traps/fire-trap-level-1.png';
 
 /** Frames per second of every Spire animation (100 ms per frame in the sources). */
 const FRAME_RATE = 10;
@@ -32,9 +36,11 @@ interface EnemySheet {
   readonly sideFaces: 'left' | 'right';
   /** Drawing scale on screen; the paper golems are drawn small within their frames. */
   readonly scale: number;
+  /** Colour multiplied into the sprite, e.g. to darken the creatures of the Silence. */
+  readonly tint?: number;
 }
 
-/** Sprite sheets by enemy kind id (see `src/content/library.ts`). */
+/** Sprite sheets by enemy kind id (see `src/content/library.ts` and `src/content/raid.ts`). */
 export const ENEMY_SHEETS: Readonly<Record<string, EnemySheet>> = {
   'paper-golem': {
     url: paperGolemImage,
@@ -56,6 +62,10 @@ export const ENEMY_SHEETS: Readonly<Record<string, EnemySheet>> = {
     sideFaces: 'right',
     scale: 1.5,
   },
+  // Spire creatures, darkened: the Silence has taken them.
+  scorpion: { url: scorpionImage, frameWidth: 64, frameHeight: 64, columns: 8, walkFrames: 8, deathFrames: 8, sideFaces: 'left', scale: 1, tint: 0x8a80b0 },
+  firebug: { url: firebugImage, frameWidth: 128, frameHeight: 64, columns: 11, walkFrames: 8, deathFrames: 11, sideFaces: 'right', scale: 1, tint: 0x8a80b0 },
+  shadow: { url: firebugImage, frameWidth: 128, frameHeight: 64, columns: 11, walkFrames: 8, deathFrames: 11, sideFaces: 'right', scale: 1.4, tint: 0x2a2038 },
 };
 
 export type Heading = 'down' | 'up' | 'side';
@@ -79,6 +89,10 @@ export const LIBRARY_SCALE = 2;
 export const TORCH = 'torch';
 export const TORCH_FLAME = 'torch-flame';
 export const BOOKSHELF = 'bookshelf';
+export const BOOKSHELF_BURNT = 'bookshelf-burnt';
+/** Flames rising from the floor (Fire Trap of the Pixel Trap Pack, frames 32 × 64). */
+export const FIRE = 'fire';
+export const FIRE_BURNING = 'fire-burning';
 export const LECTERN = 'lectern';
 export const READING_DESK = 'reading-desk';
 export const BOOK_PILE = 'book-pile';
@@ -118,6 +132,8 @@ export function preloadBattleArt(scene: Phaser.Scene): void {
   scene.load.image(DUNGEON, dungeonImage);
   scene.load.spritesheet(TORCH, torchImage, { frameWidth: 32, frameHeight: 32 });
   scene.load.spritesheet(BOOKSHELF, bookshelfImage, { frameWidth: 64, frameHeight: 128 });
+  scene.load.spritesheet(BOOKSHELF_BURNT, bookshelfBurntImage, { frameWidth: 64, frameHeight: 128 });
+  scene.load.spritesheet(FIRE, fireImage, { frameWidth: 32, frameHeight: 64 });
   scene.load.image(LECTERN, lecternImage);
   scene.load.image(READING_DESK, readingDeskImage);
   scene.load.spritesheet(BOOK_PILE, bookPileImage, { frameWidth: 64, frameHeight: 64 });
@@ -172,6 +188,10 @@ export function createBattleArt(scene: Phaser.Scene): void {
 
   if (!anims.exists(TORCH_FLAME)) {
     anims.create({ key: TORCH_FLAME, frames: anims.generateFrameNumbers(TORCH, {}), frameRate: FRAME_RATE, repeat: -1 });
+  }
+  if (!anims.exists(FIRE_BURNING)) {
+    // Frames 4 and 5 are the flames; the others are the idle trap and its smoke.
+    anims.create({ key: FIRE_BURNING, frames: anims.generateFrameNumbers(FIRE, { start: 4, end: 5 }), frameRate: 6, repeat: -1 });
   }
   if (!anims.exists(CONSTRUCTION_REVEAL)) {
     anims.create({
