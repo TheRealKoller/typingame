@@ -85,6 +85,15 @@ Wie sich Atramentus zeigt (vorläufig, ein Schritt je Gebiet):
 
 - Jeder **Bauplatz** trägt ein Wort. Tippt man es, ist der Bauplatz gewählt.
 - Danach baut ein **Schlüsselwort** dort einen bestimmten Turm, z. B. *feuer* einen Feuerturm.
+- Türme bisher (Grafik aus den Spire-Paketen):
+
+| Turm | Schlüsselwort | Kosten | Wirkung |
+|---|---|---|---|
+| Armbrust | *jagd* (vor `g`: *lass*) | 50 | schnelle Einzelschüsse |
+| Tintenschleuder | *klecks* | 70 | langsam, der Klecks trifft jeden Gegner nahe am Ziel |
+| Frostkristall | *frost* | 60 | schwache Treffer, die Gegner 1,5 s auf halbe Geschwindigkeit bremsen |
+
+- Ein gewählter Bauplatz zeigt die Schlüsselwörter nebeneinander, die Notiz links nennt Turm und Kosten. Im Tutorial gibt es nur die Armbrust; auf der Reise kommt an jedem der ersten Orte ein Turm dazu (Rauchsenke: Tintenschleuder, Kellergewölbe: Frostkristall). Später schalten Bücherkarren weitere frei (siehe 4.8).
 - **Aufrüsten** funktioniert ähnlich: den Turm über sein Wort wählen, dann ein Aufrüstwort tippen.
 - Türme und Aufrüstungen kosten **Tinte**. Die Monster sind aus Tinte gemacht; besiegt zerfließen sie und hinterlassen sie.
 

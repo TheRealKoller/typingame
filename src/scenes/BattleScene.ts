@@ -1,5 +1,5 @@
 import * as Phaser from 'phaser';
-import { Battle, type Enemy, type Shot, type Tower } from '../battle/battle';
+import { Battle, type Enemy, type Hit, type Shot, type Tower } from '../battle/battle';
 import { Commands, type Command } from '../battle/commands';
 import type { BuildSite } from '../battle/level';
 import type { Point } from '../battle/path';
@@ -70,6 +70,10 @@ const WALL_HEIGHT = 96;
 /** Word labels sit this far above the centre of their build site. */
 const LABEL_OFFSET = 52;
 const WORD_SIZE = 30;
+/** Distance between the tower keywords shown side by side at a selected site. */
+const KEYWORD_SPACING = 130;
+/** Tint of an enemy slowed by frost. */
+const FROST_TINT = 0x9fd4ff;
 /** Longest step fed to the battle, so a hidden window does not make enemies jump. */
 const MAX_STEP_MS = 100;
 const PROJECTILE_SPEED = 900;
@@ -177,14 +181,15 @@ export class BattleScene extends Phaser.Scene {
     this.#raid = this.#progress.stage === RAID;
     this.#point = this.#progress.stage === JOURNEY && data.point ? worldPoint(data.point) : null;
     const tutorial = !this.#raid && !this.#point;
-    // The raid and the journey are fought with every key of the tutorial.
+    // The raid and the journey are fought with every key of the tutorial; a place of the journey brings its own map and towers.
+    const journey = this.#point ? journeyBattle(this.#point, Math.random) : null;
     this.#stage = tutorial ? stageIndex(this.#progress.stage) : STAGES.length - 1;
-    this.#setup = tutorial ? stageSetup(this.#stage) : allKeysSetup();
+    const setup = tutorial ? stageSetup(this.#stage) : allKeysSetup();
+    this.#setup = journey ? { ...setup, towers: journey.towers } : setup;
     this.#unlock = tutorial ? new UnlockTracker() : null;
     this.#unlockReached = false;
     this.#round = data.round ?? 0;
-    // A place of the journey brings its own map; the raid always strikes the reading room.
-    const journey = this.#point ? journeyBattle(this.#point, Math.random) : null;
+    // The raid always strikes the reading room.
     this.#map = journey?.map ?? (this.#raid ? READING_ROOM : practiceMap(this.#round));
     this.#battle = new Battle(journey?.level ?? (this.#raid ? RAID_LEVEL : practiceLevel(STAGES[this.#stage]!.section, this.#map)));
     this.#shelves = [];
@@ -378,7 +383,10 @@ export class BattleScene extends Phaser.Scene {
     if (this.#ended()) return [];
     const selected = this.#commands.selected;
     if (selected) {
-      return this.#setup.towers.map((tower) => ({ word: tower.keyword, x: selected.x, y: selected.y - LABEL_OFFSET }));
+      // The keywords stand side by side above the site, kept on screen.
+      const { towers } = this.#setup;
+      const left = Math.min(Math.max(selected.x - ((towers.length - 1) * KEYWORD_SPACING) / 2, KEYWORD_SPACING / 2), this.scale.width - KEYWORD_SPACING / 2 - (towers.length - 1) * KEYWORD_SPACING);
+      return towers.map((tower, i) => ({ word: tower.keyword, x: left + i * KEYWORD_SPACING, y: selected.y - LABEL_OFFSET }));
     }
     const placed: Placed[] = [];
     for (const site of this.#battle.level.sites) {
@@ -567,10 +575,8 @@ export class BattleScene extends Phaser.Scene {
       won: this.#point ? 'Das Verstummen weicht zurück.' : 'Alle Golems besiegt.',
       lost: 'Der Bannkreis ist gebrochen.',
     }[battle.phase];
-    const tower = this.#setup.towers[0]!;
-    const selected = this.#commands.selected
-      ? `Bauplatz gewählt – »${tower.keyword}« baut einen Armbrustturm (${tower.cost} Tinte), Esc geht zurück.`
-      : null;
+    const choices = this.#setup.towers.map((tower) => `»${tower.keyword}« ${tower.name} (${tower.cost} Tinte)`);
+    const selected = this.#commands.selected ? `Bauplatz gewählt – ${choices.join(', ')}. Esc geht zurück.` : null;
     this.#phaseText.setText(selected ?? phase);
     this.#wavePrompt.setVisible(battle.phase === 'flood');
     this.#inkText.setText(`Tinte: ${battle.ink}`);
@@ -613,6 +619,11 @@ export class BattleScene extends Phaser.Scene {
       const heading = this.#heading(view, enemy, at);
       view.sprite.setPosition(at.x, at.y).setDepth(at.y + 100);
       view.sprite.play(walkAnimation(enemy.kind.id, heading), true);
+      // A slowed enemy is frosted over; otherwise it keeps the tint of its sheet.
+      const sheetTint = ENEMY_SHEETS[enemy.kind.id]?.tint;
+      if (enemy.slowMs > 0) view.sprite.setTint(FROST_TINT);
+      else if (sheetTint !== undefined) view.sprite.setTint(sheetTint);
+      else view.sprite.clearTint();
       view.glow?.setPosition(at.x, at.y + 14).setDepth(at.y + 99);
       view.last = at;
       this.#drawHealth(view, enemy, at);
@@ -769,18 +780,25 @@ export class BattleScene extends Phaser.Scene {
   #showShot(shot: Shot): void {
     const art = TOWER_ART[shot.tower.kind.id];
     const view = this.#towers.get(shot.tower.site.id);
-    const enemyView = this.#enemies.get(shot.enemy.id);
-    if (!art || !view || !enemyView) return;
-    // A defeated enemy leaves the battle now; it stays on screen until the bolt arrives.
-    if (shot.defeated) this.#enemies.delete(shot.enemy.id);
-
+    // Defeated enemies leave the battle now; they stay on screen until the shot arrives.
+    const hits = [shot, ...shot.splash].flatMap((hit) => {
+      const enemyView = this.#enemies.get(hit.enemy.id);
+      if (!enemyView) return [];
+      if (hit.defeated) this.#enemies.delete(hit.enemy.id);
+      return [{ hit, enemyView }];
+    });
+    const enemyView = hits[0]?.hit === shot ? hits[0].enemyView : undefined;
+    if (!art || !view || !enemyView) {
+      for (const { hit, enemyView: other } of hits) this.#land(hit, other);
+      return;
+    }
     const from = { x: view.weapon.x, y: view.weapon.y };
     const target = enemyView.sprite;
     const angle = Phaser.Math.Angle.Between(from.x, from.y, target.x, target.y);
     // The Spire weapons and projectiles point up.
     view.weapon.setRotation(angle + Math.PI / 2).play(art.weaponAttack);
 
-    const projectile = this.add.image(from.x, from.y, art.projectile).setRotation(angle + Math.PI / 2).setDepth(900);
+    const projectile = this.add.image(from.x, from.y, art.projectile).setRotation(angle + Math.PI / 2).setScale(art.shotScale).setDepth(900);
     const duration = (Phaser.Math.Distance.Between(from.x, from.y, target.x, target.y) / PROJECTILE_SPEED) * 1000;
     this.tweens.addCounter({
       from: 0,
@@ -794,25 +812,25 @@ export class BattleScene extends Phaser.Scene {
       },
       onComplete: () => {
         projectile.destroy();
-        const impact = this.add.sprite(target.x, target.y, art.impact).setDepth(901).play(art.impact);
+        const impact = this.add.sprite(target.x, target.y, art.impact).setScale(art.shotScale).setDepth(901).play(art.impact);
         impact.once(Phaser.Animations.Events.ANIMATION_COMPLETE, () => impact.destroy());
-        this.#land(shot, enemyView);
+        for (const { hit, enemyView: other } of hits) this.#land(hit, other);
       },
     });
   }
 
-  #land(shot: Shot, enemyView: EnemyView): void {
-    // Bolts can land out of order; the bar never grows back.
-    enemyView.shownHealth = Math.min(enemyView.shownHealth, shot.health);
-    if (!shot.defeated) return;
+  #land(hit: Hit, enemyView: EnemyView): void {
+    // Shots can land out of order; the bar never grows back.
+    enemyView.shownHealth = Math.min(enemyView.shownHealth, hit.health);
+    if (!hit.defeated) return;
     enemyView.health.destroy();
     enemyView.glow?.destroy();
     const heading = (enemyView.sprite.getData('heading') as Heading | undefined) ?? 'side';
-    enemyView.sprite.play(deathAnimation(shot.enemy.kind.id, heading));
+    enemyView.sprite.play(deathAnimation(hit.enemy.kind.id, heading));
     enemyView.sprite.once(Phaser.Animations.Events.ANIMATION_COMPLETE, () => {
       this.tweens.add({ targets: enemyView.sprite, alpha: 0, duration: 400, onComplete: () => enemyView.sprite.destroy() });
     });
-    this.#float(enemyView.sprite, `+${shot.enemy.kind.ink} Tinte`, '#2b3a6b');
+    this.#float(enemyView.sprite, `+${hit.enemy.kind.ink} Tinte`, '#2b3a6b');
   }
 
   /** Short text that rises and fades at `at`. */

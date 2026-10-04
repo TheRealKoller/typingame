@@ -15,6 +15,9 @@ export interface Enemy {
   health: number;
   /** Glows and carries a word; typing it strikes the enemy down (see `strike`). */
   readonly marked: boolean;
+  /** Time left at reduced speed after a slowing hit, and the factor that applies meanwhile. */
+  slowMs: number;
+  slowFactor: number;
 }
 
 export interface Tower {
@@ -24,13 +27,18 @@ export interface Tower {
   cooldownMs: number;
 }
 
-/** One attack of a tower in an `update` step, for the scene to show. */
-export interface Shot {
-  readonly tower: Tower;
+/** One enemy hit by an attack. */
+export interface Hit {
   readonly enemy: Enemy;
   /** Health of the enemy right after this hit; the enemy itself may take more hits before the scene shows this one. */
   readonly health: number;
   readonly defeated: boolean;
+}
+
+/** One attack of a tower in an `update` step, for the scene to show: the target, and others caught in the splash. */
+export interface Shot extends Hit {
+  readonly tower: Tower;
+  readonly splash: readonly Hit[];
 }
 
 /** What happened in one `update` step. */
@@ -141,14 +149,19 @@ export class Battle {
       while (spawned < squad.count && this.#waveMs >= (squad.delayMs ?? 0) + spawned * squad.spacingMs) {
         // Every `markEvery`-th enemy of a squad glows, starting with the first.
         const marked = squad.markEvery !== undefined && spawned % squad.markEvery === 0;
-        this.#enemies.push({ id: this.#nextId++, kind: squad.kind, distance: 0, health: squad.kind.health, marked });
+        this.#enemies.push({ id: this.#nextId++, kind: squad.kind, distance: 0, health: squad.kind.health, marked, slowMs: 0, slowFactor: 1 });
         spawned++;
       }
       this.#spawned[i] = spawned;
     });
     this.#waveMs += deltaMs;
 
-    for (const enemy of this.#enemies) enemy.distance += (enemy.kind.speed * deltaMs) / 1000;
+    for (const enemy of this.#enemies) {
+      // The slowed part of the step runs at the reduced speed, the rest at full speed.
+      const slowed = Math.min(enemy.slowMs, deltaMs);
+      enemy.distance += (enemy.kind.speed * (slowed * enemy.slowFactor + (deltaMs - slowed))) / 1000;
+      enemy.slowMs -= slowed;
+    }
     const arrived = this.#enemies.filter((enemy) => enemy.distance >= this.#length);
     this.#enemies = this.#enemies.filter((enemy) => enemy.distance < this.#length);
     for (const enemy of arrived) this.#ward = Math.max(0, this.#ward - enemy.kind.wardDamage);
@@ -164,7 +177,10 @@ export class Battle {
     return { shots, arrived };
   }
 
-  /** Every ready tower hits the enemy in range that is furthest along the path. */
+  /**
+   * Every ready tower hits the enemy in range that is furthest along the path;
+   * a splashing tower hits every enemy near the target as well.
+   */
   #attack(deltaMs: number): Shot[] {
     const shots: Shot[] = [];
     for (const tower of this.#towers) {
@@ -179,14 +195,34 @@ export class Battle {
       if (!target) continue;
 
       tower.cooldownMs = tower.kind.cooldownMs;
-      target.health -= tower.kind.damage;
-      const defeated = target.health <= 0;
-      if (defeated) {
-        this.#ink += target.kind.ink;
-        this.#enemies = this.#enemies.filter((enemy) => enemy !== target);
-      }
-      shots.push({ tower, enemy: target, health: Math.max(0, target.health), defeated });
+      const { splash } = tower.kind;
+      const center = this.positionOf(target);
+      const others =
+        splash === undefined
+          ? []
+          : this.#enemies.filter((enemy) => {
+              if (enemy === target) return false;
+              const at = this.positionOf(enemy);
+              return Math.hypot(at.x - center.x, at.y - center.y) <= splash;
+            });
+      const [hit, ...splashed] = [target, ...others].map((enemy) => this.#hit(enemy, tower.kind));
+      shots.push({ ...hit!, tower, splash: splashed });
     }
     return shots;
+  }
+
+  /** `kind` hits `enemy`: damage, maybe a slowdown; a defeated enemy leaves its ink and the battle. */
+  #hit(enemy: Enemy, kind: TowerKind): Hit {
+    enemy.health -= kind.damage;
+    if (kind.slow) {
+      enemy.slowMs = kind.slow.durationMs;
+      enemy.slowFactor = kind.slow.factor;
+    }
+    const defeated = enemy.health <= 0;
+    if (defeated) {
+      this.#ink += enemy.kind.ink;
+      this.#enemies = this.#enemies.filter((other) => other !== enemy);
+    }
+    return { enemy, health: Math.max(0, enemy.health), defeated };
   }
 }
