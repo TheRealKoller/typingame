@@ -1,5 +1,6 @@
-import type { Level, Wave } from '../battle/level';
-import { ARCHIVE, COURTYARD, READING_ROOM, type PracticeMap } from './library';
+import type { Level } from '../battle/level';
+import { wallShelves, type BattleMap } from './library';
+import { generateAshMap, generateWaves, type Foes, type Random } from './mapgen';
 import { SILENT_FIREBUG, SILENT_SCORPION } from './raid';
 
 /** A place on the world map held by the Silence; typing its word selects it. */
@@ -10,9 +11,10 @@ export interface WorldPoint {
   /** Position on the 1280 × 720 world map. */
   readonly x: number;
   readonly y: number;
-  /** Where the battle is fought; the ash fields borrow the library's maps for now. */
-  readonly map: PracticeMap;
-  readonly waves: readonly Wave[];
+  /** 1 for the first place; the waves grow with it. */
+  readonly difficulty: number;
+  /** A fixed map for special places; the others get a fresh one each time. */
+  readonly map?: BattleMap;
 }
 
 /** A region of the world map; only the ash fields can be entered so far. */
@@ -23,62 +25,80 @@ export interface Region {
   readonly open: boolean;
 }
 
-const scorpions = (count: number, spacingMs: number, delayMs = 0): Wave[number] => ({
-  kind: SILENT_SCORPION,
-  count,
-  spacingMs,
-  delayMs,
-  markEvery: 3,
-});
-const firebugs = (count: number, spacingMs: number, delayMs = 0): Wave[number] => ({
-  kind: SILENT_FIREBUG,
-  count,
-  spacingMs,
-  delayMs,
-});
+/** The creatures of the Silence in the ash fields. */
+const ASH_FOES: Foes = { small: SILENT_SCORPION, large: SILENT_FIREBUG };
+
+/** What is left of the reading room: soot on the floor, burnt shelves, no banners, no torches. */
+export const RUIN: BattleMap = {
+  id: 'ruin',
+  name: 'Bibliotheksruine',
+  indoor: true,
+  floor: 'stone',
+  ash: true,
+  path: [
+    { x: -40, y: 200 },
+    { x: 240, y: 200 },
+    { x: 240, y: 400 },
+    { x: 600, y: 400 },
+    { x: 600, y: 200 },
+    { x: 900, y: 200 },
+    { x: 900, y: 380 },
+    { x: 1150, y: 380 },
+  ],
+  sites: [
+    { id: 'a', x: 120, y: 330 },
+    { id: 'b', x: 420, y: 300 },
+    { id: 'c', x: 750, y: 330 },
+    { id: 'd', x: 1030, y: 260 },
+    { id: 'e', x: 780, y: 440 },
+  ],
+  props: [
+    ...wallShelves([64, 128, 384, 448, 512, 704, 768, 1024, 1088, 1152], 'burnt-bookshelf'),
+    { kind: 'book-pile', variant: 1, x: 60, y: 440 },
+    { kind: 'book-pile', variant: 0, x: 1180, y: 250 },
+    { kind: 'scroll', x: 420, y: 160 },
+    { kind: 'scroll', x: 1220, y: 440 },
+  ],
+};
+
+/** The cellar under the library: the fire did not reach it; torches still burn. */
+export const CELLAR: BattleMap = {
+  id: 'cellar',
+  name: 'Kellergewölbe',
+  indoor: true,
+  floor: 'slab',
+  path: [
+    { x: -40, y: 380 },
+    { x: 180, y: 380 },
+    { x: 180, y: 210 },
+    { x: 480, y: 210 },
+    { x: 480, y: 400 },
+    { x: 820, y: 400 },
+    { x: 820, y: 210 },
+    { x: 1150, y: 210 },
+  ],
+  sites: [
+    { id: 'a', x: 70, y: 270 },
+    { id: 'b', x: 330, y: 340 },
+    { id: 'c', x: 650, y: 300 },
+    { id: 'd', x: 980, y: 340 },
+    { id: 'e', x: 650, y: 150 },
+  ],
+  props: [
+    ...wallShelves([96, 288, 352, 960, 1024]),
+    { kind: 'book-pile', variant: 0, x: 330, y: 440 },
+    { kind: 'book-pile', variant: 1, x: 1180, y: 430 },
+    { kind: 'scroll', x: 980, y: 440 },
+  ],
+  torches: [180, 560, 760, 1220],
+};
 
 /** The ash fields around the burnt library, in the order they open up. */
 export const WORLD_POINTS: readonly WorldPoint[] = [
-  {
-    id: 'ruin',
-    name: 'Bibliotheksruine',
-    word: 'ruine',
-    x: 170,
-    y: 470,
-    map: READING_ROOM,
-    waves: [[scorpions(6, 1800)], [scorpions(8, 1500)]],
-  },
-  {
-    id: 'smoke',
-    name: 'Rauchsenke',
-    word: 'rauch',
-    x: 360,
-    y: 300,
-    map: COURTYARD,
-    waves: [[scorpions(8, 1500)], [firebugs(2, 2600)], [scorpions(10, 1300)]],
-  },
-  {
-    id: 'cellar',
-    name: 'Kellergewölbe',
-    word: 'keller',
-    x: 400,
-    y: 580,
-    map: ARCHIVE,
-    waves: [[scorpions(8, 1500)], [scorpions(6, 1500), firebugs(2, 2600, 3000)], [firebugs(4, 2400)]],
-  },
-  {
-    id: 'embers',
-    name: 'Glutfeld',
-    word: 'glut',
-    x: 600,
-    y: 430,
-    map: COURTYARD,
-    waves: [
-      [scorpions(10, 1300)],
-      [firebugs(3, 2400), scorpions(8, 1400, 1200)],
-      [scorpions(12, 1100), firebugs(4, 2400, 800)],
-    ],
-  },
+  { id: 'ruin', name: 'Bibliotheksruine', word: 'ruine', x: 170, y: 470, difficulty: 1, map: RUIN },
+  { id: 'smoke', name: 'Rauchsenke', word: 'rauch', x: 360, y: 300, difficulty: 2 },
+  { id: 'cellar', name: 'Kellergewölbe', word: 'keller', x: 400, y: 580, difficulty: 3, map: CELLAR },
+  { id: 'embers', name: 'Glutfeld', word: 'glut', x: 600, y: 430, difficulty: 4 },
 ];
 
 /** Paths between points; winning one opens those linked to it. */
@@ -106,9 +126,17 @@ export function worldPoint(id: string): WorldPoint {
   return point;
 }
 
-/** The battle at `point`. */
-export function journeyLevel(point: WorldPoint): Level {
-  return { id: `journey-${point.id}`, path: point.map.path, sites: point.map.sites, ward: 10, ink: 150, waves: point.waves };
+/** A battle at a place of the world map: where it is fought and what comes. */
+export interface JourneyBattle {
+  readonly map: BattleMap;
+  readonly level: Level;
+}
+
+/** The battle at `point`: its fixed map or a fresh one, and fresh waves for its difficulty. */
+export function journeyBattle(point: WorldPoint, random: Random): JourneyBattle {
+  const map = point.map ?? generateAshMap(random, point.id, point.name);
+  const waves = generateWaves(random, point.difficulty, ASH_FOES);
+  return { map, level: { id: `journey-${point.id}`, path: map.path, sites: map.sites, ward: 10, ink: 150, waves } };
 }
 
 /** Freed points are won; open ones can be fought next; the rest stay locked. */

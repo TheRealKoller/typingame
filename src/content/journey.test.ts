@@ -1,6 +1,7 @@
 import { describe, expect, it } from 'vitest';
 import { Battle } from '../battle/battle';
-import { FIRST_POINT, journeyLevel, pointState, WORLD_LINKS, WORLD_POINTS } from './journey';
+import { FIRST_POINT, journeyBattle, pointState, WORLD_LINKS, WORLD_POINTS, type WorldPoint } from './journey';
+import { seededRandom } from './mapgen';
 import { CROSSBOW } from './towers';
 import { allKeysSetup } from './tutorial';
 
@@ -36,15 +37,50 @@ describe('world map', () => {
     for (const word of words) expect([...word].every((char) => keys.includes(char)), word).toBe(true);
     expect(words.some((word, i) => words.some((other, j) => i !== j && other.startsWith(word)))).toBe(false);
   });
+});
 
-  it.each(WORLD_POINTS.map((point) => [point.id, point] as const))('makes %s winnable by building towers with the ink at hand', (_, point) => {
-    const battle = new Battle(journeyLevel(point));
-    for (let step = 0; step < 100_000 && battle.phase !== 'won' && battle.phase !== 'lost'; step++) {
+describe('battles of the journey', () => {
+  const SEEDS = 40;
+
+  /**
+   * Plays the battle at `point` like a steady player: a tower on the next free
+   * site whenever the ink allows, and, if `typing`, every glowing enemy struck
+   * four seconds after it shows up. Returns the ward left, 0 if lost.
+   */
+  function play(point: WorldPoint, seed: number, typing: boolean): number {
+    const battle = new Battle(journeyBattle(point, seededRandom(seed)).level);
+    const shown = new Map<number, number>();
+    for (let time = 0; time < 3_600_000 && battle.phase !== 'won' && battle.phase !== 'lost'; time += 100) {
       const free = battle.level.sites.find((site) => !battle.towerAt(site));
       if (free && battle.ink >= CROSSBOW.cost) battle.build(free, CROSSBOW);
       battle.endFlood();
       battle.update(100);
+      for (const enemy of typing ? battle.enemies.filter((candidate) => candidate.marked) : []) {
+        if (!shown.has(enemy.id)) shown.set(enemy.id, time);
+        if (time - shown.get(enemy.id)! >= 4000) battle.strike(enemy);
+      }
     }
-    expect(battle.phase).toBe('won');
+    return battle.phase === 'won' ? battle.ward : 0;
+  }
+
+  function results(point: WorldPoint, typing: boolean): number[] {
+    return Array.from({ length: SEEDS }, (_, i) => play(point, i + 1, typing));
+  }
+
+  it.each(WORLD_POINTS.map((point) => [point.id, point] as const))('makes %s winnable for a steady player, whatever map comes', (_, point) => {
+    const won = results(point, true).filter((ward) => ward > 0).length;
+    expect(won / SEEDS).toBeGreaterThanOrEqual(0.9);
+  });
+
+  it('grows harder from place to place', () => {
+    const average = WORLD_POINTS.map((point) => results(point, true).reduce((sum, ward) => sum + ward, 0) / SEEDS);
+    expect(average).toEqual([...average].sort((a, b) => b - a));
+    expect(average[0]).toBeGreaterThan(average[average.length - 1]!);
+  });
+
+  it('needs typing at the last place: towers alone rarely hold', () => {
+    const last = WORLD_POINTS[WORLD_POINTS.length - 1]!;
+    const won = results(last, false).filter((ward) => ward > 0).length;
+    expect(won / SEEDS).toBeLessThan(0.5);
   });
 });

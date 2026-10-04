@@ -3,11 +3,16 @@ import { CUTSCENES, cutsceneBefore, pageText, speakerName } from './cutscenes';
 import { JOURNEY, RAID, STAGES } from './tutorial';
 
 describe('cutscenes', () => {
-  it('start before existing stages, the raid or the journey only, at most one per stage', () => {
+  it('start before existing stages, the raid or the journey only', () => {
     const stages = CUTSCENES.map((scene) => scene.beforeStage);
     const known = [...STAGES.map((stage) => stage.id), RAID, JOURNEY];
     expect(stages.filter((id) => !known.includes(id))).toEqual([]);
-    expect(new Set(stages).size).toBe(stages.length);
+  });
+
+  it('tell the end of the raid, then the ash fields, before the journey', () => {
+    expect(cutsceneBefore(JOURNEY, new Set())?.id).toBe('raid-after');
+    expect(cutsceneBefore(JOURNEY, new Set(['raid-after']))?.id).toBe('ash-fields');
+    expect(cutsceneBefore(JOURNEY, new Set(['raid-after', 'ash-fields']))).toBeNull();
   });
 
   it('play the intro before the first lesson, and not again once seen', () => {

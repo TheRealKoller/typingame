@@ -76,6 +76,17 @@ export const CUTSCENES: readonly Cutscene[] = [
       { speaker: 'apprentice', text: 'Gut. Dann hole ich sie zurück. Staub zum Wischen gibt es hier ohnehin keinen mehr.' },
     ],
   },
+  {
+    id: 'ash-fields',
+    beforeStage: JOURNEY,
+    pages: [
+      { speaker: 'narrator', text: 'Rund um die Bibliothek liegt das Land grau unter Ruß. Die Leute nennen es schon die Aschefelder.' },
+      { speaker: 'narrator', text: 'In den Ruinen sitzt noch das Verstummen: Skorpione und Käfer aus Tinte, mit leeren Augen.' },
+      { speaker: 'apprentice', text: 'Merkwürdig. Auf ihren Panzern sind Striche. Fein gezogen, in einem Zug. Wie mit dem Pinsel.' },
+      { speaker: 'apprentice', text: 'Wer malt Ungeheuer? Und wer gibt sich dabei so viel Mühe?' },
+      { speaker: 'narrator', text: 'Auf der Karte: Tippe das Wort über einem Ort und drücke Enter. Jeder befreite Ort öffnet die Wege zu seinen Nachbarn.' },
+    ],
+  },
 ];
 
 export function cutscene(id: string): Cutscene {
