@@ -1,7 +1,8 @@
-import type { Level } from '../battle/level';
+import type { Level, TowerKind } from '../battle/level';
 import { wallShelves, type BattleMap } from './library';
 import { generateAshMap, generateWaves, type Foes, type Random } from './mapgen';
 import { SILENT_FIREBUG, SILENT_SCORPION } from './raid';
+import { CROSSBOW, FROST_CRYSTAL, INK_SLINGER } from './towers';
 
 /** A place on the world map held by the Silence; typing its word selects it. */
 export interface WorldPoint {
@@ -27,6 +28,13 @@ export interface Region {
 
 /** Ink at the start of a battle on the journey: enough for two towers. */
 const START_INK = 100;
+
+/** Towers on the journey and the difficulty from which each can be built: one more at each of the first places. */
+const JOURNEY_TOWERS: readonly { readonly tower: TowerKind; readonly from: number }[] = [
+  { tower: CROSSBOW, from: 1 },
+  { tower: INK_SLINGER, from: 2 },
+  { tower: FROST_CRYSTAL, from: 3 },
+];
 
 /** The creatures of the Silence in the ash fields. */
 const ASH_FOES: Foes = { small: SILENT_SCORPION, large: SILENT_FIREBUG };
@@ -129,17 +137,19 @@ export function worldPoint(id: string): WorldPoint {
   return point;
 }
 
-/** A battle at a place of the world map: where it is fought and what comes. */
+/** A battle at a place of the world map: where it is fought, what comes and what can be built. */
 export interface JourneyBattle {
   readonly map: BattleMap;
   readonly level: Level;
+  readonly towers: readonly TowerKind[];
 }
 
 /** The battle at `point`: its fixed map or a fresh one, and fresh waves for its difficulty. */
 export function journeyBattle(point: WorldPoint, random: Random): JourneyBattle {
   const map = point.map ?? generateAshMap(random, point.id, point.name);
   const waves = generateWaves(random, point.difficulty, ASH_FOES);
-  return { map, level: { id: `journey-${point.id}`, path: map.path, sites: map.sites, ward: 10, ink: START_INK, waves } };
+  const towers = JOURNEY_TOWERS.filter((entry) => point.difficulty >= entry.from).map((entry) => entry.tower);
+  return { map, towers, level: { id: `journey-${point.id}`, path: map.path, sites: map.sites, ward: 10, ink: START_INK, waves } };
 }
 
 /** Freed points are won; open ones can be fought next; the rest stay locked. */

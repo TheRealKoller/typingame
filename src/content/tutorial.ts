@@ -59,7 +59,7 @@ export interface StageSetup {
   readonly keys: string[];
   readonly words: string[];
   /** The towers that can be built, with the keyword this stage can type. */
-  readonly towers: TowerKind[];
+  readonly towers: readonly TowerKind[];
 }
 
 /**

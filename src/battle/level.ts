@@ -15,6 +15,8 @@ export interface EnemyKind {
 /** A kind of tower; it attacks on its own once built. */
 export interface TowerKind {
   readonly id: string;
+  /** Shown when choosing what to build, e.g. »Armbrust«. */
+  readonly name: string;
   /** Typed on a selected build site to build this tower there. */
   readonly keyword: string;
   /** Ink it costs to build. */
@@ -24,6 +26,10 @@ export interface TowerKind {
   readonly damage: number;
   /** Time between two attacks. */
   readonly cooldownMs: number;
+  /** Radius around the target in which every other enemy takes the same hit; none if omitted. */
+  readonly splash?: number;
+  /** Enemies hit move at `factor` times their speed for `durationMs`; a new hit renews it. */
+  readonly slow?: { readonly factor: number; readonly durationMs: number };
 }
 
 /** Enemies of one kind within a wave, entering one after another. */

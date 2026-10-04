@@ -17,9 +17,17 @@ import constructionImage from '../assets/spire/builder/tower-construction.png';
 import firebugImage from '../assets/spire/enemies/firebug.png';
 import scorpionImage from '../assets/spire/enemies/scorpion.png';
 import baseTower01Image from '../assets/spire/towers/base-tower-01.png';
+import baseTower02Image from '../assets/spire/towers/base-tower-02.png';
+import baseTower03Image from '../assets/spire/towers/base-tower-03.png';
 import tower01ImpactImage from '../assets/spire/towers/tower-01-weapon-impact.png';
 import tower01ProjectileImage from '../assets/spire/towers/tower-01-level-01-projectile.png';
 import tower01WeaponImage from '../assets/spire/towers/tower-01-level-01-weapon.png';
+import tower02ImpactImage from '../assets/spire/towers/tower-02-level-01-projectile-impact.png';
+import tower02ProjectileImage from '../assets/spire/towers/tower-02-level-01-projectile.png';
+import tower02WeaponImage from '../assets/spire/towers/tower-02-level-01-weapon.png';
+import tower03ImpactImage from '../assets/spire/towers/tower-03-level-01-projectile-impact.png';
+import tower03ProjectileImage from '../assets/spire/towers/tower-03-level-01-projectile.png';
+import tower03WeaponImage from '../assets/spire/towers/tower-03-level-01-weapon.png';
 import fireImage from '../assets/traps/fire-trap-level-1.png';
 
 /** Frames per second of every Spire animation (100 ms per frame in the sources). */
@@ -122,7 +130,7 @@ export const CONSTRUCTION = 'construction';
 /** Frames of the cloud that reveals a finished tower (second row of the construction sheet). */
 export const CONSTRUCTION_REVEAL = 'construction-reveal';
 
-/** Art of one tower kind by its id. */
+/** Texture and animation keys of one tower kind by its id. */
 export interface TowerArt {
   readonly base: string;
   readonly weapon: string;
@@ -131,15 +139,51 @@ export interface TowerArt {
   readonly impact: string;
 }
 
-export const TOWER_ART: Readonly<Record<string, TowerArt>> = {
+function towerArt(id: string): TowerArt {
+  return { base: `${id}-base`, weapon: `${id}-weapon`, weaponAttack: `${id}-weapon-attack`, projectile: `${id}-projectile`, impact: `${id}-impact` };
+}
+
+/** Spire tower sheets: bases 64 px wide, weapons 96 × 96, impacts 64 × 64 per frame. */
+interface TowerSource {
+  readonly base: string;
+  readonly baseHeight: number;
+  readonly weapon: string;
+  readonly projectile: string;
+  readonly projectileSize: { readonly width: number; readonly height: number };
+  readonly impact: string;
+}
+
+const TOWER_SOURCES: Readonly<Record<string, TowerSource>> = {
+  // Crossbow
   'tower-01': {
-    base: 'tower-01-base',
-    weapon: 'tower-01-weapon',
-    weaponAttack: 'tower-01-weapon-attack',
-    projectile: 'tower-01-projectile',
-    impact: 'tower-01-impact',
+    base: baseTower01Image,
+    baseHeight: 128,
+    weapon: tower01WeaponImage,
+    projectile: tower01ProjectileImage,
+    projectileSize: { width: 24, height: 40 },
+    impact: tower01ImpactImage,
+  },
+  // Frost crystal: ice shards around a crystal pedestal
+  'tower-02': {
+    base: baseTower02Image,
+    baseHeight: 192,
+    weapon: tower02WeaponImage,
+    projectile: tower02ProjectileImage,
+    projectileSize: { width: 32, height: 32 },
+    impact: tower02ImpactImage,
+  },
+  // Ink slinger: a sling that hurls a purple blot
+  'tower-03': {
+    base: baseTower03Image,
+    baseHeight: 128,
+    weapon: tower03WeaponImage,
+    projectile: tower03ProjectileImage,
+    projectileSize: { width: 10, height: 10 },
+    impact: tower03ImpactImage,
   },
 };
+
+export const TOWER_ART: Readonly<Record<string, TowerArt>> = Object.fromEntries(Object.keys(TOWER_SOURCES).map((id) => [id, towerArt(id)]));
 
 export function walkAnimation(kind: string, heading: Heading): string {
   return `${kind}-walk-${heading}`;
@@ -166,11 +210,13 @@ export function preloadBattleArt(scene: Phaser.Scene): void {
   for (const [kind, sheet] of Object.entries(ENEMY_SHEETS)) {
     scene.load.spritesheet(kind, sheet.url, { frameWidth: sheet.frameWidth, frameHeight: sheet.frameHeight });
   }
-  const tower01 = TOWER_ART['tower-01']!;
-  scene.load.spritesheet(tower01.base, baseTower01Image, { frameWidth: 64, frameHeight: 128 });
-  scene.load.spritesheet(tower01.weapon, tower01WeaponImage, { frameWidth: 96, frameHeight: 96 });
-  scene.load.image(tower01.projectile, tower01ProjectileImage);
-  scene.load.spritesheet(tower01.impact, tower01ImpactImage, { frameWidth: 64, frameHeight: 64 });
+  for (const [id, art] of Object.entries(TOWER_ART)) {
+    const source = TOWER_SOURCES[id]!;
+    scene.load.spritesheet(art.base, source.base, { frameWidth: 64, frameHeight: source.baseHeight });
+    scene.load.spritesheet(art.weapon, source.weapon, { frameWidth: 96, frameHeight: 96 });
+    scene.load.spritesheet(art.projectile, source.projectile, { frameWidth: source.projectileSize.width, frameHeight: source.projectileSize.height });
+    scene.load.spritesheet(art.impact, source.impact, { frameWidth: 64, frameHeight: 64 });
+  }
 }
 
 /** Cuts the tile frames and registers the animations; safe to call again after a restart. */

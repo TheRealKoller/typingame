@@ -6,7 +6,7 @@ import { pointAt } from './path';
 
 const BUG: EnemyKind = { id: 'bug', speed: 100, wardDamage: 1, health: 20, ink: 5 };
 const BEETLE: EnemyKind = { id: 'beetle', speed: 50, wardDamage: 3, health: 100, ink: 40 };
-const BOW: TowerKind = { id: 'bow', keyword: 'jagd', cost: 30, range: 60, damage: 10, cooldownMs: 500 };
+const BOW: TowerKind = { id: 'bow', name: 'Bogen', keyword: 'jagd', cost: 30, range: 60, damage: 10, cooldownMs: 500 };
 
 /** Straight path of 300 px; a bug needs 3 s, a beetle 6 s. */
 function level(overrides: Partial<Level> = {}): Level {
@@ -182,6 +182,42 @@ describe('towers', () => {
     const [leader, follower] = battle.enemies;
     expect(Math.hypot(battle.positionOf(follower!).x - 100, battle.positionOf(follower!).y - 40)).toBeLessThanOrEqual(60);
     expect(shots.map((shot) => shot.enemy.id)).toEqual([leader!.id, leader!.id]);
+  });
+
+  it('splashes the enemies near the target, not those further away, and collects ink for all defeated', () => {
+    // Three bugs 20 px apart along the path; the splash reaches 30 px around the leading one.
+    const blot: TowerKind = { ...BOW, range: 500, damage: 20, cooldownMs: 10_000, splash: 30 };
+    const battle = new Battle(level({ waves: [[{ kind: BUG, count: 3, spacingMs: 200 }]] }));
+    battle.build(battle.level.sites[1]!, blot);
+    battle.endFlood();
+    // Bring all three onto the path before the tower is ready to fire.
+    battle.towers[0]!.cooldownMs = 600;
+
+    const shots = Array.from({ length: 6 }, () => battle.update(100).shots).flat();
+
+    expect(shots).toHaveLength(1);
+    const [shot] = shots;
+    expect([shot!.defeated, shot!.splash.map((hit) => hit.defeated)]).toEqual([true, [true]]);
+    expect(battle.enemies).toHaveLength(1);
+    expect(battle.ink).toBe(50 - blot.cost + 2 * BUG.ink);
+  });
+
+  it('slows the enemies it hits for a while, then they walk at full speed again', () => {
+    const chill: TowerKind = { ...BOW, range: 500, damage: 1, cooldownMs: 100_000, slow: { factor: 0.5, durationMs: 1000 } };
+    const battle = new Battle(level({ waves: [[{ kind: BEETLE, count: 1, spacingMs: 1000 }]] }));
+    battle.build(battle.level.sites[1]!, chill);
+    battle.endFlood();
+
+    battle.update(100); // enters and is hit at once
+    const enemy = battle.enemies[0]!;
+    const start = enemy.distance;
+    run(battle, 1000);
+    const slowed = enemy.distance - start;
+    run(battle, 1000);
+    const free = enemy.distance - start - slowed;
+
+    expect(slowed).toBeCloseTo(BEETLE.speed / 2);
+    expect(free).toBeCloseTo(BEETLE.speed);
   });
 });
 
