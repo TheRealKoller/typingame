@@ -3,6 +3,7 @@ import { Battle, type Enemy, type Shot, type Tower } from '../battle/battle';
 import { Commands, type Command } from '../battle/commands';
 import type { BuildSite } from '../battle/level';
 import type { Point } from '../battle/path';
+import { MASTER_NAME, MASTER_VERDICTS, pageText } from '../content/cutscenes';
 import { practiceLevel } from '../content/library';
 import { RAID_LEVEL } from '../content/raid';
 import { JOURNEY, RAID, raidSetup, STAGES, stageIndex, stageSetup, type StageSetup } from '../content/tutorial';
@@ -470,7 +471,7 @@ export class BattleScene extends Phaser.Scene {
     const phase = {
       flood: `Flut – baue Türme. Drücke Enter, wenn Welle ${battle.wave + 1} von ${waves} kommen soll.`,
       ebb: `Ebbe – Welle ${battle.wave + 1} von ${waves} rückt vor.`,
-      won: 'Gewonnen! Das Verstummen ist zurückgedrängt.',
+      won: 'Alle Golems besiegt.',
       lost: 'Der Bannkreis ist gebrochen.',
     }[battle.phase];
     const tower = this.#setup.towers[0]!;
@@ -676,22 +677,27 @@ export class BattleScene extends Phaser.Scene {
     this.tweens.add({ targets: text, y: text.y - 30, alpha: 0, duration: 1200, onComplete: () => text.destroy() });
   }
 
+  /** After a practice battle the master has a word for it; Enter starts the next one. */
   #showEnd(): void {
-    const won = this.#battle.phase === 'won';
+    const lines = MASTER_VERDICTS[this.#battle.phase === 'won' ? 'won' : 'lost'];
+    const line = lines[Math.floor(Math.random() * lines.length)] ?? '';
+    const speaker = this.add
+      .text(-250, -70, MASTER_NAME, { fontFamily: 'serif', fontSize: '24px', color: '#7a3a1e' })
+      .setOrigin(0, 0);
     const text = this.add
-      .text(0, 0, [won ? 'Gewonnen!' : 'Verloren.', 'Nochmal? Drücke Enter.'], {
-        fontFamily: 'sans-serif',
-        fontSize: '28px',
+      .text(-250, -34, pageText({ speaker: 'master', text: line }, this.#progress.name), {
+        fontFamily: 'serif',
+        fontSize: '26px',
         color: HUD_TEXT,
-        align: 'center',
-        lineSpacing: 10,
+        lineSpacing: 8,
+        wordWrap: { width: 500 },
       })
-      .setOrigin(0.5, 0.5);
-    const panel = this.add
-      .rectangle(0, 0, 460, 200, 0xfffaf2, 0.95)
-      .setRounded(16)
-      .setStrokeStyle(2, 0xd9c8b4);
-    this.#endPanel = this.add.container(this.scale.width / 2, 260, [panel, text]).setDepth(1000);
+      .setOrigin(0, 0);
+    const hint = this.add
+      .text(250, 70, 'Enter: weiter', { fontFamily: 'sans-serif', fontSize: '18px', color: '#7a6a5a' })
+      .setOrigin(1, 1);
+    const panel = this.add.rectangle(0, 0, 560, 180, PAPER, 0.97).setStrokeStyle(3, PAPER_EDGE);
+    this.#endPanel = this.add.container(this.scale.width / 2, 230, [panel, speaker, text, hint]).setDepth(1000);
   }
 
   #showOverview(): void {
