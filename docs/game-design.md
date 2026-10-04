@@ -91,7 +91,7 @@ Wie sich Atramentus zeigt (vorläufig, ein Schritt je Gebiet):
 ### 4.3 Kampf
 
 - Türme greifen von selbst an.
-- **Spezialgegner** tragen Wörter. Tippt man das Wort, greift man sie direkt an.
+- **Spezialgegner** tragen Wörter. Tippt man das Wort, greift man sie direkt an. Im Tutorial leuchtet jeder dritte kleine Papiergolem golden und trägt ein Wort; getippt fällt er sofort und hinterlässt Tinte.
 - Türme können **Spezialangriffe** haben, die man mit Wörtern auslöst.
 - **Bosse** verlangen einen ganzen Text, z. B. ein Gedicht oder eine Rede.
 

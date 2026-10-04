@@ -100,6 +100,8 @@ export interface BattleSceneData {
 interface EnemyView {
   readonly sprite: Phaser.GameObjects.Sprite;
   readonly health: Phaser.GameObjects.Graphics;
+  /** Light under a glowing enemy that carries a word; null for the others. */
+  readonly glow: Phaser.GameObjects.Ellipse | null;
   /** Health as far as the hits have landed on screen; a bolt in flight has not hit yet. */
   shownHealth: number;
   last: Point;
@@ -129,6 +131,8 @@ export class BattleScene extends Phaser.Scene {
   #keyboard!: KeyboardView;
   #statsView!: StatsView;
   #labels: WordLabel[] = [];
+  /** Labels of the glowing enemies' words, by enemy id. */
+  #enemyLabels = new Map<number, WordLabel>();
   #labelKey = '';
   #enemies = new Map<number, EnemyView>();
   #towers = new Map<string, TowerView>();
@@ -169,6 +173,7 @@ export class BattleScene extends Phaser.Scene {
     this.#darkness = null;
     this.#commands = this.#newCommands();
     this.#labels = [];
+    this.#enemyLabels = new Map();
     this.#labelKey = '';
     this.#enemies = new Map();
     this.#towers = new Map();
@@ -206,6 +211,7 @@ export class BattleScene extends Phaser.Scene {
     // Shots and arrivals first: they take their enemies out of the walking ones.
     for (const shot of step.shots) this.#showShot(shot);
     for (const enemy of step.arrived) this.#showArrival(enemy);
+    this.#commands.refresh();
     this.#drawEnemies();
     // A started word or a selected build site is finished first, so the new keys never cut them off.
     if (this.#unlockReached && this.#engine.typed === '' && !this.#commands.selected) this.#advance();
@@ -326,6 +332,7 @@ export class BattleScene extends Phaser.Scene {
   #apply(command: Command | null): void {
     if (command?.type === 'build') this.#showTower(this.#battle.towerAt(command.site));
     if (command?.type === 'tooExpensive') this.#float(command.site, 'Zu wenig Tinte', '#8a2f2f');
+    if (command?.type === 'strike') this.#showStrike(command.enemy);
   }
 
   /** Brings words, typing engine, keyboard and HUD in line with the battle. */
@@ -340,8 +347,9 @@ export class BattleScene extends Phaser.Scene {
       this.#labels = placed.map((p) => new WordLabel(this, p.x, p.y, p.word, WORD_SIZE).setDepth(1001));
       this.#labelKey = key;
     }
+    this.#syncEnemyLabels();
     const { typed, candidates } = this.#engine;
-    for (const label of this.#labels) label.setProgress(typed, candidates.includes(label.word));
+    for (const label of [...this.#labels, ...this.#enemyLabels.values()]) label.setProgress(typed, candidates.includes(label.word));
     this.#keyboard.setNext(this.#engine.expectedChars);
     this.#updateHud();
   }
@@ -507,6 +515,7 @@ export class BattleScene extends Phaser.Scene {
         view = {
           sprite: this.#enemySprite(enemy, at),
           health: this.add.graphics(),
+          glow: enemy.marked ? this.#glow() : null,
           shownHealth: enemy.kind.health,
           last: at,
         };
@@ -515,9 +524,56 @@ export class BattleScene extends Phaser.Scene {
       const heading = this.#heading(view, enemy, at);
       view.sprite.setPosition(at.x, at.y).setDepth(at.y + 100);
       view.sprite.play(walkAnimation(enemy.kind.id, heading), true);
+      view.glow?.setPosition(at.x, at.y + 14).setDepth(at.y + 99);
       view.last = at;
       this.#drawHealth(view, enemy, at);
     }
+  }
+
+  /** Warm light under a glowing enemy, breathing so it catches the eye. */
+  #glow(): Phaser.GameObjects.Ellipse {
+    const glow = this.add.ellipse(0, 0, 76, 38, 0xffd23a, 0.85).setBlendMode(Phaser.BlendModes.ADD);
+    this.tweens.add({ targets: glow, alpha: { from: 0.85, to: 0.35 }, scale: { from: 1, to: 1.2 }, duration: 600, yoyo: true, repeat: -1 });
+    return glow;
+  }
+
+  /** Word labels above the glowing enemies, following them along the path. */
+  #syncEnemyLabels(): void {
+    const shown = new Set<number>();
+    for (const enemy of this.#ended() ? [] : this.#battle.enemies) {
+      const word = this.#commands.enemyWord(enemy);
+      if (word === null) continue;
+      shown.add(enemy.id);
+      const at = this.#battle.positionOf(enemy);
+      let label = this.#enemyLabels.get(enemy.id);
+      if (!label) {
+        label = new WordLabel(this, at.x, at.y, word, WORD_SIZE).setDepth(1001);
+        this.#enemyLabels.set(enemy.id, label);
+      }
+      label.setPosition(at.x, at.y - 58);
+    }
+    for (const [id, label] of this.#enemyLabels) {
+      if (shown.has(id)) continue;
+      label.destroy();
+      this.#enemyLabels.delete(id);
+    }
+  }
+
+  /** The word of a glowing enemy was typed: a flash of light, and it falls at once. */
+  #showStrike(enemy: Enemy): void {
+    const view = this.#enemies.get(enemy.id);
+    if (!view) return;
+    this.#enemies.delete(enemy.id);
+    view.health.destroy();
+    view.glow?.destroy();
+    const flash = this.add.circle(view.sprite.x, view.sprite.y, 20, 0xfff2b0, 0.9).setDepth(902);
+    this.tweens.add({ targets: flash, scale: 3, alpha: 0, duration: 350, onComplete: () => flash.destroy() });
+    const heading = (view.sprite.getData('heading') as Heading | undefined) ?? 'side';
+    view.sprite.play(deathAnimation(enemy.kind.id, heading));
+    view.sprite.once(Phaser.Animations.Events.ANIMATION_COMPLETE, () => {
+      this.tweens.add({ targets: view.sprite, alpha: 0, duration: 400, onComplete: () => view.sprite.destroy() });
+    });
+    this.#float(view.sprite, `+${enemy.kind.ink} Tinte`, '#2b3a6b');
   }
 
   #drawHealth(view: EnemyView, enemy: Enemy, at: Point): void {
@@ -544,6 +600,7 @@ export class BattleScene extends Phaser.Scene {
     if (view) {
       this.#enemies.delete(enemy.id);
       view.health.destroy();
+      view.glow?.destroy();
       this.tweens.add({ targets: view.sprite, alpha: 0, scale: 0.4, duration: 300, onComplete: () => view.sprite.destroy() });
     }
     this.tweens.add({ targets: this.#ward, scale: { from: 1.25, to: 1 }, duration: 350, ease: 'Back.easeOut' });
@@ -660,6 +717,7 @@ export class BattleScene extends Phaser.Scene {
     enemyView.shownHealth = Math.min(enemyView.shownHealth, shot.health);
     if (!shot.defeated) return;
     enemyView.health.destroy();
+    enemyView.glow?.destroy();
     const heading = (enemyView.sprite.getData('heading') as Heading | undefined) ?? 'side';
     enemyView.sprite.play(deathAnimation(shot.enemy.kind.id, heading));
     enemyView.sprite.once(Phaser.Animations.Events.ANIMATION_COMPLETE, () => {

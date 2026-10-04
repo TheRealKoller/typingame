@@ -34,6 +34,8 @@ export interface Squad {
   readonly spacingMs: number;
   /** Time after the wave begins until the first enemy of this squad enters; 0 if omitted. */
   readonly delayMs?: number;
+  /** Every this many enemies, starting with the first, one glows and carries a word; none if omitted. */
+  readonly markEvery?: number;
 }
 
 /** Squads that advance together during one ebb, each on its own schedule. */

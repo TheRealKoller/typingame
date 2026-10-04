@@ -207,3 +207,26 @@ describe('squads', () => {
     expect(battle.enemies.map((enemy) => enemy.kind.id)).toEqual(['bug', 'beetle', 'bug']);
   });
 });
+
+describe('glowing enemies', () => {
+  it('mark every n-th enemy of a squad, starting with the first', () => {
+    const battle = new Battle(level({ waves: [[{ kind: BUG, count: 5, spacingMs: 100, markEvery: 2 }]] }));
+    battle.endFlood();
+    run(battle, 500);
+
+    expect(battle.enemies.map((enemy) => enemy.marked)).toEqual([true, false, true, false, true]);
+  });
+
+  it('are struck down at once for their ink; unmarked or gone ones are not', () => {
+    const battle = new Battle(level({ waves: [[{ kind: BEETLE, count: 2, spacingMs: 100, markEvery: 2 }]] }));
+    battle.endFlood();
+    run(battle, 200);
+    const [marked, plain] = battle.enemies;
+
+    expect(battle.strike(plain!)).toBe(false);
+    expect(battle.strike(marked!)).toBe(true);
+    expect(battle.enemies).toEqual([plain]);
+    expect(battle.ink).toBe(50 + BEETLE.ink);
+    expect(battle.strike(marked!)).toBe(false);
+  });
+});
