@@ -30,6 +30,10 @@ export interface TowerKind {
   readonly splash?: number;
   /** Enemies hit move at `factor` times their speed for `durationMs`; a new hit renews it. */
   readonly slow?: { readonly factor: number; readonly durationMs: number };
+  /** Stage of the tower, 1 when built; each upgrade is the next stage. */
+  readonly level?: number;
+  /** What the tower becomes when upgraded; its keyword is the upgrade word, its cost the price of the upgrade. None at the last stage. */
+  readonly upgrade?: TowerKind;
 }
 
 /** Enemies of one kind within a wave, entering one after another. */

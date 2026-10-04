@@ -6,19 +6,30 @@ import type { BuildSite, TowerKind } from './level';
 export type Command =
   | { readonly type: 'select'; readonly site: BuildSite }
   | { readonly type: 'build'; readonly site: BuildSite; readonly tower: TowerKind }
-  /** The keyword was typed but the ink did not suffice; the selection is released. */
+  /** The upgrade word of the tower on the selected site was typed; `tower` is its new stage. */
+  | { readonly type: 'upgrade'; readonly site: BuildSite; readonly tower: TowerKind }
+  /** The keyword or upgrade word was typed but the ink did not suffice; the selection is released. */
   | { readonly type: 'tooExpensive'; readonly site: BuildSite; readonly tower: TowerKind }
   /** The word of a glowing enemy was typed; it is struck down. */
   | { readonly type: 'strike'; readonly enemy: Enemy };
 
+/** A tower kind and every stage it can be upgraded to. */
+function withUpgrades(kind: TowerKind): TowerKind[] {
+  return kind.upgrade ? [kind, ...withUpgrades(kind.upgrade)] : [kind];
+}
+
 /**
  * Turns completed words into actions in a battle. Free build sites carry a
- * word; typing it selects the site, then a tower keyword builds there.
- * Glowing enemies carry a word as well; typing it strikes them down.
+ * word; typing it selects the site, then a tower keyword builds there. A
+ * tower keeps the word of its site while it can be upgraded; typing it
+ * selects the tower, then its upgrade word upgrades it. Glowing enemies
+ * carry a word as well; typing it strikes them down.
  */
 export class Commands {
   readonly #battle: Battle;
   readonly #towers: readonly TowerKind[];
+  /** Keywords of the towers and all their upgrade words: never site or enemy words. */
+  readonly #keywords: readonly string[];
   readonly #pool: readonly string[];
   readonly #context: PracticeContext;
   readonly #siteWords = new Map<string, string>();
@@ -33,7 +44,8 @@ export class Commands {
   constructor(battle: Battle, towers: readonly TowerKind[], pool: readonly string[], context: PracticeContext) {
     this.#battle = battle;
     this.#towers = towers;
-    this.#pool = pool.filter((candidate) => !towers.some((tower) => tower.keyword === candidate));
+    this.#keywords = towers.flatMap(withUpgrades).map((tower) => tower.keyword);
+    this.#pool = pool.filter((candidate) => !this.#keywords.includes(candidate));
     this.#context = context;
     const taken: string[] = [];
     for (const site of battle.level.sites) {
@@ -48,9 +60,10 @@ export class Commands {
     return this.#selected;
   }
 
-  /** The word on `site`, or null once a tower stands there. */
+  /** The word on `site`: while it is free, or while its tower can still be upgraded; otherwise null. */
   siteWord(site: BuildSite): string | null {
-    return this.#battle.towerAt(site) ? null : (this.#siteWords.get(site.id) ?? null);
+    const tower = this.#battle.towerAt(site);
+    return tower && !tower.kind.upgrade ? null : (this.#siteWords.get(site.id) ?? null);
   }
 
   /** The word a glowing enemy carries, or null. */
@@ -68,7 +81,7 @@ export class Commands {
     this.#enemyWords = new Map([...this.#enemyWords].filter(([enemy]) => alive.has(enemy)));
     for (const enemy of this.#battle.enemies) {
       if (!enemy.marked || this.#enemyWords.has(enemy)) continue;
-      const taken = [...this.#siteWords.values(), ...this.#towers.map((tower) => tower.keyword), ...this.#enemyWords.values()];
+      const taken = [...this.#siteWords.values(), ...this.#keywords, ...this.#enemyWords.values()];
       const word = pickWord(this.#pool, taken, this.#context);
       if (word !== null) this.#enemyWords.set(enemy, word);
     }
@@ -77,7 +90,11 @@ export class Commands {
   /** Words that can be typed now. */
   get words(): readonly string[] {
     const enemies = [...this.#enemyWords.values()];
-    if (this.#selected) return [...this.#towers.map((tower) => tower.keyword), ...enemies];
+    if (this.#selected) {
+      const tower = this.#battle.towerAt(this.#selected);
+      const choices = tower ? (tower.kind.upgrade ? [tower.kind.upgrade] : []) : this.#towers;
+      return [...choices.map((kind) => kind.keyword), ...enemies];
+    }
     const sites = this.#battle.level.sites.map((site) => this.siteWord(site)).filter((word) => word !== null);
     return [...sites, ...enemies];
   }
@@ -95,6 +112,14 @@ export class Commands {
     }
     if (this.#selected) {
       const site = this.#selected;
+      const built = this.#battle.towerAt(site);
+      if (built) {
+        const next = built.kind.upgrade;
+        if (!next || next.keyword !== word) return null;
+        this.#selected = null;
+        if (!this.#battle.upgrade(site)) return { type: 'tooExpensive', site, tower: next };
+        return { type: 'upgrade', site, tower: next };
+      }
       const tower = this.#towers.find((kind) => kind.keyword === word);
       if (!tower) return null;
       // Built or not, the player is back at the site words; staying selected without ink would only block.

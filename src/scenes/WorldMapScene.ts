@@ -21,7 +21,7 @@ import {
   ROCK_FRAMES,
   SAND_EDGE,
   SAND_FRAME,
-  TOWER_ART,
+  towerArt,
   TREE_FRAMES,
   WATER,
   WATER_FRAMES,
@@ -45,7 +45,7 @@ const FOG_COLOR = 0x1c1824;
 const WARD_COLOR = 0x9fd4ff;
 const WATER_FRAME_MS = 150;
 /** The base of the crossbow tower marks a freed place. */
-const FREED_TOWER = TOWER_ART['tower-01']!.base;
+const FREED_TOWER = towerArt({ id: 'tower-01' })!.base;
 
 /** Trees and rocks around the points, burnt inside the ash fields. */
 const SCENERY: readonly { readonly kind: 'tree' | 'rock'; readonly x: number; readonly y: number; readonly variant: number }[] = [
