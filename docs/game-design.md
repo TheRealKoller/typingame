@@ -77,6 +77,7 @@ Wie sich Atramentus zeigt (vorläufig, ein Schritt je Gebiet):
 - Ein Level läuft im Wechsel von **Ebbe und Flut des Banns**:
   - **Flut** – der Bann ist stark: Die Gegner müssen sich zurückziehen. Man baut und rüstet in Ruhe auf, ohne Zeitdruck. Die Flut endet **auf Wunsch des Spielers**, z. B. mit dem getippten Wort *los*. Endloses Bauen verhindert die knappe Tinte.
   - **Ebbe** – der Bann ist schwach: Die Gegner rücken in **Wellen** vor.
+- Das Tempo der Gegner ist vorläufig **konstant**, unabhängig von den Anschlägen pro Minute.
 - Erreicht ein Gegner den Bannkreis, wird er schwächer. Bricht er, ist das Level verloren.
 - Wer alle Ebben übersteht, hat das Verstummen zurückgedrängt und gewinnt das Level. Auf der Weltkarte ist das Gebiet damit befreit.
 
@@ -98,6 +99,7 @@ Wie sich Atramentus zeigt (vorläufig, ein Schritt je Gebiet):
 
 - Man wählt selbst, welches Wort man tippt. Alle sichtbaren Wörter, die mit dem bisher Getippten beginnen, bleiben im Spiel; mit jedem Zeichen wird eingegrenzt, bis nur noch eins übrig ist.
 - Ein Wort ist fertig, sobald das Getippte ihm genau entspricht. Ist ein sichtbares Wort der Anfang eines anderen, gewinnt deshalb das kürzere – solche Paare dürfen nicht gleichzeitig sichtbar sein.
+- Mit **Esc** bricht man ein angefangenes Wort ab und kann ein anderes Ziel wählen.
 
 ### 4.5 Wörter
 
@@ -226,7 +228,5 @@ Offene Fragen werden als Issues mit Label `idee` diskutiert. Entscheidungen flie
 - Spielname – [#13](https://github.com/TheRealKoller/typingame/issues/13)
 - Lizenz bei Veröffentlichung – [#18](https://github.com/TheRealKoller/typingame/issues/18)
 - Ton und Klang – [#56](https://github.com/TheRealKoller/typingame/issues/56)
-- Wächst das Tempo der Gegner mit den gemessenen Anschlägen pro Minute, damit Anfänger nicht überrollt werden?
-- Kann man ein angefangenes Wort abbrechen, um das Ziel zu wechseln (z. B. mit Esc)?
 - Gebiete der Weltkarte überarbeiten (siehe 5).
 - Namen für Welt und Bibliothek.
