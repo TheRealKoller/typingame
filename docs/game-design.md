@@ -9,7 +9,7 @@
 
 Ein Desktop-Spiel, mit dem man das **Zehnfingersystem** lernt – als **Tower Defense**.
 
-In dieser Welt sind **Worte Macht**. Man spielt einen Lehrling, der in einer Bibliothek die Zeichen lernt, Reihe für Reihe. Getippte Worte errichten Türme, rüsten sie auf und lösen Zauber aus. Als das *Verstummen* die Bibliothek niederbrennt und den Meister verschleppt, zieht der Lehrling los – über eine Weltkarte, deren Gebiete immer schwerer werden, bis zur Festung des Verstummens.
+In dieser Welt sind **Worte Macht**. Man spielt einen Lehrling, der in einer Bibliothek die Zeichen lernt, Reihe für Reihe. Getippte Worte errichten Türme, rüsten sie auf und lösen Zauber aus. Als das *Verstummen* die Bibliothek niederbrennt und die Meisterin verschleppt, zieht der Lehrling los – über eine Weltkarte, deren Gebiete immer schwerer werden, bis zur Festung des Verstummens.
 
 **Leitlinien**
 
@@ -30,6 +30,8 @@ In dieser Welt sind **Worte Macht**. Man spielt einen Lehrling, der in einer Bib
 
 Worte halten die Welt zusammen. Was seinen Namen verliert, verblasst und zerfällt. Das **Verstummen** ist eine Macht, die Worte frisst; seine Kreaturen kommen in Wellen. Gegen sie hilft nur, was man schreiben kann.
 
+Anfangs wirkt das Verstummen wie eine gesichtslose Macht. Im Lauf der Geschichte kristallisiert sich heraus, dass ein **eifersüchtiger Rivale der Meisterin** dahintersteckt: ein Künstler, der ebenfalls mit Tinte arbeitet und daraus die Monster erschafft.
+
 Thema: **Fantasy**.
 
 ### 3.2 Ton und Hauptfigur
@@ -38,13 +40,15 @@ Thema: **Fantasy**.
 - **Hauptfigur:** der Lehrling. Er ist etwas zynisch und hat einen trockenen Humor; die Zwischensequenzen leben von seinen Kommentaren.
 - Der Spieler **wählt den Namen** des Lehrlings zu Beginn. Die Eingabe ist freies Tippen, keine Übung, und zählt nicht zur Statistik.
 - Der Lehrling hat **kein Gesicht**: Man sieht ihn nie, er ist der Spieler. Er tritt nur in Texten auf.
+- **Die Meisterin:** Bibliothekarin und Lehrerin des Lehrlings. Name offen.
+- **Der Rivale:** Künstler, neidisch auf die Meisterin, erschafft die Monster aus Tinte. Name offen.
 
 ### 3.3 Handlung
 
-1. **Bibliothek (Tutorial):** Der Lehrling lernt beim Meister die Zeichen, Reihe für Reihe, bis er alle Buchstaben beherrscht (siehe 5).
-2. **Der Überfall:** Kaum sind die Buchstaben gelernt, greift das Verstummen die Bibliothek an. Dieser Kampf ist **nicht zu gewinnen**: Die Bibliothek brennt ab, der Meister wird verschleppt.
-3. **Die Reise:** Der Lehrling kämpft sich über die **Weltkarte** ins Feindesland vor. Je weiter er kommt, desto schwerer wird es. An bestimmten Ereignissen findet er **Bücher** (oder Ähnliches), aus denen er neue Fähigkeiten lernt: Großschreibung, Umlaute, Satzzeichen, Ziffern, Sonderzeichen.
-4. **Finale:** Der Lehrling befreit den Meister und besiegt das Verstummen. Das Spiel hat ein **Ende**.
+1. **Bibliothek (Tutorial):** Der Lehrling lernt bei der Meisterin die Zeichen, Reihe für Reihe, bis er alle Buchstaben beherrscht (siehe 5). Geübt wird in **Übungskämpfen**, z. B. gegen Papiergolems der Meisterin – so lernt man Tippen und Bauen zugleich.
+2. **Der Überfall:** Kaum sind die Buchstaben gelernt, greift das Verstummen die Bibliothek an. Dieser Kampf ist **nicht zu gewinnen**: Die Bibliothek brennt ab, die Meisterin wird verschleppt. Zuvor spricht sie noch einen **Bann**, der die Gegner schwächt: Sie können nur noch zeitweise vorrücken (siehe 4.1).
+3. **Die Reise:** Der Lehrling **drängt das Verstummen** über die **Weltkarte** zurück ins Feindesland. Je weiter er kommt, desto schwerer wird es. An bestimmten Ereignissen findet er **Bücher** (oder Ähnliches), aus denen er neue Fähigkeiten lernt: Großschreibung, Umlaute, Satzzeichen, Ziffern, Sonderzeichen. Unterwegs zeigt sich nach und nach, wer hinter dem Verstummen steckt.
+4. **Finale:** Der Lehrling besiegt den Rivalen und befreit die Meisterin. Das Spiel hat ein **Ende**.
 
 ### 3.4 Zwischensequenzen
 
@@ -56,15 +60,19 @@ Thema: **Fantasy**.
 
 ### 4.1 Ein Level
 
-- Eine Karte mit einem Weg, auf dem die Gegner in **Wellen** zu einem Ziel laufen, und **Bauplätzen** am Rand.
-- Erreicht ein Gegner das Ziel, kostet das Leben. Sind keine Leben mehr übrig, ist das Level verloren.
-- Wer alle Wellen übersteht, gewinnt das Level.
+- Eine Karte mit einem Weg, **Bauplätzen** am Rand und am Ende des Wegs der **Bannkreis** – der Rest des Banns der Meisterin, der das Land dahinter schützt.
+- Ein Level läuft im Wechsel zweier Phasen (Arbeitstitel **Gezeiten des Banns**; denkbar sind auch Tag/Nacht oder Mondphasen):
+  - **Flut** – der Bann ist stark: Die Gegner müssen sich zurückziehen. Man baut und rüstet in Ruhe auf.
+  - **Ebbe** – der Bann ist schwach: Die Gegner rücken in **Wellen** vor.
+- Erreicht ein Gegner den Bannkreis, wird er schwächer. Bricht er, ist das Level verloren.
+- Wer alle Ebben übersteht, hat das Verstummen zurückgedrängt und gewinnt das Level. Auf der Weltkarte ist das Gebiet damit befreit.
 
 ### 4.2 Bauen und Aufrüsten
 
 - Jeder **Bauplatz** trägt ein Wort. Tippt man es, ist der Bauplatz gewählt.
 - Danach baut ein **Schlüsselwort** dort einen bestimmten Turm, z. B. *feuer* einen Feuerturm.
 - **Aufrüsten** funktioniert ähnlich: den Turm über sein Wort wählen, dann ein Aufrüstwort tippen.
+- Türme und Aufrüstungen kosten **Tinte**. Die Monster sind aus Tinte gemacht; besiegt zerfließen sie und hinterlassen sie.
 
 ### 4.3 Kampf
 
@@ -100,6 +108,11 @@ Thema: **Fantasy**.
 - Verliert man ein Level, wird der nächste Punkt auf der Weltkarte nicht freigeschaltet. Man kann das Level jederzeit erneut versuchen.
 - Ausnahme ist der Überfall auf die Bibliothek (3.3): Er endet immer mit der Niederlage und führt in die Reise.
 
+### 4.8 Belohnungen
+
+- Zwischendurch oder nach einem Bosskampf gewinnt man Belohnungen, z. B. einen **Bücherkarren** oder eine **verlorene Schriftrolle**.
+- Was sie bringen, ist offen.
+
 ## 5. Progression
 
 Bis alle Buchstaben beherrscht sind, ist das Spiel ein **Tutorial** in der Bibliothek. Erst danach beginnt das Hauptspiel auf der Weltkarte. **Groß-/Kleinschreibung kommt erst auf der Reise** – vorher wird alles kleingeschrieben.
@@ -110,11 +123,15 @@ Bis alle Buchstaben beherrscht sind, ist das Spiel ein **Tutorial** in der Bibli
 | Tutorial 2 | Bibliothek | Obere Reihe: `e i`, `r u`, `t z`, `o p`, `w q` |
 | Tutorial 3 | Bibliothek | Untere Reihe: `n m`, `b v`, `c x y`, dann die Leertaste |
 | Überfall | Bibliothek | – (nicht zu gewinnen) |
-| Reise | Weltkarte, Gebiete | Bücher: Umlaute `ä ö ü ß`, Großschreibung (Umschalttaste), Satzzeichen `. , ? !`, Ziffern, Sonderzeichen |
+| Aschefelder | rund um die Bibliothek | Buch: Umlaute `ä ö ü ß` |
+| Flüsterwald | Weltkarte | Buch: Großschreibung (Umschalttaste) |
+| Nebelmoor | Weltkarte | Buch: Satzzeichen `. , ? !` |
+| Salzöde | Weltkarte | Buch: Ziffern |
+| Gläserne Berge | Weltkarte | Buch: Sonderzeichen |
 | Finale | Festung des Verstummens | alle Zeichen, Bosskampf |
 
 - Die Reihenfolge innerhalb einer Reihe folgt klassischen Zehnfinger-Kursen.
-- Welches Gebiet welches Buch enthält, ist offen.
+- Gebiete, Namen und Zuordnung der Bücher sind vorläufig.
 
 **Regel:** Jedes Wort darf nur Tasten enthalten, die an dieser Stelle freigeschaltet sind. Das wird im Code automatisch geprüft (siehe 8.3).
 
@@ -178,9 +195,9 @@ Alle Komponenten sind kostenlos und Open Source (MIT/Apache).
 |---|---|---|
 | M0 | Projekt einrichten | erledigt: Arbeitsmodus, Tauri + Phaser + TypeScript, Tests, CI |
 | M1 | Neuausrichtung | dieses Dokument; RPG-Code entfernt, wiederverwendbarer Kern bleibt |
-| M2 | Kampf-Prototyp | ein Level: Weg, Wellen, Bauplätze mit Wörtern, ein Turm, Leben, Sieg und Niederlage – nur Grundreihe, Platzhaltergrafik |
-| M3 | Tutorial | Bibliothek mit allen drei Reihen, Namenswahl, Text-Zwischensequenzen, Überfall |
-| M4 | Weltkarte | Gebiete, Freischalten durch Sieg, Wiederholen, mehrere Türme und Aufrüsten, Spezialgegner |
+| M2 | Kampf-Prototyp | ein Level: Weg, Flut und Ebbe, Wellen, Bauplätze mit Wörtern, Tinte, ein Turm, Bannkreis, Sieg und Niederlage – nur Grundreihe, Platzhaltergrafik |
+| M3 | Tutorial | Bibliothek mit allen drei Reihen, Übungskämpfe, Namenswahl, Text-Zwischensequenzen, Überfall |
+| M4 | Weltkarte | Gebiete, Zurückdrängen und Freischalten durch Sieg, Wiederholen, mehrere Türme und Aufrüsten, Spezialgegner, Belohnungen |
 | M5 | Grafikstil | Stil festlegen, Bibliothek und erste Gebiete gestalten |
 | M6 | Bücher | Umlaute, Großschreibung, Satzzeichen, Ziffern, Sonderzeichen; thematische Wörter |
 | M7 | Finale | Bosskämpfe mit ganzen Texten, Festung des Verstummens, Ende |
@@ -196,10 +213,10 @@ Offene Fragen werden als Issues mit Label `idee` diskutiert. Entscheidungen flie
 - Spielname – [#13](https://github.com/TheRealKoller/typingame/issues/13)
 - Lizenz bei Veröffentlichung – [#18](https://github.com/TheRealKoller/typingame/issues/18)
 - Ton und Klang – [#56](https://github.com/TheRealKoller/typingame/issues/56)
-- Wie sieht das Tutorial spielerisch aus – schon kleine Kämpfe in der Bibliothek oder reine Übungen?
-- Womit bezahlt man Türme und Aufrüstungen (z. B. Tinte, die besiegte Gegner hinterlassen)?
-- Was wird in einem Level verteidigt?
+- Gezeiten des Banns: Ebbe und Flut, Tag und Nacht oder Mondphasen? Endet die Flut nach Zeit oder wenn der Spieler bereit ist?
+- Was bringen Belohnungen wie Bücherkarren und Schriftrollen?
+- Wie enthüllt sich der Rivale Schritt für Schritt, und was treibt ihn genau an?
 - Wächst das Tempo der Gegner mit den gemessenen Anschlägen pro Minute, damit Anfänger nicht überrollt werden?
 - Kann man ein angefangenes Wort abbrechen, um das Ziel zu wechseln (z. B. mit Esc)?
-- Gebiete der Weltkarte: Anzahl, Namen, welches Gebiet welches Buch enthält.
-- Namen für Meister, Welt und Bibliothek.
+- Gebiete der Weltkarte überarbeiten (siehe 5).
+- Namen für Meisterin, Rivale, Welt und Bibliothek.
