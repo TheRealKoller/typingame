@@ -14,6 +14,7 @@ export class Progress {
   #stage: string;
   #name: string;
   readonly #seen: Set<string>;
+  readonly #freed: Set<string>;
   #pending: Promise<void> = Promise.resolve();
 
   constructor(storage: SaveStorage, base: SaveGame, startedAt: Date) {
@@ -23,6 +24,7 @@ export class Progress {
     this.#stage = base.stage;
     this.#name = base.name;
     this.#seen = new Set(base.seen);
+    this.#freed = new Set(base.freed);
   }
 
   /** Loads the saved progress; starts at `firstStage` if there is no valid save. */
@@ -60,12 +62,22 @@ export class Progress {
     this.#seen.add(id);
   }
 
+  /** Ids of the world map points won on the journey. */
+  get freed(): ReadonlySet<string> {
+    return this.#freed;
+  }
+
+  free(id: string): void {
+    this.#freed.add(id);
+  }
+
   /** The complete save as it would be written now. */
   snapshot(): SaveGame {
     return buildSave(this.#base, {
       stage: this.#stage,
       name: this.#name,
       seen: this.#seen,
+      freed: this.#freed,
       session: this.session,
       startedAt: this.#startedAt,
     });

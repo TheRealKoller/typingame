@@ -78,8 +78,8 @@ export function stageSetup(index: number): StageSetup {
   };
 }
 
-/** The raid uses every key of the tutorial and every word, not only those of the last stage. */
-export function raidSetup(): StageSetup {
+/** The raid and the journey use every key of the tutorial and every word, not only those of the last stage. */
+export function allKeysSetup(): StageSetup {
   const setup = stageSetup(STAGES.length - 1);
   return { ...setup, words: wordsFor(setup.keys) };
 }

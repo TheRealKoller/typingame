@@ -19,8 +19,8 @@ describe('nextScene', () => {
     expect(nextScene(progressAt(RAID, ['raid-before'])).key).toBe('BattleScene');
   });
 
-  it('tells what happened after the raid, then ends until the journey exists', () => {
+  it('tells what happened after the raid, then opens the world map', () => {
     expect(nextScene(progressAt(JOURNEY, ['raid-before']))).toMatchObject({ key: 'CutsceneScene', data: { id: 'raid-after' } });
-    expect(nextScene(progressAt(JOURNEY, ['raid-before', 'raid-after'])).key).toBe('EndScene');
+    expect(nextScene(progressAt(JOURNEY, ['raid-before', 'raid-after'])).key).toBe('WorldMapScene');
   });
 });

@@ -4,9 +4,10 @@ import { Commands, type Command } from '../battle/commands';
 import type { BuildSite } from '../battle/level';
 import type { Point } from '../battle/path';
 import { MASTER_NAME, MASTER_VERDICTS, pageText } from '../content/cutscenes';
+import { JOURNEY_VERDICTS, journeyLevel, worldPoint, type WorldPoint } from '../content/journey';
 import { practiceLevel, practiceMap, READING_ROOM, type PracticeMap, type Prop } from '../content/library';
 import { RAID_LEVEL } from '../content/raid';
-import { JOURNEY, RAID, raidSetup, STAGES, stageIndex, stageSetup, type StageSetup } from '../content/tutorial';
+import { JOURNEY, RAID, allKeysSetup, STAGES, stageIndex, stageSetup, type StageSetup } from '../content/tutorial';
 import { FINGER_NAME } from '../keyboard/fingers';
 import { qwertzDe } from '../keyboard/qwertz-de';
 import { UnlockTracker } from '../progress/unlock';
@@ -45,6 +46,8 @@ import {
   TOWER_ART,
   WALL_EDGE_FRAME,
   createBattleArt,
+  layPath,
+  SAND_EDGE,
   deathAnimation,
   preloadBattleArt,
   walkAnimation,
@@ -83,7 +86,6 @@ const PAPER_EDGE = 0xcbb894;
 const WORN_TILES: readonly [number, number][] = [
   [2, 3], [5, 5], [9, 2], [13, 4], [16, 6], [7, 6], [11, 5], [18, 3],
 ];
-const SAND_EDGE = 0xbd6a62;
 
 export interface BattleSceneData {
   readonly progress: Progress;
@@ -91,6 +93,8 @@ export interface BattleSceneData {
   readonly announce?: boolean;
   /** How many practice battles came before this one in a row; picks the map. */
   readonly round?: number;
+  /** On the journey: id of the world map point fought for. */
+  readonly point?: string;
 }
 
 interface EnemyView {
@@ -142,11 +146,13 @@ export class BattleScene extends Phaser.Scene {
   /** Position in `STAGES` and what it unlocks. */
   #stage = 0;
   #setup!: StageSetup;
-  /** Null during the raid: there is nothing left to unlock. */
+  /** Null in the raid and on the journey: there is nothing left to unlock. */
   #unlock: UnlockTracker | null = null;
   #unlockReached = false;
   /** The raid on the library instead of a practice battle. */
   #raid = false;
+  /** The world map point fought for on the journey; null in the library. */
+  #point: WorldPoint | null = null;
   /** Shelves that can still catch fire in the raid, in the order they burn. */
   #shelves: Phaser.GameObjects.Image[] = [];
   #darkness: Phaser.GameObjects.Rectangle | null = null;
@@ -162,15 +168,19 @@ export class BattleScene extends Phaser.Scene {
     createBattleArt(this);
     this.#progress = data.progress;
     this.#raid = this.#progress.stage === RAID;
-    // The raid is fought with every key of the tutorial.
-    this.#stage = this.#raid ? STAGES.length - 1 : stageIndex(this.#progress.stage);
-    this.#setup = this.#raid ? raidSetup() : stageSetup(this.#stage);
-    this.#unlock = this.#raid ? null : new UnlockTracker();
+    this.#point = this.#progress.stage === JOURNEY && data.point ? worldPoint(data.point) : null;
+    const tutorial = !this.#raid && !this.#point;
+    // The raid and the journey are fought with every key of the tutorial.
+    this.#stage = tutorial ? stageIndex(this.#progress.stage) : STAGES.length - 1;
+    this.#setup = tutorial ? stageSetup(this.#stage) : allKeysSetup();
+    this.#unlock = tutorial ? new UnlockTracker() : null;
     this.#unlockReached = false;
     this.#round = data.round ?? 0;
     // The raid always strikes the reading room.
-    this.#map = this.#raid ? READING_ROOM : practiceMap(this.#round);
-    this.#battle = new Battle(this.#raid ? RAID_LEVEL : practiceLevel(STAGES[this.#stage]!.section, this.#map));
+    this.#map = this.#point?.map ?? (this.#raid ? READING_ROOM : practiceMap(this.#round));
+    this.#battle = new Battle(
+      this.#point ? journeyLevel(this.#point) : this.#raid ? RAID_LEVEL : practiceLevel(STAGES[this.#stage]!.section, this.#map),
+    );
     this.#shelves = [];
     this.#darkness = null;
     this.#commands = this.#newCommands();
@@ -205,7 +215,7 @@ export class BattleScene extends Phaser.Scene {
       window.removeEventListener('pagehide', this.#save);
     });
     this.#sync();
-    if (data.announce && !this.#raid) this.#showNewKeys(STAGES[this.#stage]!.newKeys);
+    if (data.announce && tutorial) this.#showNewKeys(STAGES[this.#stage]!.newKeys);
   }
 
   override update(_time: number, delta: number): void {
@@ -244,11 +254,12 @@ export class BattleScene extends Phaser.Scene {
       return;
     }
     if (event.key === 'Enter') {
-      // Enter calls the next wave during a flood, or starts a practice battle again once it has ended.
+      // Enter calls the next wave during a flood; once a battle has ended it starts the next practice battle or returns to the world map.
       event.preventDefault();
       if (event.repeat) return;
       if (this.#ended()) {
-        if (!this.#raid) this.scene.restart({ progress: this.#progress, round: this.#round + 1 } satisfies BattleSceneData);
+        if (this.#point) this.scene.start('WorldMapScene', { progress: this.#progress });
+        else if (!this.#raid) this.scene.restart({ progress: this.#progress, round: this.#round + 1 } satisfies BattleSceneData);
         return;
       }
       this.#battle.endFlood();
@@ -435,25 +446,6 @@ export class BattleScene extends Phaser.Scene {
     }
   }
 
-  /** Lays the path: outline every segment, then the path again over the inner edges so only the outline of the whole remains. */
-  #layPath(texture: string, frame: string, edgeColor: number, scale: number): void {
-    const path = this.#battle.level.path;
-    const segments = path.slice(1).map((to, i) => {
-      const from = path[i]!;
-      return {
-        x: Math.min(from.x, to.x) - PATH_WIDTH / 2,
-        y: Math.min(from.y, to.y) - PATH_WIDTH / 2,
-        width: Math.abs(to.x - from.x) + PATH_WIDTH,
-        height: Math.abs(to.y - from.y) + PATH_WIDTH,
-      };
-    });
-    const edges = this.add.graphics().setDepth(1).fillStyle(edgeColor, 1);
-    for (const s of segments) edges.fillRect(s.x - 3, s.y - 3, s.width + 6, s.height + 6);
-    for (const s of segments) {
-      this.add.tileSprite(s.x, s.y, s.width, s.height, texture, frame).setOrigin(0).setTileScale(scale).setDepth(1);
-    }
-  }
-
   /** A room of the library: stone floor, back wall with banners and torches, a carpet as the path. */
   #drawRoom(): void {
     const { width } = this.scale;
@@ -474,13 +466,27 @@ export class BattleScene extends Phaser.Scene {
     for (const x of this.#map.banners ?? []) this.add.image(x, 8, DUNGEON, BANNER_FRAME).setOrigin(0.5, 0).setScale(LIBRARY_SCALE);
     for (const x of this.#map.torches ?? []) this.add.sprite(x, 44, TORCH).setScale(LIBRARY_SCALE).play(TORCH_FLAME);
 
-    this.#layPath(DUNGEON, CARPET_FRAME, CARPET_EDGE, LIBRARY_SCALE);
+    layPath(this, this.#battle.level.path, {
+      texture: DUNGEON,
+      frame: CARPET_FRAME,
+      edgeColor: CARPET_EDGE,
+      tileScale: LIBRARY_SCALE,
+      width: PATH_WIDTH,
+      depth: 1,
+    });
   }
 
   /** The courtyard: grass and a sand path. */
   #drawCourtyard(): void {
     this.add.tileSprite(0, 0, this.scale.width, DESK_TOP, GRASS_TILESET, GRASS_FRAME).setOrigin(0);
-    this.#layPath(GRASS_TILESET, SAND_FRAME, SAND_EDGE, 1);
+    layPath(this, this.#battle.level.path, {
+      texture: GRASS_TILESET,
+      frame: SAND_FRAME,
+      edgeColor: SAND_EDGE,
+      tileScale: 1,
+      width: PATH_WIDTH,
+      depth: 1,
+    });
   }
 
   /** Wooden desk below the map: the keyboard lies on it, the notes left and right carry the texts. */
@@ -528,7 +534,7 @@ export class BattleScene extends Phaser.Scene {
     const phase = {
       flood: `Flut – baue Türme. Drücke Enter, wenn Welle ${battle.wave + 1} von ${waves} kommen soll.`,
       ebb: `Ebbe – Welle ${battle.wave + 1} von ${waves} rückt vor.`,
-      won: 'Alle Golems besiegt.',
+      won: this.#point ? 'Das Verstummen weicht zurück.' : 'Alle Golems besiegt.',
       lost: 'Der Bannkreis ist gebrochen.',
     }[battle.phase];
     const tower = this.#setup.towers[0]!;
@@ -553,6 +559,10 @@ export class BattleScene extends Phaser.Scene {
     if (this.#ended() && !this.#endPanel) {
       if (this.#raid) this.#endRaid();
       else this.#showEnd();
+      if (this.#point && battle.phase === 'won') {
+        this.#progress.free(this.#point.id);
+        void this.#progress.save();
+      }
     }
   }
 
@@ -784,15 +794,20 @@ export class BattleScene extends Phaser.Scene {
     this.tweens.add({ targets: text, y: text.y - 30, alpha: 0, duration: 1200, onComplete: () => text.destroy() });
   }
 
-  /** After a practice battle the master has a word for it; Enter starts the next one. */
+  /**
+   * After a practice battle the master has a word for it, on the journey the
+   * apprentice; Enter starts the next practice battle or returns to the map.
+   */
   #showEnd(): void {
-    const lines = MASTER_VERDICTS[this.#battle.phase === 'won' ? 'won' : 'lost'];
+    const outcome = this.#battle.phase === 'won' ? 'won' : 'lost';
+    const lines = this.#point ? JOURNEY_VERDICTS[outcome] : MASTER_VERDICTS[outcome];
     const line = lines[Math.floor(Math.random() * lines.length)] ?? '';
+    const name = this.#point ? this.#progress.name : MASTER_NAME;
     const speaker = this.add
-      .text(-250, -70, MASTER_NAME, { fontFamily: 'serif', fontSize: '24px', color: '#7a3a1e' })
+      .text(-250, -70, name, { fontFamily: 'serif', fontSize: '24px', color: '#7a3a1e' })
       .setOrigin(0, 0);
     const text = this.add
-      .text(-250, -34, pageText({ speaker: 'master', text: line }, this.#progress.name), {
+      .text(-250, -34, pageText({ speaker: this.#point ? 'apprentice' : 'master', text: line }, this.#progress.name), {
         fontFamily: 'serif',
         fontSize: '26px',
         color: HUD_TEXT,
@@ -801,7 +816,7 @@ export class BattleScene extends Phaser.Scene {
       })
       .setOrigin(0, 0);
     const hint = this.add
-      .text(250, 70, 'Enter: weiter', { fontFamily: 'sans-serif', fontSize: '18px', color: '#7a6a5a' })
+      .text(250, 70, this.#point ? 'Enter: zur Karte' : 'Enter: weiter', { fontFamily: 'sans-serif', fontSize: '18px', color: '#7a6a5a' })
       .setOrigin(1, 1);
     const panel = this.add.rectangle(0, 0, 560, 180, PAPER, 0.97).setStrokeStyle(3, PAPER_EDGE);
     this.#endPanel = this.add.container(this.scale.width / 2, 230, [panel, speaker, text, hint]).setDepth(1000);

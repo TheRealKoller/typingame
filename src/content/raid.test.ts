@@ -3,10 +3,10 @@ import { Battle } from '../battle/battle';
 import { Commands } from '../battle/commands';
 import { RAID_LEVEL } from './raid';
 import { CROSSBOW } from './towers';
-import { raidSetup } from './tutorial';
+import { allKeysSetup } from './tutorial';
 
 it('offers words from the whole tutorial on every build site, without prefix pairs', () => {
-  const setup = raidSetup();
+  const setup = allKeysSetup();
   const commands = new Commands(new Battle(RAID_LEVEL), setup.towers, setup.words, { keys: {} });
   const words = commands.words;
   expect(words).toHaveLength(RAID_LEVEL.sites.length);
