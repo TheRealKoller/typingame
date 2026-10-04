@@ -1,5 +1,5 @@
 import type { TowerKind } from '../battle/level';
-import { CROSSBOW } from './level1';
+import { CROSSBOW } from './towers';
 import { wordsFor } from './words';
 
 /** One step of the tutorial: the keys it adds to those of the stages before. */

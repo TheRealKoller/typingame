@@ -1,7 +1,7 @@
 import { describe, expect, it } from 'vitest';
 import { Battle } from '../battle/battle';
 import { Commands } from '../battle/commands';
-import { LEVEL_1 } from './level1';
+import { practiceLevel } from './library';
 import { keysUpTo, STAGES, stageIndex, stageSetup } from './tutorial';
 import { WORDS } from './words';
 
@@ -42,7 +42,7 @@ describe('tutorial stages', () => {
       expect(setup.words.filter((word) => stage.newKeys.some((key) => word.includes(key))).length).toBeGreaterThanOrEqual(3);
 
       for (let seed = 1; seed <= 20; seed++) {
-        const commands = new Commands(new Battle(LEVEL_1), setup.towers, setup.floodWord, setup.words, {
+        const commands = new Commands(new Battle(practiceLevel(STAGES[index]!.section)), setup.towers, setup.floodWord, setup.words, {
           keys: {},
           random: seeded(seed),
         });
