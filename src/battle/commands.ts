@@ -1,6 +1,6 @@
 import { pickWord, type PracticeContext } from '../progress/practice';
-import type { Battle, Enemy } from './battle';
-import type { BuildSite, TowerKind } from './level';
+import type { Battle, Enemy, Hit } from './battle';
+import type { BuildSite, Spell, TowerKind } from './level';
 
 /** What a completed word did. */
 export type Command =
@@ -11,7 +11,9 @@ export type Command =
   /** The keyword or upgrade word was typed but the ink did not suffice; the selection is released. */
   | { readonly type: 'tooExpensive'; readonly site: BuildSite; readonly tower: TowerKind }
   /** The word of a glowing enemy was typed; it is hit, and maybe defeated. */
-  | { readonly type: 'strike'; readonly enemy: Enemy; readonly defeated: boolean };
+  | { readonly type: 'strike'; readonly enemy: Enemy; readonly defeated: boolean }
+  /** A spell's word was typed; it hit every enemy on the path. */
+  | { readonly type: 'cast'; readonly spell: Spell; readonly hits: readonly Hit[] };
 
 /** A tower kind and every stage it can be upgraded to. */
 function withUpgrades(kind: TowerKind): TowerKind[] {
@@ -24,11 +26,13 @@ function withUpgrades(kind: TowerKind): TowerKind[] {
  * tower keeps the word of its site while it can be upgraded; typing it
  * selects the tower, then its upgrade word upgrades it. Glowing enemies
  * carry a word as well; typing it strikes them down, or wounds the tough ones.
+ * A spell's word can be typed whenever the spell is ready and a wave advances.
  */
 export class Commands {
   readonly #battle: Battle;
   readonly #towers: readonly TowerKind[];
-  /** Keywords of the towers and all their upgrade words: never site or enemy words. */
+  readonly #spells: readonly Spell[];
+  /** Keywords of the towers, all their upgrade words and the spell words: never site or enemy words. */
   readonly #keywords: readonly string[];
   readonly #pool: readonly string[];
   readonly #context: PracticeContext;
@@ -41,15 +45,17 @@ export class Commands {
    * Gives every build site a word from `pool`. Keywords are never site words,
    * and no two site words form a prefix pair.
    */
-  constructor(battle: Battle, towers: readonly TowerKind[], pool: readonly string[], context: PracticeContext) {
+  constructor(battle: Battle, towers: readonly TowerKind[], pool: readonly string[], context: PracticeContext, spells: readonly Spell[] = []) {
     this.#battle = battle;
     this.#towers = towers;
-    this.#keywords = towers.flatMap(withUpgrades).map((tower) => tower.keyword);
+    this.#spells = spells;
+    this.#keywords = [...towers.flatMap(withUpgrades).map((tower) => tower.keyword), ...spells.map((spell) => spell.word)];
     this.#pool = pool.filter((candidate) => !this.#keywords.includes(candidate));
     this.#context = context;
     const taken: string[] = [];
     for (const site of battle.level.sites) {
-      const word = pickWord(this.#pool, taken, context);
+      // Spell words stand beside the site words, so they must not form prefix pairs with them.
+      const word = pickWord(this.#pool, [...taken, ...spells.map((spell) => spell.word)], context);
       if (word === null) throw new Error(`no word left for build site ${site.id}`);
       taken.push(word);
       this.#siteWords.set(site.id, word);
@@ -89,16 +95,22 @@ export class Commands {
     }
   }
 
+  /** Spells that can be cast now. */
+  get readySpells(): readonly Spell[] {
+    return this.#battle.phase === 'ebb' ? this.#spells.filter((spell) => this.#battle.spellReadyIn(spell) === 0) : [];
+  }
+
   /** Words that can be typed now. */
   get words(): readonly string[] {
-    const enemies = [...this.#enemyWords.values()];
+    // Enemy words and ready spells can be typed at any time, also at a selected site.
+    const always = [...this.#enemyWords.values(), ...this.readySpells.map((spell) => spell.word)];
     if (this.#selected) {
       const tower = this.#battle.towerAt(this.#selected);
       const choices = tower ? (tower.kind.upgrade ? [tower.kind.upgrade] : []) : this.#towers;
-      return [...choices.map((kind) => kind.keyword), ...enemies];
+      return [...choices.map((kind) => kind.keyword), ...always];
     }
     const sites = this.#battle.level.sites.map((site) => this.siteWord(site)).filter((word) => word !== null);
-    return [...sites, ...enemies];
+    return [...sites, ...always];
   }
 
   /** Leaves a selected build site without building. */
@@ -107,6 +119,11 @@ export class Commands {
   }
 
   complete(word: string): Command | null {
+    const spell = this.readySpells.find((candidate) => candidate.word === word);
+    if (spell) {
+      const hits = this.#battle.cast(spell);
+      return hits ? { type: 'cast', spell, hits } : null;
+    }
     const enemy = [...this.#enemyWords].find(([, enemyWord]) => enemyWord === word)?.[0];
     if (enemy) {
       this.#enemyWords.delete(enemy);

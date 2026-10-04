@@ -1,6 +1,6 @@
 import { describe, expect, it } from 'vitest';
 import { Battle } from '../battle/battle';
-import { FIRST_POINT, journeyBattle, pointState, WORLD_LINKS, WORLD_POINTS, type WorldPoint } from './journey';
+import { FIRST_POINT, journeyBattle, rewardsFor, pointState, WORLD_LINKS, WORLD_POINTS, type WorldPoint } from './journey';
 import { seededRandom } from './mapgen';
 import { CROSSBOW } from './towers';
 import { allKeysSetup } from './tutorial';
@@ -39,6 +39,25 @@ describe('world map', () => {
   });
 });
 
+describe('rewards', () => {
+  it('hand out at least one book cart and one scroll in the ash fields', () => {
+    const kinds = rewardsFor(new Set(WORLD_POINTS.map((point) => point.id))).map((reward) => reward.kind);
+    expect(kinds).toContain('cart');
+    expect(kinds).toContain('scroll');
+  });
+
+  it('let the journey start with the crossbow alone and add what the freed places brought', () => {
+    const at = (freed: string[]) => journeyBattle(WORLD_POINTS[1]!, seededRandom(1), new Set(freed));
+    expect(at([]).towers.map((tower) => tower.name)).toEqual(['Armbrust']);
+    expect(at([]).spells).toEqual([]);
+    const later = at(WORLD_POINTS.map((point) => point.id));
+    const carts = rewardsFor(new Set(WORLD_POINTS.map((point) => point.id))).flatMap((reward) => (reward.kind === 'cart' ? [reward.tower] : []));
+    const scrolls = rewardsFor(new Set(WORLD_POINTS.map((point) => point.id))).flatMap((reward) => (reward.kind === 'scroll' ? [reward.spell] : []));
+    expect(later.towers.slice(1)).toEqual(carts);
+    expect(later.spells).toEqual(scrolls);
+  });
+});
+
 describe('battles of the journey', () => {
   const SEEDS = 40;
 
@@ -48,7 +67,7 @@ describe('battles of the journey', () => {
    * four seconds after it shows up. Returns the ward left, 0 if lost.
    */
   function play(point: WorldPoint, seed: number, typing: boolean): number {
-    const battle = new Battle(journeyBattle(point, seededRandom(seed)).level);
+    const battle = new Battle(journeyBattle(point, seededRandom(seed), new Set()).level);
     const shown = new Map<number, number>();
     for (let time = 0; time < 3_600_000 && battle.phase !== 'won' && battle.phase !== 'lost'; time += 100) {
       const free = battle.level.sites.find((site) => !battle.towerAt(site));

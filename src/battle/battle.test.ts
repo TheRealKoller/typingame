@@ -1,7 +1,7 @@
 import { describe, expect, it } from 'vitest';
 import { practiceLevel } from '../content/library';
 import { Battle } from './battle';
-import type { EnemyKind, Level, TowerKind } from './level';
+import type { EnemyKind, Level, Spell, TowerKind } from './level';
 import { pointAt } from './path';
 
 const BUG: EnemyKind = { id: 'bug', speed: 100, wardDamage: 1, health: 20, ink: 5 };
@@ -293,5 +293,30 @@ describe('tough enemies', () => {
 
     expect(battle.enemies).toEqual([]);
     expect(battle.ink).toBe(SHELLED.ink);
+  });
+});
+
+describe('spells', () => {
+  const RAIN: Spell = { id: 'rain', name: 'Regen', word: 'regen', damage: 20, cooldownMs: 5000 };
+
+  it('hit every enemy on the path through its armor, during an ebb only, then need time to return', () => {
+    const shelled: EnemyKind = { ...BEETLE, armor: 0.9 };
+    const battle = new Battle(level({ ink: 0, waves: [[{ kind: BUG, count: 1, spacingMs: 100 }, { kind: shelled, count: 1, spacingMs: 100 }]] }));
+    expect(battle.cast(RAIN)).toBeNull();
+    battle.endFlood();
+    battle.update(100);
+
+    const hits = battle.cast(RAIN)!;
+
+    expect(hits.map((hit) => [hit.enemy.kind.id, hit.health, hit.defeated])).toEqual([
+      ['bug', 0, true],
+      ['beetle', shelled.health - 20, false],
+    ]);
+    expect(battle.ink).toBe(BUG.ink);
+    expect(battle.cast(RAIN)).toBeNull();
+    run(battle, 4900);
+    expect(battle.spellReadyIn(RAIN)).toBe(100);
+    battle.update(100);
+    expect(battle.spellReadyIn(RAIN)).toBe(0);
   });
 });

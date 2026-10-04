@@ -5,6 +5,7 @@ import { allKeysSetup, stageSetup } from '../content/tutorial';
 import { TypingEngine } from '../typing/engine';
 import { Battle } from './battle';
 import { Commands } from './commands';
+import type { Spell } from './level';
 
 const LEVEL_1 = practiceLevel(1);
 /** Home row with g and h: the crossbow is built with »jagd«. */
@@ -177,5 +178,35 @@ describe('upgrades', () => {
     const { battle, commands } = built(1000);
     const upgradeWords = [UPGRADABLE.upgrade!.keyword, UPGRADABLE.upgrade!.upgrade!.keyword];
     for (const site of battle.level.sites) expect(upgradeWords).not.toContain(commands.siteWord(site));
+  });
+});
+
+describe('spells', () => {
+  const RAIN: Spell = { id: 'rain', name: 'Regen', word: 'tintenregen', damage: 1000, cooldownMs: 5000 };
+
+  function withSpell() {
+    const battle = new Battle(LEVEL_1);
+    const commands = new Commands(battle, [CROSSBOW], allKeysSetup().words, { keys: {}, random: () => 0.5 }, [RAIN]);
+    return { battle, commands };
+  }
+
+  it('offer the spell word while a wave advances and the spell is ready, clear of the site words', () => {
+    const { battle, commands } = withSpell();
+    expect(commands.words).not.toContain(RAIN.word);
+    battle.endFlood();
+    expect(commands.words).toContain(RAIN.word);
+    expect(hasPrefixPair(commands.words)).toBe(false);
+  });
+
+  it('cast the spell when its word is typed, and take the word away until it is ready again', () => {
+    const { battle, commands } = withSpell();
+    battle.endFlood();
+    battle.update(100);
+    const before = [...battle.enemies];
+
+    const command = commands.complete(RAIN.word);
+
+    expect(command).toEqual({ type: 'cast', spell: RAIN, hits: before.map((enemy) => ({ enemy, health: 0, defeated: true })) });
+    expect(commands.words).not.toContain(RAIN.word);
   });
 });

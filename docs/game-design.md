@@ -101,7 +101,7 @@ Wie sich Atramentus zeigt (vorläufig, ein Schritt je Gebiet):
 | Tintenschleuder | *spritzer* Tintenwerfer, 70: Schaden 14, Klecks 80 px | *sintflut* Tintenflut, 100: Schaden 20, Klecks 90 px, schneller |
 | Frostkristall | *raureif* Raureifkristall, 60: 40 % Tempo für 2 s | *gletscher* Gletscherkristall, 90: 30 % Tempo für 2,5 s, Reichweite 160 |
 
-- Ein gewählter Bauplatz zeigt die Schlüsselwörter nebeneinander, die Notiz links nennt Turm und Kosten. Im Tutorial gibt es nur die Armbrust; auf der Reise kommt an jedem der ersten Orte ein Turm dazu (Rauchsenke: Tintenschleuder, Kellergewölbe: Frostkristall). Später schalten Bücherkarren weitere frei (siehe 4.8).
+- Ein gewählter Bauplatz zeigt die Schlüsselwörter nebeneinander, die Notiz links nennt Turm und Kosten. Im Tutorial gibt es nur die Armbrust; auf der Reise schalten Bücherkarren weitere frei (siehe 4.8).
 - **Aufrüsten** funktioniert ähnlich: den Turm über sein Wort wählen, dann ein Aufrüstwort tippen.
 - Türme und Aufrüstungen kosten **Tinte**. Die Monster sind aus Tinte gemacht; besiegt zerfließen sie und hinterlassen sie.
 
@@ -146,6 +146,9 @@ Wie sich Atramentus zeigt (vorläufig, ein Schritt je Gebiet):
 
 - Zwischendurch oder nach einem Bosskampf gewinnt man Belohnungen, z. B. einen **Bücherkarren** oder eine **verlorene Schriftrolle**.
 - Eine **Schriftrolle** schaltet einen neuen Spezialangriff frei, ein **Bücherkarren** einen neuen Turmtyp.
+- In den Aschefeldern: **Bibliotheksruine** – Bücherkarren mit der Tintenschleuder; **Rauchsenke** – Schriftrolle *Tintenregen*; **Kellergewölbe** – Bücherkarren mit dem Frostkristall. Die Reise beginnt mit der Armbrust allein.
+- Die Belohnung gibt es beim ersten Befreien eines Orts; sie steht unter dem Satz des Lehrlings und gilt für alle späteren Kämpfe. Gespeichert wird sie über die befreiten Orte.
+- **Zauber:** Das Wort eines Zaubers lässt sich bei Ebbe tippen, sobald er bereit ist; es steht dann über dem Bannkreis, die Notiz links zeigt, wann er wieder bereit ist. *Tintenregen* trifft jeden Gegner auf dem Weg mit 30 Schaden, auch durch Panzer, und braucht danach 25 s Ebbe, bis er wieder bereit ist.
 
 ### 4.9 Weltkarte
 
