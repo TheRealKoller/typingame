@@ -3,6 +3,7 @@ import { STAGES } from './content/tutorial';
 import { Progress } from './progress/progress';
 import { createStorage } from './progress/storage';
 import { BattleScene, type BattleSceneData } from './scenes/BattleScene';
+import { NameScene, type NameSceneData } from './scenes/NameScene';
 
 async function start(): Promise<void> {
   const progress = await Progress.load(createStorage(), STAGES[0]!.id);
@@ -22,7 +23,10 @@ async function start(): Promise<void> {
     // Scenes read typing from native keydown events.
     input: { keyboard: false },
   });
-  game.scene.add('BattleScene', BattleScene, true, { progress } satisfies BattleSceneData);
+  // A new game asks for the apprentice's name first.
+  const named = progress.name !== '';
+  game.scene.add('NameScene', NameScene, !named, { progress } satisfies NameSceneData);
+  game.scene.add('BattleScene', BattleScene, named, { progress } satisfies BattleSceneData);
 }
 
 void start();

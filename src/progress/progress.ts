@@ -12,6 +12,7 @@ export class Progress {
   readonly #base: SaveGame;
   readonly #startedAt: string;
   #stage: string;
+  #name: string;
   #pending: Promise<void> = Promise.resolve();
 
   constructor(storage: SaveStorage, base: SaveGame, startedAt: Date) {
@@ -19,6 +20,7 @@ export class Progress {
     this.#base = base;
     this.#startedAt = startedAt.toISOString();
     this.#stage = base.stage;
+    this.#name = base.name;
   }
 
   /** Loads the saved progress; starts at `firstStage` if there is no valid save. */
@@ -38,10 +40,20 @@ export class Progress {
     this.#stage = id;
   }
 
+  /** Name of the apprentice; empty until the player has chosen one. */
+  get name(): string {
+    return this.#name;
+  }
+
+  set name(name: string) {
+    this.#name = name;
+  }
+
   /** The complete save as it would be written now. */
   snapshot(): SaveGame {
     return buildSave(this.#base, {
       stage: this.#stage,
+      name: this.#name,
       session: this.session,
       startedAt: this.#startedAt,
     });
