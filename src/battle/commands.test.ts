@@ -1,13 +1,17 @@
 import { describe, expect, it } from 'vitest';
-import { CROSSBOW, FLOOD_WORD, LEVEL_1 } from '../content/level1';
-import { HOME_ROW_WORDS } from '../content/words';
+import { LEVEL_1 } from '../content/level1';
+import { stageSetup } from '../content/tutorial';
 import { TypingEngine } from '../typing/engine';
 import { Battle } from './battle';
 import { Commands } from './commands';
 
+/** Home row with g and h: the crossbow is built with »jagd«, the flood ends with »ja«. */
+const { words: WORDS, towers, floodWord: FLOOD_WORD } = stageSetup(1);
+const CROSSBOW = towers[0]!;
+
 function setup(ink = LEVEL_1.ink) {
   const battle = new Battle({ ...LEVEL_1, ink });
-  const commands = new Commands(battle, [CROSSBOW], FLOOD_WORD, HOME_ROW_WORDS, { keys: {}, random: () => 0.5 });
+  const commands = new Commands(battle, [CROSSBOW], FLOOD_WORD, WORDS, { keys: {}, random: () => 0.5 });
   return { battle, commands };
 }
 

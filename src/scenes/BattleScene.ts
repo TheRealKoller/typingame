@@ -3,9 +3,11 @@ import { Battle, type Enemy, type Shot, type Tower } from '../battle/battle';
 import { Commands, type Command } from '../battle/commands';
 import type { BuildSite } from '../battle/level';
 import type { Point } from '../battle/path';
-import { CROSSBOW, FLOOD_WORD, LEVEL_1 } from '../content/level1';
-import { HOME_ROW_KEYS, HOME_ROW_WORDS } from '../content/words';
+import { LEVEL_1 } from '../content/level1';
+import { STAGES, stageIndex, stageSetup, type StageSetup } from '../content/tutorial';
+import { FINGER_NAME } from '../keyboard/fingers';
 import { qwertzDe } from '../keyboard/qwertz-de';
+import { UnlockTracker } from '../progress/unlock';
 import type { Progress } from '../progress/progress';
 import { errorRate } from '../progress/stats';
 import { TypingEngine } from '../typing/engine';
@@ -54,8 +56,6 @@ const WOOD_LIGHT = 0x9a6640;
 const WOOD_EDGE = 0xb57d50;
 const PAPER = 0xf4ead6;
 const PAPER_EDGE = 0xcbb894;
-/** Typed after the level has ended to play it again. */
-const AGAIN_WORD = FLOOD_WORD;
 
 /** Trees and rocks on the grass, clear of the path and the build sites. */
 const DECORATION: readonly { frame: string; x: number; y: number }[] = [
@@ -115,6 +115,12 @@ export class BattleScene extends Phaser.Scene {
   #inkText!: Phaser.GameObjects.Text;
   #wardText!: Phaser.GameObjects.Text;
   #endPanel: Phaser.GameObjects.Container | null = null;
+  /** Position in `STAGES` and what it unlocks. */
+  #stage = 0;
+  #setup!: StageSetup;
+  /** Null in the last stage: there is nothing left to unlock. */
+  #unlock: UnlockTracker | null = null;
+  #unlockReached = false;
 
   preload(): void {
     preloadBattleArt(this);
@@ -123,8 +129,12 @@ export class BattleScene extends Phaser.Scene {
   create(data: BattleSceneData): void {
     createBattleArt(this);
     this.#progress = data.progress;
+    this.#stage = stageIndex(this.#progress.stage);
+    this.#setup = stageSetup(this.#stage);
+    this.#unlock = this.#stage + 1 < STAGES.length ? new UnlockTracker() : null;
+    this.#unlockReached = false;
     this.#battle = new Battle(LEVEL_1);
-    this.#commands = new Commands(this.#battle, [CROSSBOW], FLOOD_WORD, HOME_ROW_WORDS, { keys: this.#progress.keys });
+    this.#commands = this.#newCommands();
     this.#labels = [];
     this.#labelKey = '';
     this.#enemies = new Map();
@@ -134,7 +144,7 @@ export class BattleScene extends Phaser.Scene {
     this.#drawMap();
     this.#drawDesk();
     this.#drawHud();
-    this.#keyboard = new KeyboardView(this, this.scale.width / 2, 540, qwertzDe).setScale(0.5).setUnlocked(HOME_ROW_KEYS);
+    this.#keyboard = new KeyboardView(this, this.scale.width / 2, 540, qwertzDe).setScale(0.5).setUnlocked(this.#setup.keys);
     this.#keyboard.setDepth(ON_DESK_DEPTH);
     this.#statsView = new StatsView(this, { x: this.scale.width - 28, y: 502 }, { x: this.scale.width / 2, y: 240 });
     this.#statsView.update(this.#progress);
@@ -163,12 +173,14 @@ export class BattleScene extends Phaser.Scene {
     for (const shot of step.shots) this.#showShot(shot);
     for (const enemy of step.arrived) this.#showArrival(enemy);
     this.#drawEnemies();
+    // A started word or a selected build site is finished first, so the new keys never cut them off.
+    if (this.#unlockReached && this.#engine.typed === '' && !this.#commands.selected) this.#advance();
     this.#sync();
   }
 
-  /** Words that can be typed now: the commands while the level runs, then the word to play again. */
+  /** Words that can be typed now: the commands while the level runs, then the flood word to play again. */
   #words(): readonly string[] {
-    return this.#ended() ? [AGAIN_WORD] : this.#commands.words;
+    return this.#ended() ? [this.#setup.floodWord] : this.#commands.words;
   }
 
   #ended(): boolean {
@@ -193,9 +205,10 @@ export class BattleScene extends Phaser.Scene {
     if (event.repeat || event.ctrlKey || event.altKey || event.metaKey || [...event.key].length !== 1) return;
 
     const events = this.#engine.type(event.key);
+    const correct = events[0]?.type === 'correct';
     this.#progress.session.record(events, event.timeStamp);
     this.#statsView.update(this.#progress);
-    this.#keyboard.press(event.code, events[0]?.type === 'correct');
+    this.#keyboard.press(event.code, correct);
     for (const typingEvent of events) {
       if (typingEvent.type !== 'complete') continue;
       void this.#progress.save();
@@ -205,8 +218,53 @@ export class BattleScene extends Phaser.Scene {
       }
       this.#apply(this.#commands.complete(typingEvent.word));
     }
+    if (this.#unlock?.record(correct)) this.#unlockReached = true;
     this.#sync();
   };
+
+  #newCommands(): Commands {
+    const { towers, floodWord, words } = this.#setup;
+    return new Commands(this.#battle, towers, floodWord, words, { keys: this.#progress.keys });
+  }
+
+  /** Unlocks the next stage: new keys on the keyboard, new words on the free build sites, a hint naming the keys. */
+  #advance(): void {
+    this.#stage++;
+    const stage = STAGES[this.#stage]!;
+    this.#setup = stageSetup(this.#stage);
+    this.#progress.stage = stage.id;
+    void this.#progress.save();
+    this.#commands = this.#newCommands();
+    this.#keyboard.setUnlocked(this.#setup.keys);
+    this.#unlock = this.#stage + 1 < STAGES.length ? new UnlockTracker() : null;
+    this.#unlockReached = false;
+    this.#showNewKeys(stage.newKeys);
+  }
+
+  /** Calm hint over the map naming the new keys and the fingers that press them. */
+  #showNewKeys(keys: readonly string[]): void {
+    const lines = keys.map((char) => {
+      const key = qwertzDe.keys.find((k) => k.char === char);
+      const name = key?.label ?? char.toUpperCase();
+      return key ? `${name} – ${FINGER_NAME[key.finger]}` : name;
+    });
+    const text = this.add
+      .text(0, 0, ['Neue Tasten', ...lines], { fontFamily: 'sans-serif', fontSize: '26px', color: HUD_TEXT, align: 'center', lineSpacing: 8 })
+      .setOrigin(0.5);
+    const panel = this.add
+      .rectangle(0, 0, text.width + 64, text.height + 36, 0xfffaf2, 0.95)
+      .setRounded(16)
+      .setStrokeStyle(2, 0xd9c8b4);
+    const hint = this.add.container(this.scale.width / 2, 240, [panel, text]).setDepth(1900).setAlpha(0);
+    this.tweens.chain({
+      targets: hint,
+      tweens: [
+        { alpha: 1, duration: 500 },
+        { alpha: 0, delay: 3500, duration: 800 },
+      ],
+      onComplete: () => hint.destroy(),
+    });
+  }
 
   readonly #onKeyUp = (event: KeyboardEvent): void => {
     if (event.key === 'Tab') this.#hideOverview();
@@ -236,7 +294,7 @@ export class BattleScene extends Phaser.Scene {
   }
 
   #placedWords(): Placed[] {
-    if (this.#ended()) return [{ word: AGAIN_WORD, x: this.scale.width / 2, y: 290 }];
+    if (this.#ended()) return [{ word: this.#setup.floodWord, x: this.scale.width / 2, y: 290 }];
     const selected = this.#commands.selected;
     if (selected) {
       return this.#commands.words.map((word) => ({ word, x: selected.x, y: selected.y - LABEL_OFFSET }));
@@ -246,7 +304,7 @@ export class BattleScene extends Phaser.Scene {
       const word = this.#commands.siteWord(site);
       if (word !== null) placed.push({ word, x: site.x, y: site.y - LABEL_OFFSET });
     }
-    if (this.#battle.phase === 'flood') placed.push({ word: FLOOD_WORD, x: this.scale.width / 2, y: 46 });
+    if (this.#battle.phase === 'flood') placed.push({ word: this.#setup.floodWord, x: this.scale.width / 2, y: 46 });
     return placed;
   }
 
@@ -333,13 +391,14 @@ export class BattleScene extends Phaser.Scene {
     const battle = this.#battle;
     const waves = battle.level.waves.length;
     const phase = {
-      flood: `Flut – baue Türme. Tippe »${FLOOD_WORD}«, wenn Welle ${battle.wave + 1} von ${waves} kommen soll.`,
+      flood: `Flut – baue Türme. Tippe »${this.#setup.floodWord}«, wenn Welle ${battle.wave + 1} von ${waves} kommen soll.`,
       ebb: `Ebbe – Welle ${battle.wave + 1} von ${waves} rückt vor.`,
       won: 'Gewonnen! Das Verstummen ist zurückgedrängt.',
       lost: 'Der Bannkreis ist gebrochen.',
     }[battle.phase];
+    const tower = this.#setup.towers[0]!;
     const selected = this.#commands.selected
-      ? `Bauplatz gewählt – »${CROSSBOW.keyword}« baut einen Armbrustturm (${CROSSBOW.cost} Tinte), Esc geht zurück.`
+      ? `Bauplatz gewählt – »${tower.keyword}« baut einen Armbrustturm (${tower.cost} Tinte), Esc geht zurück.`
       : null;
     this.#phaseText.setText(selected ?? phase);
     this.#inkText.setText(`Tinte: ${battle.ink}`);
@@ -499,7 +558,7 @@ export class BattleScene extends Phaser.Scene {
   #showEnd(): void {
     const won = this.#battle.phase === 'won';
     const text = this.add
-      .text(0, -30, [won ? 'Gewonnen!' : 'Verloren.', `Nochmal? Tippe »${AGAIN_WORD}«.`], {
+      .text(0, -30, [won ? 'Gewonnen!' : 'Verloren.', `Nochmal? Tippe »${this.#setup.floodWord}«.`], {
         fontFamily: 'sans-serif',
         fontSize: '28px',
         color: HUD_TEXT,

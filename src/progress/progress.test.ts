@@ -23,24 +23,27 @@ function typeInto(progress: Progress, words: readonly string[], chars: string): 
 }
 
 describe('Progress', () => {
-  it('starts empty without a save', async () => {
-    const progress = await Progress.load(memoryStorage().storage);
+  it('starts empty at the first stage without a save', async () => {
+    const progress = await Progress.load(memoryStorage().storage, '1a');
 
+    expect(progress.stage).toBe('1a');
     expect(progress.keys).toEqual({});
     expect(progress.snapshot().sessions).toEqual([]);
   });
 
   it('continues where the last session stopped', async () => {
     const { storage } = memoryStorage();
-    const first = await Progress.load(storage, new Date('2026-09-28T10:00:00Z'));
+    const first = await Progress.load(storage, '1a', new Date('2026-09-28T10:00:00Z'));
     typeInto(first, ['lala', 'dada'], 'lalakdada');
+    first.stage = '1b';
     await first.save();
 
-    const second = await Progress.load(storage, new Date('2026-09-29T10:00:00Z'));
+    const second = await Progress.load(storage, '1a', new Date('2026-09-29T10:00:00Z'));
     typeInto(second, ['haha'], 'haha');
     await second.save();
-    const third = await Progress.load(storage);
+    const third = await Progress.load(storage, '1a');
 
+    expect(third.stage).toBe('1b');
     expect(third.keys.h).toEqual({ hits: 2, misses: 0 });
     expect(third.keys.l).toEqual({ hits: 2, misses: 0 });
     expect(third.snapshot().sessions.map((s) => [s.startedAt, s.correct, s.wrong])).toEqual([
@@ -50,7 +53,7 @@ describe('Progress', () => {
   });
 
   it('starts over when the save cannot be read', async () => {
-    const progress = await Progress.load(memoryStorage('not json').storage);
+    const progress = await Progress.load(memoryStorage('not json').storage, '1a');
 
     expect(progress.keys).toEqual({});
   });
@@ -58,7 +61,7 @@ describe('Progress', () => {
   it('keeps the newest state when an earlier write finishes late', async () => {
     const hold = Promise.withResolvers<void>();
     const { storage, read } = memoryStorage(null, hold.promise);
-    const progress = await Progress.load(storage);
+    const progress = await Progress.load(storage, '1a');
 
     const earlier = progress.save();
     typeInto(progress, ['lala'], 'la');

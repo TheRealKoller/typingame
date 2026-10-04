@@ -1,10 +1,11 @@
 import * as Phaser from 'phaser';
+import { STAGES } from './content/tutorial';
 import { Progress } from './progress/progress';
 import { createStorage } from './progress/storage';
 import { BattleScene, type BattleSceneData } from './scenes/BattleScene';
 
 async function start(): Promise<void> {
-  const progress = await Progress.load(createStorage());
+  const progress = await Progress.load(createStorage(), STAGES[0]!.id);
 
   const game = new Phaser.Game({
     type: Phaser.AUTO,

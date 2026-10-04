@@ -1,7 +1,7 @@
 import { z } from 'zod';
 import type { KeyStats, SessionStats } from './stats';
 
-export const SAVE_VERSION = 2;
+export const SAVE_VERSION = 3;
 
 const count = z.number().int().nonnegative();
 
@@ -13,35 +13,47 @@ const SessionSummarySchema = z.object({
   activeMs: z.number().nonnegative(),
 });
 
-const SaveGameSchema = z.object({
-  version: z.literal(SAVE_VERSION),
+const SaveGameV2Schema = z.object({
+  version: z.literal(2),
   /** Hits and misses per character over all sessions. */
   keys: z.record(z.string(), z.object({ hits: count, misses: count })),
   /** One entry per session with keystrokes, oldest first. */
   sessions: z.array(SessionSummarySchema),
 });
 
+const SaveGameSchema = SaveGameV2Schema.extend({
+  version: z.literal(SAVE_VERSION),
+  /** Id of the current tutorial stage, e.g. "2c". */
+  stage: z.string(),
+});
+
 export type SessionSummary = z.infer<typeof SessionSummarySchema>;
 /** Everything that survives a restart, stored as JSON. */
 export type SaveGame = z.infer<typeof SaveGameSchema>;
 
-export function emptySave(): SaveGame {
-  return { version: SAVE_VERSION, keys: {}, sessions: [] };
+export function emptySave(firstStage: string): SaveGame {
+  return { version: SAVE_VERSION, stage: firstStage, keys: {}, sessions: [] };
 }
 
-/** Reads a save from JSON text; returns null if it is not a valid save of this version. */
-export function parseSave(json: string): SaveGame | null {
+/**
+ * Reads a save from JSON text; returns null if it is not a valid save.
+ * A save from before the tutorial stages (version 2) keeps its statistics and starts at `firstStage`.
+ */
+export function parseSave(json: string, firstStage: string): SaveGame | null {
   let data: unknown;
   try {
     data = JSON.parse(json);
   } catch {
     return null;
   }
-  const result = SaveGameSchema.safeParse(data);
-  return result.success ? result.data : null;
+  const current = SaveGameSchema.safeParse(data);
+  if (current.success) return current.data;
+  const v2 = SaveGameV2Schema.safeParse(data);
+  return v2.success ? { ...v2.data, version: SAVE_VERSION, stage: firstStage } : null;
 }
 
 export interface CurrentProgress {
+  readonly stage: string;
   readonly session: SessionStats;
   /** ISO timestamp of the current session start. */
   readonly startedAt: string;
@@ -69,6 +81,7 @@ export function buildSave(base: SaveGame, current: CurrentProgress): SaveGame {
 
   return {
     version: SAVE_VERSION,
+    stage: current.stage,
     keys,
     sessions: typed ? [...base.sessions, summary] : base.sessions,
   };

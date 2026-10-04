@@ -11,25 +11,37 @@ export class Progress {
   readonly #storage: SaveStorage;
   readonly #base: SaveGame;
   readonly #startedAt: string;
+  #stage: string;
   #pending: Promise<void> = Promise.resolve();
 
   constructor(storage: SaveStorage, base: SaveGame, startedAt: Date) {
     this.#storage = storage;
     this.#base = base;
     this.#startedAt = startedAt.toISOString();
+    this.#stage = base.stage;
   }
 
-  /** Loads the saved progress; starts empty if there is no valid save. */
-  static async load(storage: SaveStorage, now = new Date()): Promise<Progress> {
+  /** Loads the saved progress; starts at `firstStage` if there is no valid save. */
+  static async load(storage: SaveStorage, firstStage: string, now = new Date()): Promise<Progress> {
     const json = await storage.load();
-    const save = json === null ? null : parseSave(json);
+    const save = json === null ? null : parseSave(json, firstStage);
     if (json !== null && save === null) console.warn('Ignoring unreadable save game');
-    return new Progress(storage, save ?? emptySave(), now);
+    return new Progress(storage, save ?? emptySave(firstStage), now);
+  }
+
+  /** Id of the current tutorial stage. */
+  get stage(): string {
+    return this.#stage;
+  }
+
+  set stage(id: string) {
+    this.#stage = id;
   }
 
   /** The complete save as it would be written now. */
   snapshot(): SaveGame {
     return buildSave(this.#base, {
+      stage: this.#stage,
       session: this.session,
       startedAt: this.#startedAt,
     });
