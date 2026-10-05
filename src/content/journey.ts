@@ -1,9 +1,10 @@
-import type { EnemyKind, Level, Spell, TowerKind } from '../battle/level';
+import type { EnemyKind, Level, Spell } from '../battle/level';
+import type { Grammar } from '../battle/sentence';
 import { wallShelves, type BattleMap } from './library';
+import { GRAMMAR } from './lexicon';
 import { generateAshMap, generateWaves, type Foes, type Random } from './mapgen';
 import { SILENT_FIREBUG, SILENT_SCORPION } from './raid';
 import { INK_RAIN } from './spells';
-import { CROSSBOW, FROST_CRYSTAL, INK_SLINGER } from './towers';
 
 /** A place on the world map held by the Silence; typing its word selects it. */
 export interface WorldPoint {
@@ -21,8 +22,23 @@ export interface WorldPoint {
   readonly reward?: Reward;
 }
 
-/** A book cart brings a new kind of tower; a lost scroll teaches a spell. */
-export type Reward = { readonly kind: 'cart'; readonly tower: TowerKind } | { readonly kind: 'scroll'; readonly spell: Spell };
+/**
+ * Something found at a freed place that carries the story on: a book cart, a
+ * lost scroll, a book or a note. It teaches words for the tower sentences, and
+ * a scroll may teach a spell as well.
+ */
+export interface Reward {
+  /** What was found, e.g. »Ein Bücherkarren aus dem Keller«. */
+  readonly title: string;
+  /** What it says or shows, as the apprentice reads it. */
+  readonly text: string;
+  /** Words of the lexicon it teaches. */
+  readonly words: readonly string[];
+  readonly spell?: Spell;
+}
+
+/** Words of the tower sentences known when the journey begins. */
+export const START_WORDS: readonly string[] = ['jagd', 'wilde', 'weite'];
 
 /** A region of the world map; only the ash fields can be entered so far. */
 export interface Region {
@@ -124,10 +140,61 @@ export const CELLAR: BattleMap = {
 
 /** The ash fields around the burnt library, in the order they open up. */
 export const WORLD_POINTS: readonly WorldPoint[] = [
-  { id: 'ruin', name: 'Bibliotheksruine', word: 'ruine', x: 170, y: 470, difficulty: 1, map: RUIN, reward: { kind: 'cart', tower: INK_SLINGER } },
-  { id: 'smoke', name: 'Rauchsenke', word: 'rauch', x: 360, y: 300, difficulty: 2, reward: { kind: 'scroll', spell: INK_RAIN } },
-  { id: 'cellar', name: 'Kellergewölbe', word: 'keller', x: 400, y: 580, difficulty: 3, map: CELLAR, reward: { kind: 'cart', tower: FROST_CRYSTAL } },
-  { id: 'embers', name: 'Glutfeld', word: 'glut', x: 600, y: 430, difficulty: 4 },
+  {
+    id: 'ruin',
+    name: 'Bibliotheksruine',
+    word: 'ruine',
+    x: 170,
+    y: 470,
+    difficulty: 1,
+    map: RUIN,
+    reward: {
+      title: 'Ein Bücherkarren aus dem Keller der Bibliothek',
+      text: 'Unter verkohlten Balken steht ein Karren, den das Feuer verschont hat. Obenauf ein Band über Winterzauber, am Rand Kalliopes Schrift: »Kälte macht langsam. Auch Ungeheuer.«',
+      words: ['eisnadel', 'frostige'],
+    },
+  },
+  {
+    id: 'smoke',
+    name: 'Rauchsenke',
+    word: 'rauch',
+    x: 360,
+    y: 300,
+    difficulty: 2,
+    reward: {
+      title: 'Eine verlorene Schriftrolle und eine Notiz',
+      text: 'Die Rolle beschreibt einen Regen aus Tinte. Darin steckt ein Zettel der Meisterin: »Die Viper wartet, bis der Panzer schläft. Ihr Gift fragt nicht, wie dick die Haut ist.«',
+      words: ['viper', 'der viper'],
+      spell: INK_RAIN,
+    },
+  },
+  {
+    id: 'cellar',
+    name: 'Kellergewölbe',
+    word: 'keller',
+    x: 400,
+    y: 580,
+    difficulty: 3,
+    map: CELLAR,
+    reward: {
+      title: 'Ein Bücherkarren mit einem alten Kampfbuch',
+      text: 'Zwischen den Fässern ein Karren, darauf ein zerlesenes Buch. Eine Seite ist eingeknickt: »Wer im Morgengrauen zuschlägt, trifft, bevor der Feind erwacht. Und schwere Worte treffen schwer.«',
+      words: ['schwere', 'im morgengrauen'],
+    },
+  },
+  {
+    id: 'embers',
+    name: 'Glutfeld',
+    word: 'glut',
+    x: 600,
+    y: 430,
+    difficulty: 4,
+    reward: {
+      title: 'Ein Buch, das nicht brennt',
+      text: 'Mitten in der Glut liegt ein Buch, die Seiten warm wie Brot. »Flammen springen über. Um Mitternacht trifft jeder vierte Hieb doppelt so hart.« Darunter, dick unterstrichen: »Feuer und Frost vertragen sich nicht.«',
+      words: ['flammende', 'um mitternacht'],
+    },
+  },
 ];
 
 /** Paths between points; winning one opens those linked to it. */
@@ -155,19 +222,19 @@ export function worldPoint(id: string): WorldPoint {
   return point;
 }
 
-/** A battle at a place of the world map: where it is fought, what comes, what can be built and cast. */
+/** A battle at a place of the world map: where it is fought, what comes, which words build towers, which spells can be cast. */
 export interface JourneyBattle {
   readonly map: BattleMap;
   readonly level: Level;
-  readonly towers: readonly TowerKind[];
+  readonly grammar: Grammar;
   readonly spells: readonly Spell[];
 }
 
-/** What a reward brings, as the apprentice notes it after the battle. */
+/** What a reward brings, as the apprentice reads it after the battle. */
 export function rewardText(reward: Reward): string {
-  return reward.kind === 'cart'
-    ? `Gefunden: ein Bücherkarren mit Bauplänen. Neu baubar: ${reward.tower.name} (»${reward.tower.keyword}«).`
-    : `Gefunden: eine verlorene Schriftrolle. Neuer Zauber: ${reward.spell.name} (»${reward.spell.word}«) – trifft bei Ebbe jeden Gegner auf dem Weg.`;
+  const words = `Neue Wörter: ${reward.words.map((word) => `»${word}«`).join(', ')}`;
+  const spell = reward.spell ? `\nNeuer Zauber: ${reward.spell.name} (»${reward.spell.word}«) – trifft bei Ebbe jeden Gegner auf dem Weg.` : '';
+  return `${reward.title}.\n${reward.text}\n${words}${spell}`;
 }
 
 /** Rewards of the places freed so far, in the order of the world map. */
@@ -175,18 +242,23 @@ export function rewardsFor(freed: ReadonlySet<string>): Reward[] {
   return WORLD_POINTS.flatMap((point) => (point.reward && freed.has(point.id) ? [point.reward] : []));
 }
 
+/** The words of the tower sentences known with the places in `freed`: the start words and what was found there. */
+export function knownWords(freed: ReadonlySet<string>): Set<string> {
+  return new Set([...START_WORDS, ...rewardsFor(freed).flatMap((reward) => reward.words)]);
+}
+
 /**
  * The battle at `point`: its fixed map or a fresh one, fresh waves for its
- * difficulty, the crossbow plus every tower from a book cart and every spell
- * from a scroll found at the places in `freed`.
+ * difficulty, the words known and every spell from a scroll found at the
+ * places in `freed`.
  */
 export function journeyBattle(point: WorldPoint, random: Random, freed: ReadonlySet<string>): JourneyBattle {
   const map = point.map ?? generateAshMap(random, point.id, point.name);
   const waves = generateWaves(random, point.difficulty, ASH_FOES);
-  const rewards = rewardsFor(freed);
-  const towers = [CROSSBOW, ...rewards.flatMap((reward) => (reward.kind === 'cart' ? [reward.tower] : []))];
-  const spells = rewards.flatMap((reward) => (reward.kind === 'scroll' ? [reward.spell] : []));
-  return { map, towers, spells, level: { id: `journey-${point.id}`, path: map.path, sites: map.sites, ward: 10, ink: START_INK, waves } };
+  const known = knownWords(freed);
+  const grammar = { ...GRAMMAR, lexicon: GRAMMAR.lexicon.filter((lexeme) => known.has(lexeme.word)) };
+  const spells = rewardsFor(freed).flatMap((reward) => (reward.spell ? [reward.spell] : []));
+  return { map, grammar, spells, level: { id: `journey-${point.id}`, path: map.path, sites: map.sites, ward: 10, ink: START_INK, waves } };
 }
 
 /** Freed points are won; open ones can be fought next; the rest stay locked. */

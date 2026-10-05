@@ -11,21 +11,3 @@ export const CROSSBOW: TowerKind = stages({ id: 'tower-01', name: 'Armbrust', ke
   { name: 'Doppelarmbrust', keyword: 'bolzen', cost: 60, damage: 16, range: 180 },
   { name: 'Salvenarmbrust', keyword: 'salve', cost: 90, damage: 24, range: 190, cooldownMs: 700 },
 ]);
-
-/** The ink slinger (Spire tower 03): slow, but its blot splashes every enemy near the target. */
-export const INK_SLINGER: TowerKind = stages(
-  { id: 'tower-03', name: 'Tintenschleuder', keyword: 'klecks', cost: 70, range: 150, damage: 9, cooldownMs: 1500, splash: 70 },
-  [
-    { name: 'Tintenwerfer', keyword: 'spritzer', cost: 70, damage: 14, splash: 80 },
-    { name: 'Tintenflut', keyword: 'sintflut', cost: 100, damage: 20, splash: 90, cooldownMs: 1300 },
-  ],
-);
-
-/** The frost crystal (Spire tower 02): weak hits that slow enemies down. */
-export const FROST_CRYSTAL: TowerKind = stages(
-  { id: 'tower-02', name: 'Frostkristall', keyword: 'frost', cost: 60, range: 140, damage: 3, cooldownMs: 900, slow: { factor: 0.5, durationMs: 1500 } },
-  [
-    { name: 'Raureifkristall', keyword: 'raureif', cost: 60, damage: 5, slow: { factor: 0.4, durationMs: 2000 } },
-    { name: 'Gletscherkristall', keyword: 'gletscher', cost: 90, damage: 7, range: 160, slow: { factor: 0.3, durationMs: 2500 } },
-  ],
-);

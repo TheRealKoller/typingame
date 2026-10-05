@@ -6,7 +6,6 @@ import { read, type Grammar } from '../battle/sentence';
 import type { Point } from '../battle/path';
 import { MASTER_NAME, MASTER_VERDICTS, pageText } from '../content/cutscenes';
 import { JOURNEY_VERDICTS, journeyBattle, rewardText, worldPoint, type Reward, type WorldPoint } from '../content/journey';
-import { GRAMMAR } from '../content/lexicon';
 import { practiceLevel, practiceMap, READING_ROOM, type BattleMap, type Prop } from '../content/library';
 import { RAID_LEVEL } from '../content/raid';
 import { JOURNEY, RAID, allKeysSetup, STAGES, stageIndex, stageSetup, type StageSetup } from '../content/tutorial';
@@ -225,13 +224,14 @@ export class BattleScene extends Phaser.Scene {
     // The raid and the journey are fought with every key of the tutorial; a place of the journey brings its own map and towers.
     const journey = this.#point ? journeyBattle(this.#point, Math.random, this.#progress.freed) : null;
     this.#spells = journey?.spells ?? [];
-    this.#grammar = journey ? GRAMMAR : null;
+    this.#grammar = journey?.grammar ?? null;
     this.#sentenceLabel = null;
     this.#scroll = null;
     this.#siteMarker = null;
     this.#stage = tutorial ? stageIndex(this.#progress.stage) : STAGES.length - 1;
     const setup = tutorial ? stageSetup(this.#stage) : allKeysSetup();
-    this.#setup = journey ? { ...setup, towers: journey.towers } : setup;
+    // On the journey towers are built from sentences, not keywords.
+    this.#setup = journey ? { ...setup, towers: [] } : setup;
     this.#unlock = tutorial ? new UnlockTracker() : null;
     this.#unlockReached = false;
     this.#round = data.round ?? 0;

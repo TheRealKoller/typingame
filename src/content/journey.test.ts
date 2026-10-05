@@ -1,7 +1,17 @@
 import { describe, expect, it } from 'vitest';
 import { Battle } from '../battle/battle';
 import { compose, cost, type Lexeme } from '../battle/sentence';
-import { FIRST_POINT, journeyBattle, rewardsFor, pointState, WORLD_LINKS, WORLD_POINTS, type WorldPoint } from './journey';
+import {
+  FIRST_POINT,
+  journeyBattle,
+  knownWords,
+  pointState,
+  rewardsFor,
+  START_WORDS,
+  WORLD_LINKS,
+  WORLD_POINTS,
+  type WorldPoint,
+} from './journey';
 import { LEXICON } from './lexicon';
 import { seededRandom } from './mapgen';
 import { allKeysSetup } from './tutorial';
@@ -41,21 +51,20 @@ describe('world map', () => {
 });
 
 describe('rewards', () => {
-  it('hand out at least one book cart and one scroll in the ash fields', () => {
-    const kinds = rewardsFor(new Set(WORLD_POINTS.map((point) => point.id))).map((reward) => reward.kind);
-    expect(kinds).toContain('cart');
-    expect(kinds).toContain('scroll');
+  const all = new Set(WORLD_POINTS.map((point) => point.id));
+
+  it('bring at least one word at every place, and every word of the lexicon is known at the start or found', () => {
+    for (const point of WORLD_POINTS) expect(point.reward?.words.length, point.id).toBeGreaterThan(0);
+    expect([...knownWords(all)].sort()).toEqual(LEXICON.map((lexeme) => lexeme.word).sort());
   });
 
-  it('let the journey start with the crossbow alone and add what the freed places brought', () => {
-    const at = (freed: string[]) => journeyBattle(WORLD_POINTS[1]!, seededRandom(1), new Set(freed));
-    expect(at([]).towers.map((tower) => tower.name)).toEqual(['Armbrust']);
+  it('start the journey with the start words alone and add what the freed places brought, and spells from scrolls', () => {
+    const at = (freed: Iterable<string>) => journeyBattle(WORLD_POINTS[1]!, seededRandom(1), new Set(freed));
+    expect(at([]).grammar.lexicon.map((lexeme) => lexeme.word)).toEqual([...START_WORDS]);
     expect(at([]).spells).toEqual([]);
-    const later = at(WORLD_POINTS.map((point) => point.id));
-    const carts = rewardsFor(new Set(WORLD_POINTS.map((point) => point.id))).flatMap((reward) => (reward.kind === 'cart' ? [reward.tower] : []));
-    const scrolls = rewardsFor(new Set(WORLD_POINTS.map((point) => point.id))).flatMap((reward) => (reward.kind === 'scroll' ? [reward.spell] : []));
-    expect(later.towers.slice(1)).toEqual(carts);
-    expect(later.spells).toEqual(scrolls);
+    expect(at(['ruin']).grammar.lexicon.map((lexeme) => lexeme.word).sort()).toEqual([...START_WORDS, 'eisnadel', 'frostige'].sort());
+    expect(at(all).grammar.lexicon).toEqual(LEXICON);
+    expect(at(all).spells).toEqual(rewardsFor(all).flatMap((reward) => (reward.spell ? [reward.spell] : [])));
   });
 });
 
@@ -68,13 +77,24 @@ describe('battles of the journey', () => {
   const word = (text: string) => LEXICON.find((lexeme) => lexeme.word === text)!;
   const everySite = (words: readonly string[]) => [0, 1, 2, 3, 4].map((site) => [site, words] as const);
 
-  /** A tower on every site, arrows mixed with frost and poison, then words appended to all of them. */
-  const STEADY: Plan = [
-    ...['jagd', 'jagd', 'eisnadel', 'jagd', 'viper'].map((base, site) => [site, [base]] as const),
-    ...[0, 1, 3].map((site) => [site, ['wilde']] as const),
-    ...everySite(['im morgengrauen']),
-    ...everySite(['weite']),
-  ];
+  /**
+   * A tower on every site, arrows mixed with frost and poison as far as they
+   * are known, then words appended to all of them: the steady player with the
+   * words found at `freed`.
+   */
+  function steady(freed: ReadonlySet<string>): Plan {
+    const known = knownWords(freed);
+    const have = (text: string) => known.has(text);
+    const finisher = ['im morgengrauen', 'schwere'].find(have);
+    return [
+      ...['jagd', 'jagd', 'eisnadel', 'jagd', 'viper'].map((base, site) => [site, [have(base) ? base : 'jagd']] as const),
+      ...[0, 1, 3].map((site) => [site, ['wilde']] as const),
+      ...(finisher ? everySite([finisher]) : []),
+      ...everySite(['weite']),
+    ];
+  }
+  /** The steady player with every word, to judge the words themselves. */
+  const STEADY = steady(new Set(WORLD_POINTS.map((point) => point.id)));
   /** Arrows on every site and nothing more: the plainest player, to see how hard each place is. */
   const ARROWS: Plan = everySite(['jagd']);
 
@@ -114,9 +134,30 @@ describe('battles of the journey', () => {
 
   const winRate = (wards: readonly number[]) => wards.filter((ward) => ward > 0).length / wards.length;
 
-  it.each(WORLD_POINTS.map((point) => [point.id, point] as const))('makes %s winnable for a steady player, whatever map comes', (_, point) => {
-    expect(winRate(results(point, STEADY, true))).toBeGreaterThanOrEqual(0.9);
-  });
+  /**
+   * The places freed before `point` can first be fought, as few as possible on
+   * each way there: the fewest words a player can bring.
+   */
+  function firstArrivals(point: WorldPoint): ReadonlySet<string>[] {
+    const seen: Set<string>[] = [];
+    const visit = (freed: Set<string>) => {
+      if (freed.has(point.id) || seen.some((other) => [...other].every((id) => freed.has(id)))) return;
+      if (pointState(point.id, freed) === 'open') {
+        seen.push(freed);
+        return;
+      }
+      for (const next of WORLD_POINTS) if (pointState(next.id, freed) === 'open') visit(new Set([...freed, next.id]));
+    };
+    visit(new Set());
+    return seen;
+  }
+
+  it.each(WORLD_POINTS.flatMap((point) => firstArrivals(point).map((freed) => [point.id, [...freed].join(', ') || 'nothing', point, freed] as const)))(
+    'makes %s winnable for a steady player with the words found at %s, whatever map comes',
+    (_, __, point, freed) => {
+      expect(winRate(results(point, steady(freed), true))).toBeGreaterThanOrEqual(0.9);
+    },
+  );
 
   it('grows harder from place to place', () => {
     const average = WORLD_POINTS.map((point) => results(point, ARROWS, true).reduce((sum, ward) => sum + ward, 0) / SEEDS);
