@@ -86,6 +86,14 @@ const MAX_STEP_MS = 100;
 const PROJECTILE_SPEED = 900;
 const WARD_RADIUS = 46;
 const WARD_COLOR = 0x9fd4ff;
+/** The ring of segments around the ward circle: one segment per point of strength. */
+const WARD_RING_RADIUS = WARD_RADIUS + 7;
+const WARD_RING_WIDTH = 7;
+const WARD_RING_COLOR = 0x3d8bff;
+const WARD_LOST_COLOR = 0x2f2a24;
+/** At or below this share of its strength the ward turns red and pulses. */
+const WARD_LOW = 0.3;
+const WARD_LOW_COLOR = 0xe53935;
 const HUD_TEXT = '#2f2a24';
 const HUD_OUTLINE = '#f6efe6';
 /** The desk with keyboard and notes covers the screen below this line; the map stays above it. */
@@ -158,6 +166,11 @@ export class BattleScene extends Phaser.Scene {
   #ward!: Phaser.GameObjects.Graphics;
   /** »Enter« in the middle of the ward circle during a flood: Enter calls the next wave. */
   #wavePrompt!: Phaser.GameObjects.Text;
+  /** Segments around the ward circle showing its strength; they pulse red when it runs low. */
+  #wardRing!: Phaser.GameObjects.Graphics;
+  #wardPulse: Phaser.Tweens.Tween | null = null;
+  /** Strength of the ward as a number in the circle while no »Enter« stands there. */
+  #wardCount!: Phaser.GameObjects.Text;
   #phaseText!: Phaser.GameObjects.Text;
   #inkText!: Phaser.GameObjects.Text;
   #wardText!: Phaser.GameObjects.Text;
@@ -479,6 +492,12 @@ export class BattleScene extends Phaser.Scene {
       .setDepth(1002);
     // The blue glow breathes, so the prompt is noticed without shouting.
     this.tweens.add({ targets: this.#wavePrompt, alpha: { from: 1, to: 0.65 }, duration: 900, yoyo: true, repeat: -1 });
+
+    this.#wardRing = this.add.graphics({ x: end.x, y: end.y }).setDepth(4);
+    this.#wardCount = this.add
+      .text(end.x, end.y, '', { fontFamily: 'sans-serif', fontSize: '30px', color: '#ffffff', fontStyle: 'bold', stroke: '#1d3f7a', strokeThickness: 5 })
+      .setOrigin(0.5)
+      .setDepth(1002);
   }
 
   #propImage(prop: Prop): Phaser.GameObjects.Image {
@@ -646,6 +665,8 @@ export class BattleScene extends Phaser.Scene {
       .strokeCircle(0, 0, WARD_RADIUS)
       .lineStyle(2, 0xffffff, 0.6 * strength)
       .strokeCircle(0, 0, WARD_RADIUS - 10);
+    this.#drawWardRing(battle.ward, battle.level.ward);
+    this.#wardCount.setText(String(battle.ward)).setVisible(battle.phase !== 'flood');
 
     if (this.#ended() && !this.#endPanel) {
       // A place freed for the first time hands over its reward.
@@ -777,7 +798,11 @@ export class BattleScene extends Phaser.Scene {
     return sprite;
   }
 
-  /** An enemy reached the ward circle: it fades into the circle, and the circle shudders. In the raid, a shelf catches fire. */
+  /**
+   * An enemy reached the ward circle: it fades into the circle, the circle flashes
+   * red and shudders, the screen shakes and the lost strength rises from it.
+   * In the raid, a shelf catches fire.
+   */
   #showArrival(enemy: Enemy): void {
     const view = this.#enemies.get(enemy.id);
     if (view) {
@@ -786,8 +811,45 @@ export class BattleScene extends Phaser.Scene {
       view.glow?.destroy();
       this.tweens.add({ targets: view.sprite, alpha: 0, scale: 0.4, duration: 300, onComplete: () => view.sprite.destroy() });
     }
-    this.tweens.add({ targets: this.#ward, scale: { from: 1.25, to: 1 }, duration: 350, ease: 'Back.easeOut' });
+    this.tweens.add({ targets: [this.#ward, this.#wardRing], scale: { from: 1.25, to: 1 }, duration: 350, ease: 'Back.easeOut' });
+    const end = this.#battle.level.path.at(-1)!;
+    const flash = this.add.circle(end.x, end.y, WARD_RING_RADIUS, WARD_LOW_COLOR, 0.6).setDepth(5);
+    this.tweens.add({ targets: flash, scale: 1.6, alpha: 0, duration: 400, onComplete: () => flash.destroy() });
+    this.cameras.main.shake(180, 0.004);
+    this.#float({ x: end.x, y: end.y - WARD_RING_RADIUS + 20 }, `−${enemy.kind.wardDamage}`, '#c62828', 26);
     if (this.#raid) this.#ignite(enemy.kind.wardDamage);
+  }
+
+  /** One segment per point of strength, lost ones dark; blue while strong, a red pulse when low. */
+  #drawWardRing(ward: number, full: number): void {
+    const low = ward > 0 && ward / full <= WARD_LOW;
+    const color = low ? WARD_LOW_COLOR : WARD_RING_COLOR;
+    const step = (2 * Math.PI) / full;
+    const gap = 0.08;
+    this.#wardRing.clear();
+    for (let i = 0; i < full; i++) {
+      // Segments run clockwise from the top; the last ones go out first.
+      const start = -Math.PI / 2 + i * step + gap / 2;
+      const lit = i < ward;
+      this.#wardRing
+        .lineStyle(WARD_RING_WIDTH + 4, 0xf6efe6, lit ? 0.9 : 0.5)
+        .beginPath()
+        .arc(0, 0, WARD_RING_RADIUS, start - 0.02, start + step - gap + 0.02)
+        .strokePath()
+        .lineStyle(WARD_RING_WIDTH, lit ? color : WARD_LOST_COLOR, lit ? 1 : 0.5)
+        .beginPath()
+        .arc(0, 0, WARD_RING_RADIUS, start, start + step - gap)
+        .strokePath();
+    }
+    if (low && !this.#wardPulse) {
+      this.#wardPulse = this.tweens.add({ targets: this.#wardRing, alpha: { from: 1, to: 0.35 }, duration: 350, yoyo: true, repeat: -1 });
+      this.#wardCount.setStroke('#7a1d1d', 5);
+    } else if (!low && this.#wardPulse) {
+      this.#wardPulse.remove();
+      this.#wardPulse = null;
+      this.#wardRing.setAlpha(1);
+      this.#wardCount.setStroke('#1d3f7a', 5);
+    }
   }
 
   /** Sets the next `count` shelves on fire and lets the room grow darker with the weakening ward. */
@@ -921,9 +983,9 @@ export class BattleScene extends Phaser.Scene {
   }
 
   /** Short text that rises and fades at `at`. */
-  #float(at: Point | BuildSite, message: string, color: string): void {
+  #float(at: Point | BuildSite, message: string, color: string, fontSize = 18): void {
     const text = this.add
-      .text(at.x, at.y - 30, message, { fontFamily: 'sans-serif', fontSize: '18px', color, stroke: HUD_OUTLINE, strokeThickness: 4 })
+      .text(at.x, at.y - 30, message, { fontFamily: 'sans-serif', fontSize: `${fontSize}px`, color, stroke: HUD_OUTLINE, strokeThickness: 4 })
       .setOrigin(0.5)
       .setDepth(950);
     this.tweens.add({ targets: text, y: text.y - 30, alpha: 0, duration: 1200, onComplete: () => text.destroy() });
