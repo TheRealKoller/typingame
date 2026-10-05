@@ -1,7 +1,6 @@
 import { describe, expect, it } from 'vitest';
 import { GRAMMAR } from '../content/lexicon';
 import { practiceLevel } from '../content/library';
-import { CROSSBOW as UPGRADABLE } from '../content/towers';
 import { allKeysSetup, stageSetup } from '../content/tutorial';
 import { TypingEngine } from '../typing/engine';
 import { Battle } from './battle';
@@ -127,59 +126,6 @@ describe('enemy words', () => {
     commands.refresh();
 
     expect(commands.words).not.toContain(word);
-  });
-});
-
-describe('upgrades', () => {
-  const { words: ALL_WORDS } = allKeysSetup();
-
-  function built(ink: number) {
-    const battle = new Battle({ ...LEVEL_1, ink });
-    const commands = new Commands(battle, [UPGRADABLE], ALL_WORDS, { keys: {}, random: () => 0.5 });
-    const site = battle.level.sites[0]!;
-    const word = commands.siteWord(site)!;
-    commands.complete(word);
-    commands.complete(UPGRADABLE.keyword);
-    return { battle, commands, site, word };
-  }
-
-  it('keeps the site word on a tower while it can be upgraded, and offers only the upgrade word there', () => {
-    const { commands, site, word } = built(1000);
-
-    expect(commands.siteWord(site)).toBe(word);
-    expect(commands.complete(word)).toEqual({ type: 'select', site });
-    expect(commands.words).toEqual([UPGRADABLE.upgrade!.keyword]);
-  });
-
-  it('upgrades stage by stage for ink, and the tower loses its word at the last stage', () => {
-    const { battle, commands, site, word } = built(1000);
-    const second = UPGRADABLE.upgrade!;
-    const third = second.upgrade!;
-
-    commands.complete(word);
-    expect(commands.complete(second.keyword)).toEqual({ type: 'upgrade', site, tower: second });
-    commands.complete(word);
-    expect(commands.complete(third.keyword)).toEqual({ type: 'upgrade', site, tower: third });
-
-    expect(battle.towerAt(site)?.kind).toBe(third);
-    expect(battle.ink).toBe(1000 - UPGRADABLE.cost - second.cost - third.cost);
-    expect(commands.siteWord(site)).toBeNull();
-    expect(commands.words).not.toContain(word);
-  });
-
-  it('leaves the tower as it is when the ink does not suffice', () => {
-    const { battle, commands, site, word } = built(UPGRADABLE.cost + UPGRADABLE.upgrade!.cost - 1);
-
-    commands.complete(word);
-    expect(commands.complete(UPGRADABLE.upgrade!.keyword)).toEqual({ type: 'tooExpensive', site, tower: UPGRADABLE.upgrade });
-    expect(battle.towerAt(site)?.kind).toBe(UPGRADABLE);
-    expect(commands.selected).toBeNull();
-  });
-
-  it('never uses an upgrade word as a site word', () => {
-    const { battle, commands } = built(1000);
-    const upgradeWords = [UPGRADABLE.upgrade!.keyword, UPGRADABLE.upgrade!.upgrade!.keyword];
-    for (const site of battle.level.sites) expect(upgradeWords).not.toContain(commands.siteWord(site));
   });
 });
 

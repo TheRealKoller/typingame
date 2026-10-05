@@ -506,8 +506,8 @@ export class BattleScene extends Phaser.Scene {
     const selected = this.#commands.selected;
     if (selected) {
       if (this.#grammar) return this.#ringWords(this.#commands.ring);
-      // The keywords, or the upgrade word of a tower, stand side by side above the site, kept on screen.
-      const choices = this.#choices(selected);
+      // The tower keywords stand side by side above the site, kept on screen.
+      const choices = this.#setup.towers;
       const y = this.#labelY(selected);
       const left = Math.min(Math.max(selected.x - ((choices.length - 1) * KEYWORD_SPACING) / 2, KEYWORD_SPACING / 2), this.scale.width - KEYWORD_SPACING / 2 - (choices.length - 1) * KEYWORD_SPACING);
       return choices.map((tower, i) => ({ word: tower.keyword, x: left + i * KEYWORD_SPACING, y }));
@@ -548,13 +548,6 @@ export class BattleScene extends Phaser.Scene {
         2,
       ),
     ];
-  }
-
-  /** What can be built on `site`, or what its tower can become. */
-  #choices(site: BuildSite): readonly TowerKind[] {
-    const tower = this.#battle.towerAt(site);
-    if (!tower) return this.#setup.towers;
-    return tower.kind.upgrade ? [tower.kind.upgrade] : [];
   }
 
   /** Words above a free site sit just over its pad; over a tower they clear its top. */
@@ -749,14 +742,12 @@ export class BattleScene extends Phaser.Scene {
       lost: 'Der Bannkreis ist gebrochen.',
     }[battle.phase];
     const site = this.#commands.selected;
-    const choices = site ? this.#choices(site).map((tower) => `»${tower.keyword}« ${tower.name} (${tower.cost} Tinte)`) : [];
+    const choices = this.#setup.towers.map((tower) => `»${tower.keyword}« ${tower.name} (${tower.cost} Tinte)`);
     const selected =
       site && this.#grammar
         ? 'Schreibe den Satz auf die Schriftrolle. Enter baut, Rücktaste nimmt ein Wort zurück, Esc bricht ab.'
         : site
-          ? this.#battle.towerAt(site)
-            ? `Turm gewählt – ${choices.join(', ')} rüstet auf. Esc geht zurück.`
-            : `Bauplatz gewählt – ${choices.join(', ')}. Esc geht zurück.`
+          ? `Bauplatz gewählt – ${choices.join(', ')}. Esc geht zurück.`
           : null;
     this.#phaseText.setText(selected ?? phase);
     this.#wavePrompt.setVisible(battle.phase === 'flood');
