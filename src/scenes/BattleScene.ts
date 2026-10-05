@@ -299,6 +299,9 @@ export class BattleScene extends Phaser.Scene {
     this.#progress.session.record(events, event.timeStamp);
     this.#statsView.update(this.#progress);
     this.#keyboard.press(event.code, correct);
+    if (events[0]?.type === 'wrong') {
+      WordLabel.showError([...this.#labels, ...this.#enemyLabels.values()], this.#engine.typed, this.#engine.candidates);
+    }
     for (const typingEvent of events) {
       if (typingEvent.type !== 'complete') continue;
       void this.#progress.save();
