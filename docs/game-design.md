@@ -92,21 +92,17 @@ Im **Tutorial** baut ein Schlüsselwort einen festen Turm. Auf der **Reise** bau
 
 - Jeder **Bauplatz** trägt ein Wort. Tippt man es, ist der Bauplatz gewählt.
 - Danach baut ein **Schlüsselwort** dort einen bestimmten Turm, z. B. *feuer* einen Feuerturm.
-- Türme bisher (Grafik aus den Spire-Paketen):
+- Turm im Tutorial (Grafik aus den Spire-Paketen):
 
 | Turm | Schlüsselwort | Kosten | Wirkung |
 |---|---|---|---|
 | Armbrust | *jagd* (vor `g`: *lass*) | 50 | schnelle Einzelschüsse |
-| Tintenschleuder | *klecks* | 70 | langsam, der Klecks trifft jeden Gegner nahe am Ziel |
-| Frostkristall | *frost* | 60 | schwache Treffer, die Gegner 1,5 s auf halbe Geschwindigkeit bremsen |
 
 - **Aufrüsten:** Ein Turm behält das Wort seines Bauplatzes, solange er sich aufrüsten lässt. Tippt man es, ist der Turm gewählt; sein Aufrüstwort bringt ihn auf die nächste Stufe (Stufen I–III, Grafik der Spire-Stufen). Auf der letzten Stufe verschwindet das Wort. Im Tutorial wird nicht aufgerüstet: Die Aufrüstwörter brauchen Tasten, die erst später kommen.
 
 | Turm | Stufe II | Stufe III |
 |---|---|---|
 | Armbrust | *bolzen* Doppelarmbrust, 60: Schaden 16, Reichweite 180 | *salve* Salvenarmbrust, 90: Schaden 24, Reichweite 190, schneller |
-| Tintenschleuder | *spritzer* Tintenwerfer, 70: Schaden 14, Klecks 80 px | *sintflut* Tintenflut, 100: Schaden 20, Klecks 90 px, schneller |
-| Frostkristall | *raureif* Raureifkristall, 60: 40 % Tempo für 2 s | *gletscher* Gletscherkristall, 90: 30 % Tempo für 2,5 s, Reichweite 160 |
 
 - Ein gewählter Bauplatz zeigt die Schlüsselwörter nebeneinander, die Notiz links nennt Turm und Kosten. Im Tutorial gibt es nur die Armbrust.
 - **Aufrüsten** funktioniert ähnlich: den Turm über sein Wort wählen, dann ein Aufrüstwort tippen.
@@ -183,10 +179,17 @@ Im **Tutorial** baut ein Schlüsselwort einen festen Turm. Auf der **Reise** bau
 
 ### 4.8 Belohnungen
 
-- Zwischendurch oder nach einem Bosskampf gewinnt man Belohnungen, z. B. einen **Bücherkarren**, eine **verlorene Schriftrolle**, ein **Buch** oder **Notizen**. Sie erzählen die Geschichte weiter.
-- Eine **Schriftrolle** schaltet einen neuen Spezialangriff frei. Mit den Türmen aus Sätzen sollen die Fundstücke künftig vor allem **neue Wörter** enthalten, die man regelmäßig findet. Bis dahin sind auf der Reise alle Wörter von Anfang an bekannt, und die Bücherkarren mit Tintenschleuder und Frostkristall bleiben ohne Wirkung im Kampf.
-- In den Aschefeldern: **Bibliotheksruine** – Bücherkarren mit der Tintenschleuder; **Rauchsenke** – Schriftrolle *Tintenregen*; **Kellergewölbe** – Bücherkarren mit dem Frostkristall.
-- Die Belohnung gibt es beim ersten Befreien eines Orts; sie steht unter dem Satz des Lehrlings und gilt für alle späteren Kämpfe. Gespeichert wird sie über die befreiten Orte.
+- Nach dem ersten Befreien eines Orts findet man dort ein **Fundstück**: einen **Bücherkarren**, eine **verlorene Schriftrolle**, ein **Buch** oder eine **Notiz**. Es erzählt die Geschichte weiter und bringt **neue Wörter** für die Turmsätze; eine Schriftrolle lehrt zusätzlich einen Zauber. Text und Wörter stehen unter dem Satz des Lehrlings und gelten für alle späteren Kämpfe. Gespeichert wird das über die befreiten Orte.
+- Die Reise beginnt mit *jagd*, *wilde* und *weite*. Die Wörter kommen, kurz bevor die Gegner sie verlangen:
+
+| Ort | Fundstück | Wörter | wofür |
+|---|---|---|---|
+| Bibliotheksruine | Bücherkarren mit Winterzaubern | *eisnadel*, *frostige* | Frost gegen die schnellen Feuerwespen ab der Rauchsenke |
+| Rauchsenke | Schriftrolle *Tintenregen* und Notiz der Meisterin | *viper*, *der viper* | Gift dringt durch die Panzer der Käfer ab dem Kellergewölbe |
+| Kellergewölbe | Bücherkarren mit altem Kampfbuch | *schwere*, *im morgengrauen* | starke Einzeltreffer gegen Große und Gepanzerte |
+| Glutfeld | Buch, das nicht brennt | *flammende*, *um mitternacht* | Feuer und Fläche; verträgt sich nicht mit Frost |
+
+- Nach der Ruine sind Rauchsenke und Kellergewölbe offen, der Glutfeld nach einem der beiden. Die Simulation spielt jeden Ort mit den wenigsten Wörtern, die man auf einem Weg dorthin haben kann.
 - **Zauber:** Das Wort eines Zaubers lässt sich bei Ebbe tippen, sobald er bereit ist; es steht dann über dem Bannkreis, die Notiz links zeigt, wann er wieder bereit ist. *Tintenregen* trifft jeden Gegner auf dem Weg mit 30 Schaden, auch durch Panzer, und braucht danach 25 s Ebbe, bis er wieder bereit ist.
 
 ### 4.9 Weltkarte
