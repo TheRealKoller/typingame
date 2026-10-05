@@ -86,6 +86,10 @@ Wie sich Atramentus zeigt (vorläufig, ein Schritt je Gebiet):
 
 ### 4.2 Bauen und Aufrüsten
 
+Im **Tutorial** baut ein Schlüsselwort einen festen Turm. Auf der **Reise** baut man Türme aus **Sätzen** (entschieden nach dem Experiment [#125](https://github.com/TheRealKoller/typingame/issues/125), siehe unten).
+
+**Tutorial: Schlüsselwörter**
+
 - Jeder **Bauplatz** trägt ein Wort. Tippt man es, ist der Bauplatz gewählt.
 - Danach baut ein **Schlüsselwort** dort einen bestimmten Turm, z. B. *feuer* einen Feuerturm.
 - Türme bisher (Grafik aus den Spire-Paketen):
@@ -104,9 +108,36 @@ Wie sich Atramentus zeigt (vorläufig, ein Schritt je Gebiet):
 | Tintenschleuder | *spritzer* Tintenwerfer, 70: Schaden 14, Klecks 80 px | *sintflut* Tintenflut, 100: Schaden 20, Klecks 90 px, schneller |
 | Frostkristall | *raureif* Raureifkristall, 60: 40 % Tempo für 2 s | *gletscher* Gletscherkristall, 90: 30 % Tempo für 2,5 s, Reichweite 160 |
 
-- Ein gewählter Bauplatz zeigt die Schlüsselwörter nebeneinander, die Notiz links nennt Turm und Kosten. Im Tutorial gibt es nur die Armbrust; auf der Reise schalten Bücherkarren weitere frei (siehe 4.8).
+- Ein gewählter Bauplatz zeigt die Schlüsselwörter nebeneinander, die Notiz links nennt Turm und Kosten. Im Tutorial gibt es nur die Armbrust.
 - **Aufrüsten** funktioniert ähnlich: den Turm über sein Wort wählen, dann ein Aufrüstwort tippen.
 - Türme und Aufrüstungen kosten **Tinte**. Die Monster sind aus Tinte gemacht; besiegt zerfließen sie und hinterlassen sie.
+
+**Reise: Türme aus Sätzen**
+
+- Tippt man ein Bauplatzwort, wird der Platz blau umrandet, und auf der anderen Kartenhälfte öffnet sich eine **Schriftrolle**. Oben steht der Satz, darunter die bekannten Wörter in drei Spalten, wie der Satz gelesen wird: **davor**, **Turmart**, **danach**. Unter jedem Wort stehen Kosten und Wirkung, am Fuß der Rolle die Werte des Turms.
+- Jedes getippte Wort hängt sich an den Satz; angezeigt wird er in Leserichtung, egal in welcher Reihenfolge man tippt. **Enter** baut, **Rücktaste** nimmt das letzte Wort zurück, **Esc** bricht ab.
+- Ein Satz braucht genau **eine Turmart** und hat höchstens **fünf Wörter**, darunter höchstens eine Zeitangabe. Jedes Wort kostet Tinte, Wörter mit Wirkung mehr; der Turm kostet die Summe.
+- Was nicht in den Satz passt, ist **grau mit Grund**: „passt nicht“ (unverträgliche Elemente, bisher Feuer und Frost), „zu teuer“, „Satz ist voll“. Graue Wörter lassen sich nicht tippen. Später können „verbotene“ Kombinationen besondere Belohnungen werden.
+- **Aufrüsten:** Ein Turm behält sein Bauplatzwort, solange sein Satz wachsen kann. Man wählt ihn und hängt Wörter an; die Rolle zeigt, was sich verbessert (z. B. „alle 0,9 s → 0,63 s“). Bezahlt werden nur die neuen Wörter. Der Turm wächst sichtbar mit (Stufe = Anzahl der Wörter, höchstens III).
+- Alle Turmarten sind weiblich, damit eine Form jedes Adjektivs zu jeder passt (*wilde jagd*, *wilde eisnadel*, *wilde viper*).
+- Wörter bisher (`src/content/lexicon.ts`):
+
+| Wort | Stellung | Kosten | Wirkung |
+|---|---|---|---|
+| *jagd* | Turmart | 40 | Pfeile: Schaden 10, alle 0,8 s, Reichweite 170 |
+| *eisnadel* | Turmart (Frost) | 45 | Schaden 4, bremst auf 50 % für 1,5 s |
+| *viper* | Turmart (Gift) | 45 | Schaden 3, Gift 5/s für 3 s |
+| *wilde* | davor | 25 | schießt schneller (×0,7 Zeit) |
+| *schwere* | davor | 25 | Schaden ×1,6, schießt langsamer (×1,2 Zeit) |
+| *weite* | davor | 20 | Reichweite +40 |
+| *frostige* | davor (Frost) | 25 | bremst auf 60 % für 1,2 s |
+| *flammende* | davor (Feuer) | 30 | Schaden +3, trifft im Umkreis von 60 px |
+| *der viper* | danach (Gift) | 25 | Gift 3/s für 2,5 s |
+| *im morgengrauen* | Zeitangabe | 30 | der erste Treffer auf jeden Gegner ×3 |
+| *um mitternacht* | Zeitangabe | 30 | jeder 4. Schuss ×2,5 |
+
+- **Gift** wirkt über Zeit und auch durch Panzer; vergiftete Gegner werden grün. **Kritische Treffer** zeigen „kritisch!“.
+- Noch offen: Balance (Frost- und Giftturm allein sind schwach), Sätze ohne Turmart wie „frostiger morgen“, die Schriftrolle verdeckt eine Kartenhälfte.
 
 ### 4.3 Kampf
 
@@ -147,9 +178,9 @@ Wie sich Atramentus zeigt (vorläufig, ein Schritt je Gebiet):
 
 ### 4.8 Belohnungen
 
-- Zwischendurch oder nach einem Bosskampf gewinnt man Belohnungen, z. B. einen **Bücherkarren** oder eine **verlorene Schriftrolle**.
-- Eine **Schriftrolle** schaltet einen neuen Spezialangriff frei, ein **Bücherkarren** einen neuen Turmtyp.
-- In den Aschefeldern: **Bibliotheksruine** – Bücherkarren mit der Tintenschleuder; **Rauchsenke** – Schriftrolle *Tintenregen*; **Kellergewölbe** – Bücherkarren mit dem Frostkristall. Die Reise beginnt mit der Armbrust allein.
+- Zwischendurch oder nach einem Bosskampf gewinnt man Belohnungen, z. B. einen **Bücherkarren**, eine **verlorene Schriftrolle**, ein **Buch** oder **Notizen**. Sie erzählen die Geschichte weiter.
+- Eine **Schriftrolle** schaltet einen neuen Spezialangriff frei. Mit den Türmen aus Sätzen sollen die Fundstücke künftig vor allem **neue Wörter** enthalten, die man regelmäßig findet. Bis dahin sind auf der Reise alle Wörter von Anfang an bekannt, und die Bücherkarren mit Tintenschleuder und Frostkristall bleiben ohne Wirkung im Kampf.
+- In den Aschefeldern: **Bibliotheksruine** – Bücherkarren mit der Tintenschleuder; **Rauchsenke** – Schriftrolle *Tintenregen*; **Kellergewölbe** – Bücherkarren mit dem Frostkristall.
 - Die Belohnung gibt es beim ersten Befreien eines Orts; sie steht unter dem Satz des Lehrlings und gilt für alle späteren Kämpfe. Gespeichert wird sie über die befreiten Orte.
 - **Zauber:** Das Wort eines Zaubers lässt sich bei Ebbe tippen, sobald er bereit ist; es steht dann über dem Bannkreis, die Notiz links zeigt, wann er wieder bereit ist. *Tintenregen* trifft jeden Gegner auf dem Weg mit 30 Schaden, auch durch Panzer, und braucht danach 25 s Ebbe, bis er wieder bereit ist.
 
