@@ -1,10 +1,12 @@
 import * as Phaser from 'phaser';
 import { Battle, type Enemy, type Hit, type Shot, type Tower } from '../battle/battle';
-import { Commands, type Command } from '../battle/commands';
+import { Commands, type Command, type RingWord } from '../battle/commands';
 import type { BuildSite, Spell, TowerKind } from '../battle/level';
+import { read, type Grammar } from '../battle/sentence';
 import type { Point } from '../battle/path';
 import { MASTER_NAME, MASTER_VERDICTS, pageText } from '../content/cutscenes';
 import { JOURNEY_VERDICTS, journeyBattle, rewardText, worldPoint, type Reward, type WorldPoint } from '../content/journey';
+import { GRAMMAR } from '../content/lexicon';
 import { practiceLevel, practiceMap, READING_ROOM, type BattleMap, type Prop } from '../content/library';
 import { RAID_LEVEL } from '../content/raid';
 import { JOURNEY, RAID, allKeysSetup, STAGES, stageIndex, stageSetup, type StageSetup } from '../content/tutorial';
@@ -16,6 +18,7 @@ import { errorRate } from '../progress/stats';
 import { TypingEngine } from '../typing/engine';
 import { KeyboardView } from '../ui/KeyboardView';
 import { StatsView } from '../ui/StatsView';
+import { SentenceScroll } from '../ui/SentenceScroll';
 import { WordLabel } from '../ui/WordLabel';
 import { nextScene } from './flow';
 import {
@@ -79,6 +82,11 @@ const WORD_SIZE = 30;
 const KEYWORD_SPACING = 130;
 /** Tint of an enemy slowed by frost. */
 const FROST_TINT = 0x9fd4ff;
+const POISON_TINT = 0xa6e07a;
+/** Words on the sentence scroll: smaller than site words. */
+const RING_SIZE = 24;
+/** The scroll keeps this far from the edges of the map. */
+const SCROLL_MARGIN = 20;
 /** Spells and rewards are written in ink blue. */
 const SPELL_TEXT = '#2b3a6b';
 /** Longest step fed to the battle, so a hidden window does not make enemies jump. */
@@ -143,6 +151,8 @@ interface Placed {
   readonly word: string;
   readonly x: number;
   readonly y: number;
+  readonly size?: number;
+  readonly note?: { readonly text: string; readonly color?: string };
 }
 
 /**
@@ -180,6 +190,13 @@ export class BattleScene extends Phaser.Scene {
   #setup!: StageSetup;
   /** Spells from the scrolls found so far; only on the journey. */
   #spells: readonly Spell[] = [];
+  /** On the journey towers are built from sentences (experiment #125); null in the library. */
+  #grammar: Grammar | null = null;
+  /** The sentence of the selected site's tower and the words typed for it, written on the scroll. */
+  #sentenceLabel: WordLabel | null = null;
+  /** The scroll a sentence is written on while a site is selected in sentence mode, and the ring marking that site. */
+  #scroll: SentenceScroll | null = null;
+  #siteMarker: Phaser.GameObjects.Arc | null = null;
   #spellText!: Phaser.GameObjects.Text;
   /** Null in the raid and on the journey: there is nothing left to unlock. */
   #unlock: UnlockTracker | null = null;
@@ -208,6 +225,10 @@ export class BattleScene extends Phaser.Scene {
     // The raid and the journey are fought with every key of the tutorial; a place of the journey brings its own map and towers.
     const journey = this.#point ? journeyBattle(this.#point, Math.random, this.#progress.freed) : null;
     this.#spells = journey?.spells ?? [];
+    this.#grammar = journey ? GRAMMAR : null;
+    this.#sentenceLabel = null;
+    this.#scroll = null;
+    this.#siteMarker = null;
     this.#stage = tutorial ? stageIndex(this.#progress.stage) : STAGES.length - 1;
     const setup = tutorial ? stageSetup(this.#stage) : allKeysSetup();
     this.#setup = journey ? { ...setup, towers: journey.towers } : setup;
@@ -259,6 +280,12 @@ export class BattleScene extends Phaser.Scene {
     // Shots and arrivals first: they take their enemies out of the walking ones.
     for (const shot of step.shots) this.#showShot(shot);
     for (const enemy of step.arrived) this.#showArrival(enemy);
+    for (const hit of step.withered) {
+      const view = this.#enemies.get(hit.enemy.id);
+      if (!view) continue;
+      this.#enemies.delete(hit.enemy.id);
+      this.#land(hit, view);
+    }
     this.#commands.refresh();
     this.#drawEnemies();
     // A started word or a selected build site is finished first, so the new keys never cut them off.
@@ -282,6 +309,14 @@ export class BattleScene extends Phaser.Scene {
       this.#showOverview();
       return;
     }
+    if (event.key === 'Backspace' && this.#grammar && this.#commands.selected) {
+      // Takes the last word of the sentence back; like Escape no keystroke.
+      event.preventDefault();
+      this.#engine.cancel();
+      this.#commands.removeLast();
+      this.#sync();
+      return;
+    }
     if (event.key === 'Escape') {
       // Cancelling is no keystroke: it counts neither as right nor as wrong.
       this.#engine.cancel();
@@ -298,7 +333,13 @@ export class BattleScene extends Phaser.Scene {
         else if (!this.#raid) this.scene.restart({ progress: this.#progress, round: this.#round + 1 } satisfies BattleSceneData);
         return;
       }
-      this.#battle.endFlood();
+      // At a site selected in sentence mode Enter builds the sentence instead.
+      if (this.#grammar && this.#commands.selected) {
+        this.#engine.cancel();
+        this.#apply(this.#commands.confirm());
+      } else {
+        this.#battle.endFlood();
+      }
       this.#sync();
       return;
     }
@@ -326,7 +367,7 @@ export class BattleScene extends Phaser.Scene {
 
   #newCommands(): Commands {
     const { towers, words } = this.#setup;
-    return new Commands(this.#battle, towers, words, { keys: this.#progress.keys }, this.#spells);
+    return new Commands(this.#battle, towers, words, { keys: this.#progress.keys }, this.#spells, this.#grammar);
   }
 
   /**
@@ -384,6 +425,7 @@ export class BattleScene extends Phaser.Scene {
   #apply(command: Command | null): void {
     if (command?.type === 'build' || command?.type === 'upgrade') this.#showTower(this.#battle.towerAt(command.site));
     if (command?.type === 'tooExpensive') this.#float(command.site, 'Zu wenig Tinte', '#8a2f2f');
+    if (command?.type === 'incomplete') this.#float(command.site, 'Es fehlt die Turmart', '#8a2f2f');
     if (command?.type === 'strike') this.#showStrike(command.enemy, command.defeated);
     if (command?.type === 'cast') this.#showCast(command.hits);
   }
@@ -392,19 +434,59 @@ export class BattleScene extends Phaser.Scene {
   #sync(): void {
     // Keeps a started word as long as it stays visible.
     this.#engine.setWords(this.#words());
+    this.#syncScroll();
     const placed = this.#placedWords();
-    const key = placed.map((p) => `${p.word}@${p.x},${p.y}`).join('|');
+    const key = placed.map((p) => `${p.word}@${p.x},${p.y}:${p.note?.text ?? ''}`).join('|');
     if (key !== this.#labelKey) {
       for (const label of this.#labels) label.destroy();
       // Above everything, including the end panel that carries the word to play again.
-      this.#labels = placed.map((p) => new WordLabel(this, p.x, p.y, p.word, WORD_SIZE).setDepth(1001));
+      this.#labels = placed.map((p) => new WordLabel(this, p.x, p.y, p.word, p.size ?? WORD_SIZE, p.note).setDepth(1001));
       this.#labelKey = key;
     }
     this.#syncEnemyLabels();
     const { typed, candidates } = this.#engine;
     for (const label of [...this.#labels, ...this.#enemyLabels.values()]) label.setProgress(typed, candidates.includes(label.word));
+    this.#syncSentence();
     this.#keyboard.setNext(this.#engine.expectedChars);
     this.#updateHud();
+  }
+
+  /**
+   * In sentence mode a selected site opens a scroll on the half of the map away
+   * from it, and a ring marks the site; both go when the site is left.
+   */
+  #syncScroll(): void {
+    const site = this.#grammar && !this.#ended() ? this.#commands.selected : null;
+    if (this.#scroll && (!site || this.#scroll.getData('site') !== site.id)) {
+      this.#scroll.destroy();
+      this.#siteMarker?.destroy();
+      this.#scroll = null;
+      this.#siteMarker = null;
+    }
+    if (!site) return;
+    if (!this.#scroll) {
+      const x = site.x < this.scale.width / 2 ? this.scale.width - SentenceScroll.width - SCROLL_MARGIN : SCROLL_MARGIN;
+      this.#scroll = new SentenceScroll(this, x, SCROLL_MARGIN).setDepth(1000).setData('site', site.id);
+      this.#siteMarker = this.add.circle(site.x, site.y, 40).setStrokeStyle(4, 0x3d8bff, 1).setDepth(site.y + 60);
+      this.tweens.add({ targets: this.#siteMarker, scale: { from: 1, to: 1.15 }, alpha: { from: 1, to: 0.5 }, duration: 700, yoyo: true, repeat: -1 });
+    }
+    this.#scroll.setFooter(this.#sentenceHint());
+  }
+
+  /** In sentence mode the scroll shows the sentence so far, glowing like a word being typed. */
+  #syncSentence(): void {
+    const scroll = this.#scroll;
+    const site = this.#commands.selected;
+    const words = scroll && site ? [...this.#commands.sentence(site), ...this.#commands.draft] : [];
+    const text = read(words);
+    scroll?.setWritten(text !== '');
+    if (this.#sentenceLabel?.word === text) return;
+    this.#sentenceLabel?.destroy();
+    this.#sentenceLabel = null;
+    if (!scroll || text === '') return;
+    const at = scroll.sentenceAt;
+    this.#sentenceLabel = new WordLabel(this, at.x, at.y, text, WORD_SIZE).setDepth(1001);
+    this.#sentenceLabel.setProgress(text, true);
   }
 
   /** Words standing on the map: site words or the choices at a selected site, and ready spells. Enemy words follow their enemies (`#syncEnemyLabels`). */
@@ -423,6 +505,7 @@ export class BattleScene extends Phaser.Scene {
   #siteAndKeywords(): Placed[] {
     const selected = this.#commands.selected;
     if (selected) {
+      if (this.#grammar) return this.#ringWords(this.#commands.ring);
       // The keywords, or the upgrade word of a tower, stand side by side above the site, kept on screen.
       const choices = this.#choices(selected);
       const y = this.#labelY(selected);
@@ -435,6 +518,36 @@ export class BattleScene extends Phaser.Scene {
       if (word !== null) placed.push({ word, x: site.x, y: this.#labelY(site) });
     }
     return placed;
+  }
+
+  /**
+   * The words on the scroll, in three columns as the sentence reads: before the
+   * base word, base words, after it. Each carries its cost and effect, or why it
+   * cannot be taken.
+   */
+  #ringWords(ring: readonly RingWord[]): Placed[] {
+    const scroll = this.#scroll;
+    if (!scroll) return [];
+    const note = ({ lexeme, fit }: RingWord): Placed['note'] => {
+      if (fit === 'conflict') return { text: 'passt nicht', color: '#b3261e' };
+      if (fit === 'expensive') return { text: `${lexeme.cost} Tinte – zu teuer`, color: '#b3261e' };
+      if (fit === 'full') return { text: 'Satz ist voll', color: '#b3261e' };
+      return { text: `${lexeme.cost} · ${lexeme.note}` };
+    };
+    const column = (lexemes: readonly RingWord[], index: 0 | 1 | 2): Placed[] =>
+      lexemes.map((option, row) => ({ word: option.lexeme.word, size: RING_SIZE, note: note(option), ...scroll.slot(index, row) }));
+    const before = ring.filter((option) => option.lexeme.role === 'trait' && option.lexeme.position === 'before');
+    return [
+      ...column(before, 0),
+      ...column(
+        ring.filter((option) => option.lexeme.role === 'base'),
+        1,
+      ),
+      ...column(
+        ring.filter((option) => option.lexeme.role !== 'base' && !before.includes(option)),
+        2,
+      ),
+    ];
   }
 
   /** What can be built on `site`, or what its tower can become. */
@@ -637,11 +750,14 @@ export class BattleScene extends Phaser.Scene {
     }[battle.phase];
     const site = this.#commands.selected;
     const choices = site ? this.#choices(site).map((tower) => `»${tower.keyword}« ${tower.name} (${tower.cost} Tinte)`) : [];
-    const selected = site
-      ? this.#battle.towerAt(site)
-        ? `Turm gewählt – ${choices.join(', ')} rüstet auf. Esc geht zurück.`
-        : `Bauplatz gewählt – ${choices.join(', ')}. Esc geht zurück.`
-      : null;
+    const selected =
+      site && this.#grammar
+        ? 'Schreibe den Satz auf die Schriftrolle. Enter baut, Rücktaste nimmt ein Wort zurück, Esc bricht ab.'
+        : site
+          ? this.#battle.towerAt(site)
+            ? `Turm gewählt – ${choices.join(', ')} rüstet auf. Esc geht zurück.`
+            : `Bauplatz gewählt – ${choices.join(', ')}. Esc geht zurück.`
+          : null;
     this.#phaseText.setText(selected ?? phase);
     this.#wavePrompt.setVisible(battle.phase === 'flood');
     this.#inkText.setText(`Tinte: ${battle.ink}`);
@@ -681,6 +797,33 @@ export class BattleScene extends Phaser.Scene {
     }
   }
 
+  /** What the sentence on the selected site makes of its tower, written at the foot of the scroll. */
+  #sentenceHint(): string {
+    const preview = this.#commands.preview;
+    if (!preview?.after || preview.cost === 0) {
+      return preview?.before ? `${preview.before.name}: hänge Wörter an, um den Turm zu stärken.` : 'Eine Turmart und beliebige Wörter dazu.';
+    }
+    const { before, after } = preview;
+    const seconds = (ms: number) => (ms / 1000).toLocaleString('de-DE', { maximumFractionDigits: 2 });
+    const stat = (label: string, value: (kind: TowerKind) => string | null) => {
+      const now = value(after);
+      const was = before ? value(before) : null;
+      if (now === null) return [];
+      return [was !== null && was !== now ? `${label} ${was} → ${now}` : `${label} ${now}`];
+    };
+    const stats = [
+      ...stat('Schaden', (kind) => String(Math.round(kind.damage))),
+      ...stat('alle', (kind) => `${seconds(kind.cooldownMs)} s`),
+      ...stat('Reichweite', (kind) => String(kind.range)),
+      ...stat('Fläche', (kind) => (kind.splash ? String(kind.splash) : null)),
+      ...stat('bremst auf', (kind) => (kind.slow ? `${Math.round(kind.slow.factor * 100)} %` : null)),
+      ...stat('Gift', (kind) => (kind.poison ? `${kind.poison.dps}/s` : null)),
+      ...stat('1. Treffer', (kind) => (kind.critFirst ? `×${kind.critFirst}` : null)),
+      ...stat('jeder', (kind) => (kind.critEvery ? `${kind.critEvery.every}. ×${kind.critEvery.factor}` : null)),
+    ];
+    return `${stats.join(' · ')}\nKosten ${preview.cost} Tinte`;
+  }
+
   #drawEnemies(): void {
     for (const enemy of this.#battle.enemies) {
       const at = this.#battle.positionOf(enemy);
@@ -698,11 +841,14 @@ export class BattleScene extends Phaser.Scene {
       const heading = this.#heading(view, enemy, at);
       view.sprite.setPosition(at.x, at.y).setDepth(at.y + 100);
       view.sprite.play(walkAnimation(enemy.kind.id, heading), true);
-      // A slowed enemy is frosted over; otherwise it keeps the tint of its sheet.
+      // A slowed enemy is frosted over, a poisoned one turns green; otherwise it keeps the tint of its sheet.
       const sheetTint = ENEMY_SHEETS[enemy.kind.id]?.tint;
       if (enemy.slowMs > 0) view.sprite.setTint(FROST_TINT);
+      else if (enemy.poisonMs > 0) view.sprite.setTint(POISON_TINT);
       else if (sheetTint !== undefined) view.sprite.setTint(sheetTint);
       else view.sprite.clearTint();
+      // Poison works without shots, so the bar follows the enemy's health directly.
+      if (enemy.poisonMs > 0) view.shownHealth = Math.min(view.shownHealth, enemy.health);
       view.glow?.setPosition(at.x, at.y + 14).setDepth(at.y + 99);
       view.last = at;
       this.#drawHealth(view, enemy, at);
@@ -971,6 +1117,7 @@ export class BattleScene extends Phaser.Scene {
   #land(hit: Hit, enemyView: EnemyView): void {
     // Shots can land out of order; the bar never grows back.
     enemyView.shownHealth = Math.min(enemyView.shownHealth, hit.health);
+    if (hit.critical) this.#float({ x: enemyView.sprite.x, y: enemyView.sprite.y - 16 }, 'kritisch!', '#c26a00');
     if (!hit.defeated) return;
     enemyView.health.destroy();
     enemyView.glow?.destroy();
