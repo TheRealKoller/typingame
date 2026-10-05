@@ -18,6 +18,7 @@ import { TypingEngine } from '../typing/engine';
 import { KeyboardView } from '../ui/KeyboardView';
 import { StatsView } from '../ui/StatsView';
 import { SentenceScroll } from '../ui/SentenceScroll';
+import { SpellCard } from '../ui/SpellCard';
 import { WordLabel } from '../ui/WordLabel';
 import { nextScene } from './flow';
 import {
@@ -74,9 +75,11 @@ const LABEL_OFFSET = 52;
 /** Over a built tower the word sits higher, clear of the weapon, but stays on screen. */
 const TOWER_LABEL_OFFSET = 112;
 const TOWER_LABEL_OFFSET_MIN = 20;
-/** Ready spells stand this far above the ward circle. */
-const SPELL_LABEL_OFFSET = 70;
 const WORD_SIZE = 30;
+/** Spell words on their cards, as large as the card's own lettering. */
+const SPELL_WORD_SIZE = 26;
+/** The ink cloud of a spell gathers this high over the map. */
+const CAST_CLOUD_Y = 70;
 /** Distance between the tower keywords shown side by side at a selected site. */
 const KEYWORD_SPACING = 130;
 /** Tint of an enemy slowed by frost. */
@@ -152,6 +155,8 @@ interface Placed {
   readonly y: number;
   readonly size?: number;
   readonly note?: { readonly text: string; readonly color?: string };
+  /** The word starts at `x` instead of being centred on it. */
+  readonly fromLeft?: boolean;
 }
 
 /**
@@ -196,7 +201,9 @@ export class BattleScene extends Phaser.Scene {
   /** The scroll a sentence is written on while a site is selected in sentence mode, and the ring marking that site. */
   #scroll: SentenceScroll | null = null;
   #siteMarker: Phaser.GameObjects.Arc | null = null;
-  #spellText!: Phaser.GameObjects.Text;
+  /** A card on the desk for each spell, by spell id, and the spells that were ready at the last look, to notice one returning. */
+  #spellCards = new Map<string, SpellCard>();
+  #readySpells = new Set<string>();
   /** Null in the raid and on the journey: there is nothing left to unlock. */
   #unlock: UnlockTracker | null = null;
   #unlockReached = false;
@@ -228,6 +235,8 @@ export class BattleScene extends Phaser.Scene {
     this.#sentenceLabel = null;
     this.#scroll = null;
     this.#siteMarker = null;
+    this.#spellCards = new Map();
+    this.#readySpells = new Set();
     this.#stage = tutorial ? stageIndex(this.#progress.stage) : STAGES.length - 1;
     const setup = tutorial ? stageSetup(this.#stage) : allKeysSetup();
     // On the journey towers are built from sentences, not keywords.
@@ -251,6 +260,7 @@ export class BattleScene extends Phaser.Scene {
     this.#drawMap();
     this.#drawDesk();
     this.#drawHud();
+    this.#drawSpellCards();
     this.#keyboard = new KeyboardView(this, this.scale.width / 2, 540, qwertzDe).setScale(0.5).setUnlocked(this.#setup.keys);
     this.#keyboard.setDepth(ON_DESK_DEPTH);
     this.#statsView = new StatsView(this, { x: this.scale.width - 28, y: 502 }, { x: this.scale.width / 2, y: 240 });
@@ -427,7 +437,7 @@ export class BattleScene extends Phaser.Scene {
     if (command?.type === 'tooExpensive') this.#float(command.site, 'Zu wenig Tinte', '#8a2f2f');
     if (command?.type === 'incomplete') this.#float(command.site, 'Es fehlt die Turmart', '#8a2f2f');
     if (command?.type === 'strike') this.#showStrike(command.enemy, command.defeated);
-    if (command?.type === 'cast') this.#showCast(command.hits);
+    if (command?.type === 'cast') this.#showCast(command.spell, command.hits);
   }
 
   /** Brings words, typing engine, keyboard and HUD in line with the battle. */
@@ -440,13 +450,18 @@ export class BattleScene extends Phaser.Scene {
     if (key !== this.#labelKey) {
       for (const label of this.#labels) label.destroy();
       // Above everything, including the end panel that carries the word to play again.
-      this.#labels = placed.map((p) => new WordLabel(this, p.x, p.y, p.word, p.size ?? WORD_SIZE, p.note).setDepth(1001));
+      this.#labels = placed.map((p) => {
+        const label = new WordLabel(this, p.x, p.y, p.word, p.size ?? WORD_SIZE, p.note).setDepth(1001);
+        return p.fromLeft ? label.setOrigin(0, 0.5) : label;
+      });
       this.#labelKey = key;
     }
     this.#syncEnemyLabels();
     const { typed, candidates } = this.#engine;
     for (const label of [...this.#labels, ...this.#enemyLabels.values()]) label.setProgress(typed, candidates.includes(label.word));
     this.#syncSentence();
+    // A spell whose word is being typed lights up.
+    for (const spell of this.#spells) this.#spellCards.get(spell.id)?.setCharged(typed !== '' && candidates.includes(spell.word));
     this.#keyboard.setNext(this.#engine.expectedChars);
     this.#updateHud();
   }
@@ -495,11 +510,12 @@ export class BattleScene extends Phaser.Scene {
     return [...this.#siteAndKeywords(), ...this.#spellWords()];
   }
 
-  /** Ready spells stand over the ward circle, one above the other. */
+  /** Ready spells are typed on their cards on the desk. */
   #spellWords(): Placed[] {
-    const end = this.#battle.level.path[this.#battle.level.path.length - 1]!;
-    const x = Math.min(end.x, this.scale.width - KEYWORD_SPACING / 2 - 20);
-    return this.#commands.readySpells.map((spell, i) => ({ word: spell.word, x, y: Math.max(TOWER_LABEL_OFFSET_MIN, end.y - SPELL_LABEL_OFFSET - i * 36) }));
+    return this.#commands.readySpells.flatMap((spell) => {
+      const card = this.#spellCards.get(spell.id);
+      return card ? [{ word: spell.word, size: SPELL_WORD_SIZE, fromLeft: true, ...card.wordAt }] : [];
+    });
   }
 
   #siteAndKeywords(): Placed[] {
@@ -729,7 +745,16 @@ export class BattleScene extends Phaser.Scene {
     this.#phaseText = this.add.text(28, 502, '', { ...style, wordWrap: { width: 400 } }).setDepth(ON_DESK_DEPTH);
     this.#inkText = this.add.text(28, 636, '', style).setDepth(ON_DESK_DEPTH);
     this.#wardText = this.add.text(28, 668, '', style).setDepth(ON_DESK_DEPTH);
-    this.#spellText = this.add.text(28, 604, '', { ...style, color: SPELL_TEXT }).setDepth(ON_DESK_DEPTH);
+  }
+
+  /** A card for each spell at the foot of the right note, the last one lowest. */
+  #drawSpellCards(): void {
+    const x = this.scale.width - 444 + (432 - SpellCard.width) / 2;
+    this.#spells.forEach((spell, i) => {
+      const y = 704 - 12 - (this.#spells.length - i) * (SpellCard.height + 8);
+      // HTML lies over the canvas anyway; below the word labels (1001), so the ready word shows on the card.
+      this.#spellCards.set(spell.id, new SpellCard(this, x, y, spell.name, spell.word, spell.cost).setDepth(1000));
+    });
   }
 
   #updateHud(): void {
@@ -753,15 +778,17 @@ export class BattleScene extends Phaser.Scene {
     this.#wavePrompt.setVisible(battle.phase === 'flood');
     this.#inkText.setText(`Tinte: ${battle.ink}`);
     this.#wardText.setText(`Bannkreis: ${battle.ward} / ${battle.level.ward}`);
-    this.#spellText.setText(
-      this.#spells
-        .map((spell) => {
-          const left = battle.spellReadyIn(spell);
-          if (left > 0) return `${spell.name}: wieder in ${Math.ceil(left / 1000)} s`;
-          return battle.phase === 'ebb' ? `${spell.name}: bereit – »${spell.word}«` : `${spell.name}: bei Ebbe bereit`;
-        })
-        .join('\n'),
-    );
+    for (const spell of this.#spells) {
+      const left = battle.spellReadyIn(spell);
+      const ready = this.#commands.readySpells.includes(spell);
+      const status =
+        left > 0 ? `wieder in ${Math.ceil(left / 1000)} s` : battle.phase !== 'ebb' ? 'bei Ebbe' : battle.ink < spell.cost ? 'zu wenig Tinte' : 'bereit';
+      this.#spellCards.get(spell.id)?.show(1 - left / spell.cooldownMs, ready, status);
+      // A spell that returns, or becomes castable with the ebb, draws the eye once.
+      if (ready && !this.#readySpells.has(spell.id)) this.#spellCards.get(spell.id)?.flashReady();
+      if (ready) this.#readySpells.add(spell.id);
+      else this.#readySpells.delete(spell.id);
+    }
 
     const strength = battle.ward / battle.level.ward;
     this.#ward
@@ -897,24 +924,52 @@ export class BattleScene extends Phaser.Scene {
     this.#float(view.sprite, `+${enemy.kind.ink} Tinte`, '#2b3a6b');
   }
 
-  /** A spell was cast: ink rains on every enemy hit, and the hits land at once. */
-  #showCast(hits: readonly Hit[]): void {
-    this.cameras.main.flash(250, 43, 58, 107);
-    for (const hit of hits) {
+  /**
+   * A spell was cast: a cloud of ink gathers over the enemies, drops rain on
+   * each one, splash and show the damage; the hits land with the first drop.
+   */
+  #showCast(spell: Spell, hits: readonly Hit[]): void {
+    this.cameras.main.flash(200, 43, 58, 107);
+    const struck = hits.flatMap((hit) => {
       const view = this.#enemies.get(hit.enemy.id);
-      if (!view) continue;
+      if (!view) return [];
       if (hit.defeated) this.#enemies.delete(hit.enemy.id);
-      const drop = this.add.circle(view.sprite.x, view.sprite.y - 60, 10, 0x2b3a6b, 0.9).setDepth(902);
-      this.tweens.add({
-        targets: drop,
-        y: view.sprite.y,
-        duration: 220,
-        onComplete: () => {
-          drop.destroy();
-          this.#land(hit, view);
-        },
-      });
+      return [{ hit, view }];
+    });
+    const xs = struck.map(({ view }) => view.sprite.x);
+    const left = Math.max(0, Math.min(...xs, this.scale.width / 2) - 80);
+    const right = Math.min(this.scale.width, Math.max(...xs, this.scale.width / 2) + 80);
+    const cloud: Phaser.GameObjects.Ellipse[] = [];
+    for (let x = left; x <= right; x += 55) {
+      const puff = this.add
+        .ellipse(x, CAST_CLOUD_Y + Phaser.Math.Between(-12, 12), Phaser.Math.Between(90, 130), Phaser.Math.Between(50, 70), 0x1d2a4f, 0)
+        .setDepth(960);
+      cloud.push(puff);
     }
+    this.tweens.add({ targets: cloud, fillAlpha: 0.85, scale: { from: 0.6, to: 1 }, duration: 300, ease: 'Sine.easeOut' });
+    this.tweens.add({ targets: cloud, alpha: 0, delay: 1100, duration: 500, onComplete: () => cloud.forEach((puff) => puff.destroy()) });
+
+    struck.forEach(({ hit, view }, i) => {
+      const { x, y } = view.sprite;
+      for (let d = 0; d < 3; d++) {
+        const drop = this.add.ellipse(x + Phaser.Math.Between(-10, 10), CAST_CLOUD_Y + 20, 9, 16, 0x2b3a6b, 0.95).setDepth(959);
+        this.tweens.add({
+          targets: drop,
+          y,
+          delay: 280 + i * 35 + d * 90,
+          duration: 260,
+          ease: 'Quad.easeIn',
+          onComplete: () => {
+            drop.destroy();
+            const splash = this.add.circle(x, y, 8).setStrokeStyle(3, 0x2b3a6b, 0.9).setDepth(902);
+            this.tweens.add({ targets: splash, scale: 3, alpha: 0, duration: 300, onComplete: () => splash.destroy() });
+            if (d > 0) return;
+            this.#land(hit, view);
+            this.#float({ x, y: y - 10 }, `−${spell.damage}`, '#2b3a6b', 24);
+          },
+        });
+      }
+    });
   }
 
   #drawHealth(view: EnemyView, enemy: Enemy, at: Point): void {

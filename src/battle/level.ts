@@ -49,7 +49,7 @@ export interface TowerKind {
   readonly level?: number;
 }
 
-/** A special attack learnt from a scroll: typing its word hits every enemy on the path, then it needs time to return. */
+/** A special attack learnt from a scroll: typing its word costs ink and hits every enemy on the path, then it needs time to return. */
 export interface Spell {
   readonly id: string;
   /** Shown in the battle, e.g. »Tintenregen«. */
@@ -59,6 +59,8 @@ export interface Spell {
   readonly damage: number;
   /** Time after a cast until it can be cast again, counted while the enemies advance. */
   readonly cooldownMs: number;
+  /** Ink it costs to cast. */
+  readonly cost: number;
 }
 
 /** Enemies of one kind within a wave, entering one after another. */

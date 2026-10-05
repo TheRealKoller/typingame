@@ -183,7 +183,7 @@ Im **Tutorial** baut ein Schlüsselwort einen festen Turm, aufgerüstet wird dor
 | Glutfeld | Buch, das nicht brennt | *flammende*, *um mitternacht* | Feuer und Fläche; verträgt sich nicht mit Frost |
 
 - Nach der Ruine sind Rauchsenke und Kellergewölbe offen, der Glutfeld nach einem der beiden. Die Simulation spielt jeden Ort mit den wenigsten Wörtern, die man auf einem Weg dorthin haben kann.
-- **Zauber:** Das Wort eines Zaubers lässt sich bei Ebbe tippen, sobald er bereit ist; es steht dann über dem Bannkreis, die Notiz links zeigt, wann er wieder bereit ist. *Tintenregen* trifft jeden Gegner auf dem Weg mit 30 Schaden, auch durch Panzer, und braucht danach 25 s Ebbe, bis er wieder bereit ist.
+- **Zauber:** Jeder Zauber hat eine **Karte** unten auf der rechten Notiz: ein Tintentropfen in einem Ring, Name, Tintenkosten, Wort und was er gerade braucht („bei Ebbe“, „wieder in 12 s“, „zu wenig Tinte“, „bereit“). Der Ring füllt sich, während der Zauber zurückkehrt; wird er bereit, schwillt die Karte kurz an und leuchtet. Bereit lässt sich sein Wort bei Ebbe direkt auf der Karte tippen, wenn die Tinte reicht; schon beim ersten passenden Buchstaben leuchtet die Karte golden. Beim Wirken zieht über den Gegnern eine Tintenwolke auf, aus der es auf jeden regnet; jeder Treffer spritzt und zeigt seinen Schaden. *Tintenregen* kostet 40 Tinte (so viel wie ein Turm), trifft jeden Gegner auf dem Weg mit 30 Schaden, auch durch Panzer, und braucht danach 25 s Ebbe, bis er wieder bereit ist.
 
 ### 4.9 Weltkarte
 
