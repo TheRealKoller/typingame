@@ -1,5 +1,8 @@
 import type { TowerKind } from './level';
 
+/** However many words hurry a tower, it takes at least this share of its base time between two attacks. */
+const MIN_COOLDOWN_SHARE = 0.4;
+
 /** What a word brings into a tower; elements decide which words go together. */
 export type Element = 'frost' | 'fire' | 'poison';
 
@@ -7,9 +10,9 @@ export type Element = 'frost' | 'fire' | 'poison';
 export interface Effect {
   /** Added to the damage. */
   readonly damage?: number;
-  /** The damage is multiplied by it. */
+  /** The damage is multiplied by it; the factors of several words add up (see `compose`). */
   readonly damageFactor?: number;
-  /** The time between two attacks is multiplied by it. */
+  /** The time between two attacks is multiplied by it; the factors of several words add up (see `compose`). */
   readonly cooldownFactor?: number;
   /** Added to the range. */
   readonly range?: number;
@@ -31,6 +34,7 @@ export interface BaseTower {
   readonly cooldownMs: number;
   readonly slow?: TowerKind['slow'];
   readonly poison?: TowerKind['poison'];
+  readonly splash?: number;
 }
 
 /**
@@ -109,33 +113,33 @@ function stronger<T extends { readonly durationMs: number }>(a: T | undefined, b
 /**
  * The tower a sentence builds, with the whole sentence's cost; null without a
  * base word. Its stage grows with the words, so longer sentences look grander.
+ * Factors of several words add up instead of multiplying (1,6 and 1,6 make 2,2,
+ * not 2,56): a long sentence grows steadily, it does not run away.
  */
 export function compose(sentence: readonly Lexeme[]): TowerKind | null {
   const base = sentence.find((lexeme): lexeme is Extract<Lexeme, { role: 'base' }> => lexeme.role === 'base');
   if (!base) return null;
   const { tower } = base;
+  const effects = sentence.flatMap((lexeme) => (lexeme.role === 'base' ? [] : [lexeme.effect]));
+  const sum = (value: (effect: Effect) => number) => effects.reduce((total, effect) => total + value(effect), 0);
   let kind: TowerKind = {
     id: tower.id,
     name: read(sentence),
     keyword: '',
     cost: cost(sentence),
-    range: tower.range,
-    damage: tower.damage,
-    cooldownMs: tower.cooldownMs,
+    range: tower.range + sum((e) => e.range ?? 0),
+    damage: (tower.damage + sum((e) => e.damage ?? 0)) * (1 + sum((e) => (e.damageFactor ?? 1) - 1)),
+    cooldownMs: Math.round(tower.cooldownMs * Math.max(MIN_COOLDOWN_SHARE, 1 + sum((e) => (e.cooldownFactor ?? 1) - 1))),
     level: Math.min(3, sentence.length),
     ...(tower.slow ? { slow: tower.slow } : {}),
+    ...(tower.splash !== undefined ? { splash: tower.splash } : {}),
     ...(tower.poison ? { poison: tower.poison } : {}),
   };
-  for (const lexeme of sentence) {
-    if (lexeme.role === 'base') continue;
-    const e = lexeme.effect;
+  for (const e of effects) {
     const slow = stronger(kind.slow, e.slow, (x, y) => y.factor < x.factor);
     const poison = stronger(kind.poison, e.poison, (x, y) => y.dps > x.dps);
     kind = {
       ...kind,
-      damage: (kind.damage + (e.damage ?? 0)) * (e.damageFactor ?? 1),
-      cooldownMs: Math.round(kind.cooldownMs * (e.cooldownFactor ?? 1)),
-      range: kind.range + (e.range ?? 0),
       ...(e.splash !== undefined ? { splash: Math.max(kind.splash ?? 0, e.splash) } : {}),
       ...(slow ? { slow } : {}),
       ...(poison ? { poison } : {}),

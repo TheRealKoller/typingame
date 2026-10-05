@@ -45,10 +45,11 @@ export const SILENT_WASP: EnemyKind = { id: 'firewasp', speed: 75, wardDamage: 1
 export const SHELLED_BEETLE: EnemyKind = {
   id: 'clampbeetle',
   speed: 24,
-  wardDamage: 3,
+  // Two of them break a fresh ward: the last place cannot be held without typing.
+  wardDamage: 5,
   health: 210,
   ink: 40,
-  armor: 0.8,
+  armor: 0.9,
   wordDamage: 70,
   minWordLength: 7,
 };
