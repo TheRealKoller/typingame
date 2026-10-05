@@ -18,6 +18,9 @@ export interface Enemy {
   /** Time left at reduced speed after a slowing hit, and the factor that applies meanwhile. */
   slowMs: number;
   slowFactor: number;
+  /** Time left poisoned, and the health it loses per second meanwhile. */
+  poisonMs: number;
+  poisonDps: number;
 }
 
 export interface Tower {
@@ -26,6 +29,10 @@ export interface Tower {
   kind: TowerKind;
   /** Time until the tower can attack again. */
   cooldownMs: number;
+  /** Shots fired so far, for towers whose every n-th shot is critical. */
+  shots: number;
+  /** Enemies this tower has hit, for towers whose first hit is critical. */
+  readonly struck: Set<number>;
 }
 
 /** One enemy hit by an attack. */
@@ -34,6 +41,8 @@ export interface Hit {
   /** Health of the enemy right after this hit; the enemy itself may take more hits before the scene shows this one. */
   readonly health: number;
   readonly defeated: boolean;
+  /** Dealt more than the tower's usual damage. */
+  readonly critical?: boolean;
 }
 
 /** One attack of a tower in an `update` step, for the scene to show: the target, and others caught in the splash. */
@@ -47,9 +56,11 @@ export interface Step {
   readonly shots: readonly Shot[];
   /** Enemies that reached the ward circle and weakened it. */
   readonly arrived: readonly Enemy[];
+  /** Enemies defeated by poison in this step. */
+  readonly withered: readonly Hit[];
 }
 
-const NOTHING: Step = { shots: [], arrived: [] };
+const NOTHING: Step = { shots: [], arrived: [], withered: [] };
 
 /**
  * One running level without rendering. Time advances only through `update`,
@@ -119,7 +130,7 @@ export class Battle {
     if (this.#phase === 'won' || this.#phase === 'lost') return false;
     if (this.towerAt(site) || this.#ink < kind.cost) return false;
     this.#ink -= kind.cost;
-    this.#towers.push({ site, kind, cooldownMs: 0 });
+    this.#towers.push({ site, kind, cooldownMs: 0, shots: 0, struck: new Set() });
     return true;
   }
 
@@ -130,6 +141,15 @@ export class Battle {
     if (!tower || !next || this.#phase === 'won' || this.#phase === 'lost' || this.#ink < next.cost) return false;
     this.#ink -= next.cost;
     tower.kind = next;
+    return true;
+  }
+
+  /** Turns the tower on `site` into `kind` for `cost` ink, if there is enough and the level still runs. */
+  reshape(site: BuildSite, kind: TowerKind, cost: number): boolean {
+    const tower = this.towerAt(site);
+    if (!tower || this.#phase === 'won' || this.#phase === 'lost' || this.#ink < cost) return false;
+    this.#ink -= cost;
+    tower.kind = kind;
     return true;
   }
 
@@ -183,7 +203,7 @@ export class Battle {
       while (spawned < squad.count && this.#waveMs >= (squad.delayMs ?? 0) + spawned * squad.spacingMs) {
         // Every `markEvery`-th enemy of a squad glows, starting with the first.
         const marked = squad.markEvery !== undefined && spawned % squad.markEvery === 0;
-        this.#enemies.push({ id: this.#nextId++, kind: squad.kind, distance: 0, health: squad.kind.health, marked, slowMs: 0, slowFactor: 1 });
+        this.#enemies.push({ id: this.#nextId++, kind: squad.kind, distance: 0, health: squad.kind.health, marked, slowMs: 0, slowFactor: 1, poisonMs: 0, poisonDps: 0 });
         spawned++;
       }
       this.#spawned[i] = spawned;
@@ -197,6 +217,7 @@ export class Battle {
       enemy.distance += (enemy.kind.speed * (slowed * enemy.slowFactor + (deltaMs - slowed))) / 1000;
       enemy.slowMs -= slowed;
     }
+    const withered = this.#poison(deltaMs);
     const arrived = this.#enemies.filter((enemy) => enemy.distance >= this.#length);
     this.#enemies = this.#enemies.filter((enemy) => enemy.distance < this.#length);
     for (const enemy of arrived) this.#ward = Math.max(0, this.#ward - enemy.kind.wardDamage);
@@ -209,7 +230,20 @@ export class Battle {
       this.#wave++;
       this.#phase = this.#wave < this.level.waves.length ? 'flood' : 'won';
     }
-    return { shots, arrived };
+    return { shots, arrived, withered };
+  }
+
+  /** Poisoned enemies lose health over the step; returns those it defeats. */
+  #poison(deltaMs: number): Hit[] {
+    const withered: Hit[] = [];
+    for (const enemy of [...this.#enemies]) {
+      if (enemy.poisonMs <= 0) continue;
+      const poisoned = Math.min(enemy.poisonMs, deltaMs);
+      enemy.poisonMs -= poisoned;
+      const hit = this.#damage(enemy, (enemy.poisonDps * poisoned) / 1000);
+      if (hit.defeated) withered.push(hit);
+    }
+    return withered;
   }
 
   /**
@@ -230,6 +264,7 @@ export class Battle {
       if (!target) continue;
 
       tower.cooldownMs = tower.kind.cooldownMs;
+      tower.shots++;
       const { splash } = tower.kind;
       const center = this.positionOf(target);
       const others =
@@ -240,19 +275,29 @@ export class Battle {
               const at = this.positionOf(enemy);
               return Math.hypot(at.x - center.x, at.y - center.y) <= splash;
             });
-      const [hit, ...splashed] = [target, ...others].map((enemy) => this.#hit(enemy, tower.kind));
+      const [hit, ...splashed] = [target, ...others].map((enemy) => this.#hit(enemy, tower));
       shots.push({ ...hit!, tower, splash: splashed });
     }
     return shots;
   }
 
-  /** `kind` hits `enemy`: damage through its armor, maybe a slowdown. */
-  #hit(enemy: Enemy, kind: TowerKind): Hit {
+  /** `tower` hits `enemy`: damage through its armor, maybe critical, maybe a slowdown or poison. */
+  #hit(enemy: Enemy, tower: Tower): Hit {
+    const { kind } = tower;
     if (kind.slow) {
       enemy.slowMs = kind.slow.durationMs;
       enemy.slowFactor = kind.slow.factor;
     }
-    return this.#damage(enemy, kind.damage * (1 - (enemy.kind.armor ?? 0)));
+    if (kind.poison) {
+      enemy.poisonMs = kind.poison.durationMs;
+      enemy.poisonDps = kind.poison.dps;
+    }
+    let factor = 1;
+    if (kind.critFirst !== undefined && !tower.struck.has(enemy.id)) factor = Math.max(factor, kind.critFirst);
+    if (kind.critEvery && tower.shots % kind.critEvery.every === 0) factor = Math.max(factor, kind.critEvery.factor);
+    tower.struck.add(enemy.id);
+    const hit = this.#damage(enemy, factor * kind.damage * (1 - (enemy.kind.armor ?? 0)));
+    return factor > 1 ? { ...hit, critical: true } : hit;
   }
 
   /** `enemy` loses `amount` health; a defeated enemy leaves its ink and the battle. */

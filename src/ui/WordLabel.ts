@@ -25,20 +25,35 @@ export class WordLabel extends Phaser.GameObjects.DOMElement {
   #typedCount = -1;
   #errorTimer: Phaser.Time.TimerEvent | null = null;
 
-  constructor(scene: Phaser.Scene, x: number, y: number, word: string, fontSize = 32) {
+  /** `note` stands small under the word, e.g. what a word of a tower sentence costs and does. */
+  constructor(scene: Phaser.Scene, x: number, y: number, word: string, fontSize = 32, note?: { readonly text: string; readonly color?: string }) {
     const root = document.createElement('div');
     Object.assign(root.style, {
       font: `600 ${fontSize}px system-ui, "Segoe UI", "Noto Sans", sans-serif`,
       whiteSpace: 'nowrap',
       userSelect: 'none',
       lineHeight: '1',
+      textAlign: 'center',
     });
+    const line = document.createElement('div');
+    root.append(line);
     const letters = [...word].map((char) => {
       const span = document.createElement('span');
       span.textContent = char;
-      root.append(span);
+      line.append(span);
       return span;
     });
+    if (note) {
+      const small = document.createElement('div');
+      small.textContent = note.text;
+      Object.assign(small.style, {
+        font: `600 ${Math.round(fontSize * 0.5)}px system-ui, "Segoe UI", "Noto Sans", sans-serif`,
+        color: note.color ?? OPEN_COLOR,
+        textShadow: OUTLINE,
+        marginTop: '3px',
+      });
+      root.append(small);
+    }
     super(scene, x, y, root);
     this.word = word;
     this.#letters = letters;

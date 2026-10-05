@@ -1,6 +1,7 @@
 import { pickWord, type PracticeContext } from '../progress/practice';
 import type { Battle, Enemy, Hit } from './battle';
 import type { BuildSite, Spell, TowerKind } from './level';
+import { compose, cost, fit, type Fit, type Grammar, type Lexeme } from './sentence';
 
 /** What a completed word did. */
 export type Command =
@@ -13,7 +14,18 @@ export type Command =
   /** The word of a glowing enemy was typed; it is hit, and maybe defeated. */
   | { readonly type: 'strike'; readonly enemy: Enemy; readonly defeated: boolean }
   /** A spell's word was typed; it hit every enemy on the path. */
-  | { readonly type: 'cast'; readonly spell: Spell; readonly hits: readonly Hit[] };
+  | { readonly type: 'cast'; readonly spell: Spell; readonly hits: readonly Hit[] }
+  /** A word of the sentence on the selected site was typed. */
+  | { readonly type: 'compose'; readonly site: BuildSite }
+  /** Enter on a sentence without a base word: there is nothing to build yet. */
+  | { readonly type: 'incomplete'; readonly site: BuildSite };
+
+/** A word in the ring around a selected site in sentence mode: whether it fits the sentence, and its cost. */
+export interface RingWord {
+  readonly lexeme: Lexeme;
+  /** `ok` if it can be typed; `expensive` if it fits but the ink does not suffice. */
+  readonly fit: Fit | 'expensive';
+}
 
 /** A tower kind and every stage it can be upgraded to. */
 function withUpgrades(kind: TowerKind): TowerKind[] {
@@ -27,6 +39,11 @@ function withUpgrades(kind: TowerKind): TowerKind[] {
  * selects the tower, then its upgrade word upgrades it. Glowing enemies
  * carry a word as well; typing it strikes them down, or wounds the tough ones.
  * A spell's word can be typed whenever the spell is ready and a wave advances.
+ *
+ * With a grammar (experiment #125) a selected site takes a sentence instead of
+ * a keyword: each word typed from the ring joins it, Enter (`confirm`) builds the
+ * tower it describes. A tower keeps its site word while its sentence can grow;
+ * more words make it stronger.
  */
 export class Commands {
   readonly #battle: Battle;
@@ -40,16 +57,33 @@ export class Commands {
   /** Words of the glowing enemies on the path, by enemy. */
   #enemyWords = new Map<Enemy, string>();
   #selected: BuildSite | null = null;
+  readonly #grammar: Grammar | null;
+  /** The sentence of each tower built in sentence mode, by site id. */
+  readonly #sentences = new Map<string, readonly Lexeme[]>();
+  /** Words typed on the selected site, not yet built. */
+  #draft: Lexeme[] = [];
 
   /**
    * Gives every build site a word from `pool`. Keywords are never site words,
    * and no two site words form a prefix pair.
    */
-  constructor(battle: Battle, towers: readonly TowerKind[], pool: readonly string[], context: PracticeContext, spells: readonly Spell[] = []) {
+  constructor(
+    battle: Battle,
+    towers: readonly TowerKind[],
+    pool: readonly string[],
+    context: PracticeContext,
+    spells: readonly Spell[] = [],
+    grammar: Grammar | null = null,
+  ) {
     this.#battle = battle;
     this.#towers = towers;
     this.#spells = spells;
-    this.#keywords = [...towers.flatMap(withUpgrades).map((tower) => tower.keyword), ...spells.map((spell) => spell.word)];
+    this.#grammar = grammar;
+    this.#keywords = [
+      ...towers.flatMap(withUpgrades).map((tower) => tower.keyword),
+      ...spells.map((spell) => spell.word),
+      ...(grammar?.lexicon.map((lexeme) => lexeme.word) ?? []),
+    ];
     this.#pool = pool.filter((candidate) => !this.#keywords.includes(candidate));
     this.#context = context;
     const taken: string[] = [];
@@ -66,10 +100,69 @@ export class Commands {
     return this.#selected;
   }
 
-  /** The word on `site`: while it is free, or while its tower can still be upgraded; otherwise null. */
+  /** The word on `site`: while it is free, or while its tower can still be upgraded or its sentence grow; otherwise null. */
   siteWord(site: BuildSite): string | null {
     const tower = this.#battle.towerAt(site);
-    return tower && !tower.kind.upgrade ? null : (this.#siteWords.get(site.id) ?? null);
+    const done = this.#grammar ? this.sentence(site).length >= this.#grammar.maxWords : !tower?.kind.upgrade;
+    return tower && done ? null : (this.#siteWords.get(site.id) ?? null);
+  }
+
+  /** The sentence of the tower on `site` in sentence mode; empty if none is built there. */
+  sentence(site: BuildSite): readonly Lexeme[] {
+    return this.#sentences.get(site.id) ?? [];
+  }
+
+  /** Words typed on the selected site in sentence mode, not yet built. */
+  get draft(): readonly Lexeme[] {
+    return this.#draft;
+  }
+
+  /**
+   * The words around the selected site in sentence mode, each with whether it
+   * fits the tower's sentence and the draft. Words that can never join (used,
+   * a second base word or time) are left out; clashing or unaffordable ones stay
+   * to show why they cannot be taken.
+   */
+  get ring(): readonly RingWord[] {
+    const grammar = this.#grammar;
+    const site = this.#selected;
+    if (!grammar || !site) return [];
+    const sentence = [...this.sentence(site), ...this.#draft];
+    const left = this.#battle.ink - cost(this.#draft);
+    return grammar.lexicon.flatMap((lexeme): RingWord[] => {
+      const fits = fit(grammar, sentence, lexeme);
+      if (fits === 'used' || fits === 'base' || fits === 'time') return [];
+      return [{ lexeme, fit: fits === 'ok' && lexeme.cost > left ? 'expensive' : fits }];
+    });
+  }
+
+  /** The tower on the selected site now, and what the draft would make of it for how much ink. */
+  get preview(): { readonly before: TowerKind | null; readonly after: TowerKind | null; readonly cost: number } | null {
+    const site = this.#selected;
+    if (!this.#grammar || !site) return null;
+    const sentence = this.sentence(site);
+    return { before: compose(sentence), after: compose([...sentence, ...this.#draft]), cost: cost(this.#draft) };
+  }
+
+  /** Builds or extends the tower on the selected site from the draft (Enter); null if there is no draft. */
+  confirm(): Command | null {
+    const site = this.#selected;
+    if (!this.#grammar || !site || this.#draft.length === 0) return null;
+    const sentence = [...this.sentence(site), ...this.#draft];
+    const tower = compose(sentence);
+    if (!tower) return { type: 'incomplete', site };
+    const built = this.#battle.towerAt(site) !== undefined;
+    const paid = built ? this.#battle.reshape(site, tower, cost(this.#draft)) : this.#battle.build(site, tower);
+    this.#selected = null;
+    this.#draft = [];
+    if (!paid) return { type: 'tooExpensive', site, tower };
+    this.#sentences.set(site.id, sentence);
+    return { type: built ? 'upgrade' : 'build', site, tower };
+  }
+
+  /** Takes the last word back out of the draft; false if there was none. */
+  removeLast(): boolean {
+    return this.#draft.pop() !== undefined;
   }
 
   /** The word a glowing enemy carries, or null. */
@@ -105,6 +198,7 @@ export class Commands {
     // Enemy words and ready spells can be typed at any time, also at a selected site.
     const always = [...this.#enemyWords.values(), ...this.readySpells.map((spell) => spell.word)];
     if (this.#selected) {
+      if (this.#grammar) return [...this.ring.filter((option) => option.fit === 'ok').map((option) => option.lexeme.word), ...always];
       const tower = this.#battle.towerAt(this.#selected);
       const choices = tower ? (tower.kind.upgrade ? [tower.kind.upgrade] : []) : this.#towers;
       return [...choices.map((kind) => kind.keyword), ...always];
@@ -113,9 +207,10 @@ export class Commands {
     return [...sites, ...always];
   }
 
-  /** Leaves a selected build site without building. */
+  /** Leaves a selected build site without building; a draft is dropped. */
   cancel(): void {
     this.#selected = null;
+    this.#draft = [];
   }
 
   complete(word: string): Command | null {
@@ -131,6 +226,12 @@ export class Commands {
     }
     if (this.#selected) {
       const site = this.#selected;
+      if (this.#grammar) {
+        const option = this.ring.find((candidate) => candidate.lexeme.word === word && candidate.fit === 'ok');
+        if (!option) return null;
+        this.#draft.push(option.lexeme);
+        return { type: 'compose', site };
+      }
       const built = this.#battle.towerAt(site);
       if (built) {
         const next = built.kind.upgrade;

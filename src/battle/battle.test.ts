@@ -219,6 +219,65 @@ describe('towers', () => {
     expect(slowed).toBeCloseTo(BEETLE.speed / 2);
     expect(free).toBeCloseTo(BEETLE.speed);
   });
+
+  it('poisons the enemies it hits: they lose health over time through armor, and the poison can defeat them', () => {
+    const ARMORED: EnemyKind = { ...BEETLE, armor: 0.9 };
+    const venom: TowerKind = { ...BOW, range: 500, damage: 0, cooldownMs: 100_000, poison: { dps: 10, durationMs: 2000 } };
+    const battle = new Battle(level({ waves: [[{ kind: ARMORED, count: 1, spacingMs: 1000 }]] }));
+    battle.build(battle.level.sites[1]!, venom);
+    battle.endFlood();
+
+    battle.update(100); // enters and is hit at once
+    const enemy = battle.enemies[0]!;
+    run(battle, 3000);
+
+    // Two seconds of poison at 10 per second, and nothing after it wore off.
+    expect(enemy.health).toBeCloseTo(ARMORED.health - 20);
+
+    const frail = new Battle(level({ waves: [[{ kind: BUG, count: 1, spacingMs: 1000 }]] }));
+    frail.build(frail.level.sites[1]!, { ...venom, poison: { dps: 40, durationMs: 2000 } });
+    frail.endFlood();
+    const withered = Array.from({ length: 10 }, () => frail.update(100).withered).flat();
+
+    expect(withered.map((hit) => [hit.enemy.kind, hit.defeated])).toEqual([[BUG, true]]);
+    expect(frail.ink).toBe(50 - BOW.cost + BUG.ink);
+  });
+
+  it('hits critically on its first hit of each enemy, or on every n-th shot', () => {
+    const dawn: TowerKind = { ...BOW, range: 500, damage: 4, cooldownMs: 100, critFirst: 3 };
+    const battle = new Battle(level({ waves: [[{ kind: BUG, count: 2, spacingMs: 1000 }]] }));
+    battle.build(battle.level.sites[1]!, dawn);
+    battle.endFlood();
+    const shots = Array.from({ length: 15 }, () => battle.update(100).shots).flat();
+    // The first bug takes 12, then 4 a shot; the second one, entering after 1 s, again starts with 12.
+    expect(shots.map((shot) => [shot.health, shot.critical ?? false])).toEqual([
+      [8, true],
+      [4, false],
+      [0, false],
+      [8, true],
+      [4, false],
+      [0, false],
+    ]);
+
+    const midnight: TowerKind = { ...BOW, range: 500, damage: 4, cooldownMs: 100, critEvery: { every: 3, factor: 2 } };
+    const counted = new Battle(level({ waves: [[{ kind: BEETLE, count: 1, spacingMs: 1000 }]] }));
+    counted.build(counted.level.sites[1]!, midnight);
+    counted.endFlood();
+    const counts = Array.from({ length: 6 }, () => counted.update(100).shots).flat();
+    expect(counts.map((shot) => shot.critical ?? false)).toEqual([false, false, true, false, false, true]);
+  });
+
+  it('reshapes a built tower for the given ink, and only a built one', () => {
+    const battle = new Battle(level({ ink: 100 }));
+    const [near, far] = battle.level.sites;
+    battle.build(near!, BOW);
+    const swift: TowerKind = { ...BOW, cooldownMs: 300, cost: 999 };
+
+    expect(battle.reshape(far!, swift, 10)).toBe(false);
+    expect(battle.reshape(near!, swift, 80)).toBe(false);
+    expect(battle.reshape(near!, swift, 40)).toBe(true);
+    expect([battle.towerAt(near!)!.kind, battle.ink]).toEqual([swift, 100 - BOW.cost - 40]);
+  });
 });
 
 describe('squads', () => {
