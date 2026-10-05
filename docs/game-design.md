@@ -79,6 +79,9 @@ Wie sich Atramentus zeigt (vorläufig, ein Schritt je Gebiet):
   - **Ebbe** – der Bann ist schwach: Die Gegner rücken in **Wellen** vor.
 - Das Tempo der Gegner ist vorläufig **konstant**, unabhängig von den Anschlägen pro Minute.
 - Erreicht ein Gegner den Bannkreis, wird er schwächer. Bricht er, ist das Level verloren.
+  - Ein Ring aus zehn Segmenten um den Kreis zeigt seine Stärke; bei Ebbe steht die Zahl in der Mitte, bei Flut dort »Enter«.
+  - Ein Treffer lässt den Kreis rot aufblitzen und den Bildschirm kurz wackeln, Segmente erlöschen, der Verlust (z. B. „−2“) steigt auf.
+  - Bei 30 % oder weniger wird der Ring rot und pulsiert.
 - Wer alle Ebben übersteht, hat das Verstummen zurückgedrängt und gewinnt das Level. Auf der Weltkarte ist das Gebiet damit befreit.
 
 ### 4.2 Bauen und Aufrüsten
