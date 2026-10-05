@@ -7,9 +7,9 @@ import { compose, cost, fit, type Fit, type Grammar, type Lexeme } from './sente
 export type Command =
   | { readonly type: 'select'; readonly site: BuildSite }
   | { readonly type: 'build'; readonly site: BuildSite; readonly tower: TowerKind }
-  /** The upgrade word of the tower on the selected site was typed; `tower` is its new stage. */
+  /** Words were appended to the sentence of the tower on the selected site; `tower` is what it became. */
   | { readonly type: 'upgrade'; readonly site: BuildSite; readonly tower: TowerKind }
-  /** The keyword or upgrade word was typed but the ink did not suffice; the selection is released. */
+  /** The keyword was typed or the sentence confirmed but the ink did not suffice; the selection is released. */
   | { readonly type: 'tooExpensive'; readonly site: BuildSite; readonly tower: TowerKind }
   /** The word of a glowing enemy was typed; it is hit, and maybe defeated. */
   | { readonly type: 'strike'; readonly enemy: Enemy; readonly defeated: boolean }
@@ -27,29 +27,23 @@ export interface RingWord {
   readonly fit: Fit | 'expensive';
 }
 
-/** A tower kind and every stage it can be upgraded to. */
-function withUpgrades(kind: TowerKind): TowerKind[] {
-  return kind.upgrade ? [kind, ...withUpgrades(kind.upgrade)] : [kind];
-}
-
 /**
  * Turns completed words into actions in a battle. Free build sites carry a
- * word; typing it selects the site, then a tower keyword builds there. A
- * tower keeps the word of its site while it can be upgraded; typing it
- * selects the tower, then its upgrade word upgrades it. Glowing enemies
- * carry a word as well; typing it strikes them down, or wounds the tough ones.
- * A spell's word can be typed whenever the spell is ready and a wave advances.
+ * word; typing it selects the site, then a tower keyword builds there. Glowing
+ * enemies carry a word as well; typing it strikes them down, or wounds the
+ * tough ones. A spell's word can be typed whenever the spell is ready and a
+ * wave advances.
  *
- * With a grammar (experiment #125) a selected site takes a sentence instead of
- * a keyword: each word typed from the ring joins it, Enter (`confirm`) builds the
- * tower it describes. A tower keeps its site word while its sentence can grow;
- * more words make it stronger.
+ * With a grammar (on the journey) a selected site takes a sentence instead of
+ * a keyword: each word typed from the scroll joins it, Enter (`confirm`) builds
+ * the tower it describes. A tower keeps its site word while its sentence can
+ * grow; more words make it stronger.
  */
 export class Commands {
   readonly #battle: Battle;
   readonly #towers: readonly TowerKind[];
   readonly #spells: readonly Spell[];
-  /** Keywords of the towers, all their upgrade words and the spell words: never site or enemy words. */
+  /** Keywords of the towers, the spell words and the words of the sentences: never site or enemy words. */
   readonly #keywords: readonly string[];
   readonly #pool: readonly string[];
   readonly #context: PracticeContext;
@@ -80,7 +74,7 @@ export class Commands {
     this.#spells = spells;
     this.#grammar = grammar;
     this.#keywords = [
-      ...towers.flatMap(withUpgrades).map((tower) => tower.keyword),
+      ...towers.map((tower) => tower.keyword),
       ...spells.map((spell) => spell.word),
       ...(grammar?.lexicon.map((lexeme) => lexeme.word) ?? []),
     ];
@@ -100,11 +94,11 @@ export class Commands {
     return this.#selected;
   }
 
-  /** The word on `site`: while it is free, or while its tower can still be upgraded or its sentence grow; otherwise null. */
+  /** The word on `site`: while it is free, or while its tower's sentence can still grow; otherwise null. */
   siteWord(site: BuildSite): string | null {
     const tower = this.#battle.towerAt(site);
-    const done = this.#grammar ? this.sentence(site).length >= this.#grammar.maxWords : !tower?.kind.upgrade;
-    return tower && done ? null : (this.#siteWords.get(site.id) ?? null);
+    const growing = this.#grammar !== null && this.sentence(site).length < this.#grammar.maxWords;
+    return tower && !growing ? null : (this.#siteWords.get(site.id) ?? null);
   }
 
   /** The sentence of the tower on `site` in sentence mode; empty if none is built there. */
@@ -199,9 +193,7 @@ export class Commands {
     const always = [...this.#enemyWords.values(), ...this.readySpells.map((spell) => spell.word)];
     if (this.#selected) {
       if (this.#grammar) return [...this.ring.filter((option) => option.fit === 'ok').map((option) => option.lexeme.word), ...always];
-      const tower = this.#battle.towerAt(this.#selected);
-      const choices = tower ? (tower.kind.upgrade ? [tower.kind.upgrade] : []) : this.#towers;
-      return [...choices.map((kind) => kind.keyword), ...always];
+      return [...this.#towers.map((kind) => kind.keyword), ...always];
     }
     const sites = this.#battle.level.sites.map((site) => this.siteWord(site)).filter((word) => word !== null);
     return [...sites, ...always];
@@ -231,14 +223,6 @@ export class Commands {
         if (!option) return null;
         this.#draft.push(option.lexeme);
         return { type: 'compose', site };
-      }
-      const built = this.#battle.towerAt(site);
-      if (built) {
-        const next = built.kind.upgrade;
-        if (!next || next.keyword !== word) return null;
-        this.#selected = null;
-        if (!this.#battle.upgrade(site)) return { type: 'tooExpensive', site, tower: next };
-        return { type: 'upgrade', site, tower: next };
       }
       const tower = this.#towers.find((kind) => kind.keyword === word);
       if (!tower) return null;

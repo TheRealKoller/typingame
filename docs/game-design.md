@@ -86,7 +86,7 @@ Wie sich Atramentus zeigt (vorläufig, ein Schritt je Gebiet):
 
 ### 4.2 Bauen und Aufrüsten
 
-Im **Tutorial** baut ein Schlüsselwort einen festen Turm. Auf der **Reise** baut man Türme aus **Sätzen** (entschieden nach dem Experiment [#125](https://github.com/TheRealKoller/typingame/issues/125), siehe unten).
+Im **Tutorial** baut ein Schlüsselwort einen festen Turm, aufgerüstet wird dort nicht. Auf der **Reise** baut man Türme aus **Sätzen** und stärkt sie, indem man Wörter anhängt (entschieden nach dem Experiment [#125](https://github.com/TheRealKoller/typingame/issues/125), siehe unten).
 
 **Tutorial: Schlüsselwörter**
 
@@ -98,15 +98,8 @@ Im **Tutorial** baut ein Schlüsselwort einen festen Turm. Auf der **Reise** bau
 |---|---|---|---|
 | Armbrust | *jagd* (vor `g`: *lass*) | 50 | schnelle Einzelschüsse |
 
-- **Aufrüsten:** Ein Turm behält das Wort seines Bauplatzes, solange er sich aufrüsten lässt. Tippt man es, ist der Turm gewählt; sein Aufrüstwort bringt ihn auf die nächste Stufe (Stufen I–III, Grafik der Spire-Stufen). Auf der letzten Stufe verschwindet das Wort. Im Tutorial wird nicht aufgerüstet: Die Aufrüstwörter brauchen Tasten, die erst später kommen.
-
-| Turm | Stufe II | Stufe III |
-|---|---|---|
-| Armbrust | *bolzen* Doppelarmbrust, 60: Schaden 16, Reichweite 180 | *salve* Salvenarmbrust, 90: Schaden 24, Reichweite 190, schneller |
-
-- Ein gewählter Bauplatz zeigt die Schlüsselwörter nebeneinander, die Notiz links nennt Turm und Kosten. Im Tutorial gibt es nur die Armbrust.
-- **Aufrüsten** funktioniert ähnlich: den Turm über sein Wort wählen, dann ein Aufrüstwort tippen.
-- Türme und Aufrüstungen kosten **Tinte**. Die Monster sind aus Tinte gemacht; besiegt zerfließen sie und hinterlassen sie.
+- Ein gewählter Bauplatz zeigt das Schlüsselwort darüber, die Notiz links nennt Turm und Kosten. Ein gebauter Turm verliert sein Bauplatzwort.
+- Türme kosten **Tinte**. Die Monster sind aus Tinte gemacht; besiegt zerfließen sie und hinterlassen sie.
 
 **Reise: Türme aus Sätzen**
 

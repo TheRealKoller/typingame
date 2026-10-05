@@ -74,8 +74,7 @@ export function stageSetup(index: number): StageSetup {
   return {
     keys,
     words: focused.length >= MIN_FOCUSED_WORDS ? focused : all,
-    // Towers are not upgraded in the library: the upgrade words need keys learnt later.
-    towers: [{ ...CROSSBOW, keyword: firstTypeable(TOWER_KEYWORDS, keys), upgrade: undefined }],
+    towers: [{ ...CROSSBOW, keyword: firstTypeable(TOWER_KEYWORDS, keys) }],
   };
 }
 

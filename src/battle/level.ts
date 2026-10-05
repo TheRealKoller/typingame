@@ -45,10 +45,8 @@ export interface TowerKind {
   readonly critFirst?: number;
   /** Every `every`-th shot of the tower deals `factor` times its damage. */
   readonly critEvery?: { readonly every: number; readonly factor: number };
-  /** Stage of the tower, 1 when built; each upgrade is the next stage. */
+  /** Stage of the tower's art, I to III; 1 if omitted. A sentence tower grows a stage with each word. */
   readonly level?: number;
-  /** What the tower becomes when upgraded; its keyword is the upgrade word, its cost the price of the upgrade. None at the last stage. */
-  readonly upgrade?: TowerKind;
 }
 
 /** A special attack learnt from a scroll: typing its word hits every enemy on the path, then it needs time to return. */
