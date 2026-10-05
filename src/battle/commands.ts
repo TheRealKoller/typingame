@@ -182,9 +182,10 @@ export class Commands {
     }
   }
 
-  /** Spells that can be cast now. */
+  /** Spells that can be cast now: returned, during an ebb, and paid for by the ink. */
   get readySpells(): readonly Spell[] {
-    return this.#battle.phase === 'ebb' ? this.#spells.filter((spell) => this.#battle.spellReadyIn(spell) === 0) : [];
+    if (this.#battle.phase !== 'ebb') return [];
+    return this.#spells.filter((spell) => this.#battle.spellReadyIn(spell) === 0 && this.#battle.ink >= spell.cost);
   }
 
   /** Words that can be typed now. */

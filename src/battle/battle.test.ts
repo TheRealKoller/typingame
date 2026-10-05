@@ -356,7 +356,7 @@ describe('tough enemies', () => {
 });
 
 describe('spells', () => {
-  const RAIN: Spell = { id: 'rain', name: 'Regen', word: 'regen', damage: 20, cooldownMs: 5000 };
+  const RAIN: Spell = { id: 'rain', name: 'Regen', word: 'regen', damage: 20, cooldownMs: 5000, cost: 0 };
 
   it('hit every enemy on the path through its armor, during an ebb only, then need time to return', () => {
     const shelled: EnemyKind = { ...BEETLE, armor: 0.9 };
@@ -377,5 +377,16 @@ describe('spells', () => {
     expect(battle.spellReadyIn(RAIN)).toBe(100);
     battle.update(100);
     expect(battle.spellReadyIn(RAIN)).toBe(0);
+  });
+
+  it('cost their ink, and are not cast without enough of it', () => {
+    const battle = new Battle(level({ ink: 50, waves: [[{ kind: BEETLE, count: 1, spacingMs: 100 }]] }));
+    battle.endFlood();
+    battle.update(100);
+
+    expect(battle.cast({ ...RAIN, cost: 60 })).toBeNull();
+    expect([battle.ink, battle.enemies[0]!.health]).toEqual([50, BEETLE.health]);
+    expect(battle.cast({ ...RAIN, cost: 40 })).not.toBeNull();
+    expect(battle.ink).toBe(10);
   });
 });

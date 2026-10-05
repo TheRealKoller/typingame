@@ -27,8 +27,8 @@ export class SpellCard extends Phaser.GameObjects.DOMElement {
   readonly #status: HTMLDivElement;
   #charged = false;
 
-  /** `x`, `y` is the top left corner. */
-  constructor(scene: Phaser.Scene, x: number, y: number, name: string, word: string) {
+  /** `x`, `y` is the top left corner; `cost` is the ink a cast takes. */
+  constructor(scene: Phaser.Scene, x: number, y: number, name: string, word: string, cost: number) {
     const card = document.createElement('div');
     Object.assign(card.style, {
       position: 'relative',
@@ -63,7 +63,7 @@ export class SpellCard extends Phaser.GameObjects.DOMElement {
       card.append(element);
       return element;
     };
-    text(10, `Zauber: ${name}`, { font: `600 15px ${FONT}`, letterSpacing: '0.04em', color: '#5a4a38' });
+    text(10, `Zauber: ${name} · ${cost} Tinte`, { font: `600 15px ${FONT}`, letterSpacing: '0.04em', color: '#5a4a38' });
     const wordElement = text(WORD_Y - 14, word, { font: `600 26px ${FONT}`, color: '#a08a6c' });
     const status = text(WORD_Y - 8, '', { left: 'auto', right: '14px', font: `600 15px ${FONT}`, color: '#5a4a38' });
     super(scene, x, y, card);

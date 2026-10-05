@@ -164,11 +164,13 @@ export class Battle {
   }
 
   /**
-   * Casts `spell` on every enemy on the path while a wave advances; the
-   * defeated leave their ink. Null if it is not ready or no wave advances.
+   * Casts `spell` on every enemy on the path while a wave advances, for its
+   * ink; the defeated leave their ink. Null if it is not ready, the ink does
+   * not suffice or no wave advances.
    */
   cast(spell: Spell): Hit[] | null {
-    if (this.#phase !== 'ebb' || this.spellReadyIn(spell) > 0) return null;
+    if (this.#phase !== 'ebb' || this.spellReadyIn(spell) > 0 || this.#ink < spell.cost) return null;
+    this.#ink -= spell.cost;
     this.#spellCooldowns.set(spell.id, spell.cooldownMs);
     return [...this.#enemies].map((enemy) => this.#damage(enemy, spell.damage));
   }

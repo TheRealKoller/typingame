@@ -130,10 +130,10 @@ describe('enemy words', () => {
 });
 
 describe('spells', () => {
-  const RAIN: Spell = { id: 'rain', name: 'Regen', word: 'tintenregen', damage: 1000, cooldownMs: 5000 };
+  const RAIN: Spell = { id: 'rain', name: 'Regen', word: 'tintenregen', damage: 1000, cooldownMs: 5000, cost: 40 };
 
-  function withSpell() {
-    const battle = new Battle(LEVEL_1);
+  function withSpell(ink = LEVEL_1.ink) {
+    const battle = new Battle({ ...LEVEL_1, ink });
     const commands = new Commands(battle, [CROSSBOW], allKeysSetup().words, { keys: {}, random: () => 0.5 }, [RAIN]);
     return { battle, commands };
   }
@@ -155,6 +155,12 @@ describe('spells', () => {
     const command = commands.complete(RAIN.word);
 
     expect(command).toEqual({ type: 'cast', spell: RAIN, hits: before.map((enemy) => ({ enemy, health: 0, defeated: true })) });
+    expect(commands.words).not.toContain(RAIN.word);
+  });
+
+  it('keep the spell word back while the ink does not pay for it', () => {
+    const { battle, commands } = withSpell(RAIN.cost - 1);
+    battle.endFlood();
     expect(commands.words).not.toContain(RAIN.word);
   });
 });

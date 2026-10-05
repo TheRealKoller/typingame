@@ -233,7 +233,9 @@ export interface JourneyBattle {
 /** What a reward brings, as the apprentice reads it after the battle. */
 export function rewardText(reward: Reward): string {
   const words = `Neue Wörter: ${reward.words.map((word) => `»${word}«`).join(', ')}`;
-  const spell = reward.spell ? `\nNeuer Zauber: ${reward.spell.name} (»${reward.spell.word}«) – trifft bei Ebbe jeden Gegner auf dem Weg.` : '';
+  const spell = reward.spell
+    ? `\nNeuer Zauber: ${reward.spell.name} (»${reward.spell.word}«, ${reward.spell.cost} Tinte) – trifft bei Ebbe jeden Gegner auf dem Weg.`
+    : '';
   return `${reward.title}.\n${reward.text}\n${words}${spell}`;
 }
 

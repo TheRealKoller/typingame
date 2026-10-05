@@ -753,7 +753,7 @@ export class BattleScene extends Phaser.Scene {
     this.#spells.forEach((spell, i) => {
       const y = 704 - 12 - (this.#spells.length - i) * (SpellCard.height + 8);
       // HTML lies over the canvas anyway; below the word labels (1001), so the ready word shows on the card.
-      this.#spellCards.set(spell.id, new SpellCard(this, x, y, spell.name, spell.word).setDepth(1000));
+      this.#spellCards.set(spell.id, new SpellCard(this, x, y, spell.name, spell.word, spell.cost).setDepth(1000));
     });
   }
 
@@ -781,7 +781,8 @@ export class BattleScene extends Phaser.Scene {
     for (const spell of this.#spells) {
       const left = battle.spellReadyIn(spell);
       const ready = this.#commands.readySpells.includes(spell);
-      const status = left > 0 ? `wieder in ${Math.ceil(left / 1000)} s` : battle.phase === 'ebb' ? 'bereit' : 'bei Ebbe';
+      const status =
+        left > 0 ? `wieder in ${Math.ceil(left / 1000)} s` : battle.phase !== 'ebb' ? 'bei Ebbe' : battle.ink < spell.cost ? 'zu wenig Tinte' : 'bereit';
       this.#spellCards.get(spell.id)?.show(1 - left / spell.cooldownMs, ready, status);
       // A spell that returns, or becomes castable with the ebb, draws the eye once.
       if (ready && !this.#readySpells.has(spell.id)) this.#spellCards.get(spell.id)?.flashReady();
