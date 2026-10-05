@@ -9,12 +9,12 @@ import * as Phaser from 'phaser';
  * next letter red.
  */
 const OPEN_COLOR = '#2f2a24';
-const TYPED_COLOR = '#1d4fa8';
+const TYPED_COLOR = '#0a6cff';
 const ERROR_COLOR = '#c62828';
 const OUTLINE = [
   [-2, 0], [2, 0], [0, -2], [0, 2], [-1.5, -1.5], [1.5, -1.5], [-1.5, 1.5], [1.5, 1.5],
 ].map(([x, y]) => `${x}px ${y}px 1px #f6efe6`).join(', ');
-const GLOW = `${OUTLINE}, 0 0 6px #3d8bff, 0 0 12px #3d8bff`;
+const GLOW = `${OUTLINE}, 0 0 4px #2f8cff, 0 0 10px #2f8cff, 0 0 18px #5aa8ff`;
 const DIMMED_ALPHA = 0.35;
 const ERROR_MS = 300;
 
