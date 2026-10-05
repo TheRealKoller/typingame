@@ -125,26 +125,31 @@ Im **Tutorial** baut ein Schlüsselwort einen festen Turm. Auf der **Reise** bau
 | Wort | Stellung | Kosten | Wirkung |
 |---|---|---|---|
 | *jagd* | Turmart | 40 | Pfeile: Schaden 10, alle 0,8 s, Reichweite 170 |
-| *eisnadel* | Turmart (Frost) | 45 | Schaden 4, bremst auf 50 % für 1,5 s |
-| *viper* | Turmart (Gift) | 45 | Schaden 3, Gift 5/s für 3 s |
-| *wilde* | davor | 25 | schießt schneller (×0,7 Zeit) |
-| *schwere* | davor | 25 | Schaden ×1,6, schießt langsamer (×1,2 Zeit) |
+| *eisnadel* | Turmart (Frost) | 40 | Schaden 4 im Umkreis von 45 px, bremst auf 45 % für 2 s, alle 1 s, Reichweite 150 |
+| *viper* | Turmart (Gift) | 40 | Schaden 4, Gift 5/s für 3 s, alle 1 s, Reichweite 160 |
+| *wilde* | davor | 30 | schießt schneller (−25 % Zeit) |
+| *schwere* | davor | 30 | Schaden +50 %, schießt langsamer (+15 % Zeit) |
 | *weite* | davor | 20 | Reichweite +40 |
-| *frostige* | davor (Frost) | 25 | bremst auf 60 % für 1,2 s |
+| *frostige* | davor (Frost) | 15 | bremst auf 60 % für 1,2 s |
 | *flammende* | davor (Feuer) | 30 | Schaden +3, trifft im Umkreis von 60 px |
-| *der viper* | danach (Gift) | 25 | Gift 3/s für 2,5 s |
+| *der viper* | danach (Gift) | 25 | Gift 2/s für 2,5 s |
 | *im morgengrauen* | Zeitangabe | 30 | der erste Treffer auf jeden Gegner ×3 |
 | *um mitternacht* | Zeitangabe | 30 | jeder 4. Schuss ×2,5 |
 
 - **Gift** wirkt über Zeit und auch durch Panzer; vergiftete Gegner werden grün. **Kritische Treffer** zeigen „kritisch!“.
-- Noch offen: Balance (Frost- und Giftturm allein sind schwach), Sätze ohne Turmart wie „frostiger morgen“, die Schriftrolle verdeckt eine Kartenhälfte.
+- Prozentangaben mehrerer Wörter **addieren sich** statt sich zu vervielfachen (zwei Wörter mit je +50 % Schaden gäben +100 %, nicht +125 %), und kein Turm schießt schneller als in 40 % seiner Grundzeit. So wächst ein langer Satz stetig, ohne davonzulaufen.
+- **Balance** ([#117](https://github.com/TheRealKoller/typingame/issues/117)), abgesichert durch die Simulation in `src/content/journey.test.ts`:
+  - *Breit vor hoch:* Ein angehängtes Wort bringt pro Tinte weniger Schaden als ein zweiter Turm derselben Art (ein Test prüft das für jedes Wort). Erst einen Turm auf jeden Platz, dann Wörter anhängen; das lohnt sich spürbar: Am Kellergewölbe ohne Tippen halten fünf *wilde schwere jagd* mehr als doppelt so viel Bannkreis wie fünf *jagd*.
+  - *Keine Turmart ist nutzlos:* Fünf Türme derselben Art halten jede die ersten beiden Orte. *jagd* ist der Allrounder, *eisnadel* bremst ganze Gruppen, *viper* zermürbt auch Gepanzerte; gemischt halten sie etwa so gut wie *jagd* allein.
+  - *Tinte:* Man beginnt mit 100 und hat, wenn man alle Gegner besiegt, im Schnitt nach jeder Welle: Ruine 161 → 244, Rauchsenke 170 → 260 → 419, Kellergewölbe 183 → 300 → 525, Glutfeld 201 → 326 → 450 → 790. Fünf Türme kosten 200; der Rest geht in Wörter.
+- Noch offen: Sätze ohne Turmart wie „frostiger morgen“, die Schriftrolle verdeckt eine Kartenhälfte.
 
 ### 4.3 Kampf
 
 - Türme greifen von selbst an.
 - **Spezialgegner** tragen Wörter. Tippt man das Wort, greift man sie direkt an.
   - **Feuerwespen** (ab dem zweiten Ort): schnell und schwach, kommen in Schwärmen in jeder zweiten Welle und schlüpfen an langsamen Türmen vorbei.
-  - **Panzerkäfer** (ab dem dritten Ort, letzte Welle): ein Panzer aus gehärteter Tinte hält 80 % jedes Turmtreffers ab. Sie leuchten immer und tragen lange Wörter (ab 7 Zeichen); jedes getippte Wort zieht ihnen 70 Leben ab und gibt ihnen ein neues Wort, bis sie fallen. Bauen allein reicht gegen sie nicht. Im Tutorial leuchtet jeder dritte kleine Papiergolem golden und trägt ein Wort; getippt fällt er sofort und hinterlässt Tinte.
+  - **Panzerkäfer** (ab dem dritten Ort, letzte Welle): ein Panzer aus gehärteter Tinte hält 90 % jedes Turmtreffers ab, nur Gift dringt durch. Erreicht einer den Bannkreis, kostet das 5 Stärke – zwei brechen ihn. Sie leuchten immer und tragen lange Wörter (ab 7 Zeichen); jedes getippte Wort zieht ihnen 70 Leben ab und gibt ihnen ein neues Wort, bis sie fallen. Bauen allein reicht gegen sie nicht. Im Tutorial leuchtet jeder dritte kleine Papiergolem golden und trägt ein Wort; getippt fällt er sofort und hinterlässt Tinte.
 - Türme können **Spezialangriffe** haben, die man mit Wörtern auslöst.
 - **Bosse** verlangen einen ganzen Text, z. B. ein Gedicht oder eine Rede.
 
@@ -191,7 +196,7 @@ Im **Tutorial** baut ein Schlüsselwort einen festen Turm. Auf der **Reise** bau
 - Am Anfang ist nur die **Bibliotheksruine** offen. Ein Sieg befreit den Ort und öffnet die verbundenen Orte; befreite Orte lassen sich erneut spielen.
 - Nach dem Kampf kommentiert der Lehrling das Ergebnis; Enter führt zurück zur Karte.
 - Die Weltkarte selbst ist fest. **Besondere Orte** haben eine feste Kampfkarte (in den Aschefeldern die Bibliotheksruine mit verkohltem Boden und verbrannten Regalen und das Kellergewölbe). **Gewöhnliche Orte** bekommen bei jedem Besuch eine neu erzeugte Karte: ein Weg in geraden Stücken vom linken Rand zum Bannkreis, fünf Bauplätze in Reichweite des Wegs, Bäume und Steine auf freien Flächen; in den Aschefeldern liegt grauer Ruß über dem Gras.
-- Die Wellen werden für jeden Kampf neu erzeugt, nach dem **Schwierigkeitsgrad** des Orts (Ruine 1, Rauchsenke 2, Kellergewölbe 3, Glutfeld 4): mehr Wellen, mehr und zähere Gegner, ab dem zweiten Ort auch große. Erst ab dem dritten Ort leuchtet jeder dritte kleine Gegner und trägt ein Wort; an den ersten Orten geht es ums Bauen. Auf der Reise hinterlassen Gegner weniger Tinte als in der Bibliothek (60 %), und man beginnt mit Tinte für zwei Türme. Ein Test spielt jeden Ort mit 40 verschiedenen Karten durch: Wer stetig baut und die leuchtenden Gegner trifft, gewinnt fast immer; am letzten Ort reichen Türme allein meist nicht.
+- Die Wellen werden für jeden Kampf neu erzeugt, nach dem **Schwierigkeitsgrad** des Orts (Ruine 1, Rauchsenke 2, Kellergewölbe 3, Glutfeld 4): mehr Wellen, mehr und zähere Gegner, ab dem zweiten Ort auch große. Erst ab dem dritten Ort leuchtet jeder dritte kleine Gegner und trägt ein Wort; an den ersten Orten geht es ums Bauen. Auf der Reise hinterlassen Gegner weniger Tinte als in der Bibliothek (60 %), und man beginnt mit Tinte für zwei Türme. Ein Test spielt jeden Ort mit 40 verschiedenen Karten durch, mit einem stetigen Spieler: Türme auf alle Plätze (*jagd*, *eisnadel*, *viper* gemischt), dann Wörter anhängen, leuchtende Gegner treffen. Er gewinnt fast immer; die ersten beiden Orte hält er auch ohne Tippen, den letzten ohne Tippen meist nicht. Fünf *jagd* allein zeigen, dass es von Ort zu Ort schwerer wird.
 - Beim ersten Betreten erzählt eine Zwischensequenz von den Aschefeldern; der Lehrling bemerkt Pinselstriche auf den Panzern der Ungeheuer.
 
 ## 5. Progression
