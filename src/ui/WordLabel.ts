@@ -1,41 +1,92 @@
 import * as Phaser from 'phaser';
 
 /**
- * The word is drawn dark with a light outline: it has to stay readable over pixel art
- * as well as over the pale background of the earlier scenes (decision in #47).
+ * Words are HTML text over the canvas: the canvas is scaled to the window with
+ * pixel-art sampling, which blurs any text drawn into it, while the browser draws
+ * HTML text sharp at every size (#121). A light outline keeps words readable over
+ * stone, grass, ash, the world map and enemies (decision in #47). Once a word is
+ * started it glows blue, its typed letters turn blue, and a wrong key flashes the
+ * next letter red.
  */
-const TYPED_COLOR = '#2f2a24';
-const OPEN_COLOR = '#6b5f52';
-const OUTLINE_COLOR = '#f6efe6';
-const OUTLINE_WIDTH = 4;
+const OPEN_COLOR = '#2f2a24';
+const TYPED_COLOR = '#0a6cff';
+const ERROR_COLOR = '#c62828';
+const OUTLINE = [
+  [-2, 0], [2, 0], [0, -2], [0, 2], [-1.5, -1.5], [1.5, -1.5], [-1.5, 1.5], [1.5, 1.5],
+].map(([x, y]) => `${x}px ${y}px 1px #f6efe6`).join(', ');
+const GLOW = `${OUTLINE}, 0 0 4px #2f8cff, 0 0 10px #2f8cff, 0 0 18px #5aa8ff`;
 const DIMMED_ALPHA = 0.35;
+const ERROR_MS = 300;
 
-/** A word shown in the scene; the typed prefix is drawn dark over the rest. */
-export class WordLabel extends Phaser.GameObjects.Container {
+/** A word shown in the scene with its typed prefix and mistakes made visible. */
+export class WordLabel extends Phaser.GameObjects.DOMElement {
   readonly word: string;
-  readonly #open: Phaser.GameObjects.Text;
-  readonly #typed: Phaser.GameObjects.Text;
+  readonly #letters: HTMLSpanElement[];
+  #typedCount = -1;
+  #errorTimer: Phaser.Time.TimerEvent | null = null;
 
   constructor(scene: Phaser.Scene, x: number, y: number, word: string, fontSize = 32) {
-    super(scene, x, y);
+    const root = document.createElement('div');
+    Object.assign(root.style, {
+      font: `600 ${fontSize}px system-ui, "Segoe UI", "Noto Sans", sans-serif`,
+      whiteSpace: 'nowrap',
+      userSelect: 'none',
+      lineHeight: '1',
+    });
+    const letters = [...word].map((char) => {
+      const span = document.createElement('span');
+      span.textContent = char;
+      root.append(span);
+      return span;
+    });
+    super(scene, x, y, root);
     this.word = word;
-    const style = {
-      fontFamily: 'sans-serif',
-      fontSize: `${fontSize}px`,
-      stroke: OUTLINE_COLOR,
-      strokeThickness: OUTLINE_WIDTH,
-    };
-    this.#open = scene.add.text(0, 0, word, { ...style, color: OPEN_COLOR }).setOrigin(0.5);
-    this.#typed = scene.add
-      .text(-this.#open.width / 2, 0, '', { ...style, color: TYPED_COLOR })
-      .setOrigin(0, 0.5);
-    this.add([this.#open, this.#typed]);
+    this.#letters = letters;
     scene.add.existing(this);
+    this.setProgress('', true);
   }
 
-  /** Shows `typed` as progress; words that are no candidate are dimmed. */
+  /**
+   * Shows `typed` as progress. Words that are no candidate are dimmed; a candidate
+   * with a started prefix glows.
+   */
   setProgress(typed: string, candidate: boolean): void {
-    this.#typed.setText(candidate ? typed : '');
-    this.#open.setAlpha(candidate ? 1 : DIMMED_ALPHA);
+    const count = candidate ? [...typed].length : 0;
+    this.setAlpha(candidate ? 1 : DIMMED_ALPHA);
+    if (count === this.#typedCount) return;
+    this.#typedCount = count;
+    this.#clearError();
+    const shadow = count > 0 ? GLOW : OUTLINE;
+    this.#letters.forEach((letter, i) => {
+      letter.style.color = i < count ? TYPED_COLOR : OPEN_COLOR;
+      letter.style.textShadow = shadow;
+    });
+  }
+
+  /** A wrong keystroke shows on the words being typed; with nothing typed yet no word is meant. */
+  static showError(labels: Iterable<WordLabel>, typed: string, candidates: readonly string[]): void {
+    if (typed === '') return;
+    for (const label of labels) if (candidates.includes(label.word)) label.showError();
+  }
+
+  /** Flashes the next letter red for a moment. */
+  showError(): void {
+    const next = this.#letters[this.#typedCount];
+    if (!next) return;
+    this.#clearError();
+    next.style.color = ERROR_COLOR;
+    this.#errorTimer = this.scene.time.delayedCall(ERROR_MS, () => this.#clearError());
+  }
+
+  #clearError(): void {
+    this.#errorTimer?.remove();
+    this.#errorTimer = null;
+    const next = this.#letters[this.#typedCount];
+    if (next) next.style.color = OPEN_COLOR;
+  }
+
+  override destroy(fromScene?: boolean): void {
+    this.#errorTimer?.remove();
+    super.destroy(fromScene);
   }
 }

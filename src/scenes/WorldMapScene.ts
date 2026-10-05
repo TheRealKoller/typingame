@@ -254,7 +254,9 @@ export class WorldMapScene extends Phaser.Scene {
       return;
     }
     if (event.repeat || event.ctrlKey || event.altKey || event.metaKey || [...event.key].length !== 1) return;
-    for (const typed of this.#engine.type(event.key)) {
+    const events = this.#engine.type(event.key);
+    if (events[0]?.type === 'wrong') WordLabel.showError(this.#labels, this.#engine.typed, this.#engine.candidates);
+    for (const typed of events) {
       if (typed.type !== 'complete') continue;
       this.#selected = WORLD_POINTS.find((point) => point.word === typed.word) ?? null;
     }
