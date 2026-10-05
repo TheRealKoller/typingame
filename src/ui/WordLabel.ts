@@ -1,67 +1,66 @@
 import * as Phaser from 'phaser';
 
 /**
- * Words carry a light outline so they stay readable over stone, grass, ash, the
- * world map and enemies (decision in #47). The typed prefix is bold ink blue, the
- * next letter is underlined, and the word being typed sits on a pale card (#121).
+ * Words are HTML text over the canvas: the canvas is scaled to the window with
+ * pixel-art sampling, which blurs any text drawn into it, while the browser draws
+ * HTML text sharp at every size (#121). A light outline keeps words readable over
+ * stone, grass, ash, the world map and enemies (decision in #47). Once a word is
+ * started it glows blue, its typed letters turn blue, and a wrong key flashes the
+ * next letter red.
  */
-const TYPED_COLOR = '#1d4fa8';
 const OPEN_COLOR = '#2f2a24';
-const ERROR_COLOR = '#b3261e';
-const OUTLINE_COLOR = '#f6efe6';
-const OUTLINE_WIDTH = 4;
+const TYPED_COLOR = '#1d4fa8';
+const ERROR_COLOR = '#c62828';
+const OUTLINE = [
+  [-2, 0], [2, 0], [0, -2], [0, 2], [-1.5, -1.5], [1.5, -1.5], [-1.5, 1.5], [1.5, 1.5],
+].map(([x, y]) => `${x}px ${y}px 1px #f6efe6`).join(', ');
+const GLOW = `${OUTLINE}, 0 0 6px #3d8bff, 0 0 12px #3d8bff`;
 const DIMMED_ALPHA = 0.35;
-const ACTIVE_SCALE = 1.15;
-const CARD_COLOR = 0xfffaf0;
-const CARD_BORDER = 0x1d4fa8;
 const ERROR_MS = 300;
 
-/** A word shown in the scene with its typed prefix, next letter and mistakes made visible. */
-export class WordLabel extends Phaser.GameObjects.Container {
+/** A word shown in the scene with its typed prefix and mistakes made visible. */
+export class WordLabel extends Phaser.GameObjects.DOMElement {
   readonly word: string;
-  readonly #card: Phaser.GameObjects.Graphics;
-  readonly #underline: Phaser.GameObjects.Graphics;
-  readonly #typed: Phaser.GameObjects.Text;
-  readonly #next: Phaser.GameObjects.Text;
-  readonly #rest: Phaser.GameObjects.Text;
-  readonly #fontSize: number;
+  readonly #letters: HTMLSpanElement[];
   #typedCount = -1;
-  #errorUntil = 0;
+  #errorTimer: Phaser.Time.TimerEvent | null = null;
 
   constructor(scene: Phaser.Scene, x: number, y: number, word: string, fontSize = 32) {
-    super(scene, x, y);
+    const root = document.createElement('div');
+    Object.assign(root.style, {
+      font: `600 ${fontSize}px system-ui, "Segoe UI", "Noto Sans", sans-serif`,
+      whiteSpace: 'nowrap',
+      userSelect: 'none',
+      lineHeight: '1',
+    });
+    const letters = [...word].map((char) => {
+      const span = document.createElement('span');
+      span.textContent = char;
+      root.append(span);
+      return span;
+    });
+    super(scene, x, y, root);
     this.word = word;
-    this.#fontSize = fontSize;
-    const style = {
-      fontFamily: 'sans-serif',
-      fontSize: `${fontSize}px`,
-      stroke: OUTLINE_COLOR,
-      strokeThickness: OUTLINE_WIDTH,
-    };
-    this.#card = scene.add.graphics();
-    this.#underline = scene.add.graphics();
-    this.#typed = scene.add.text(0, 0, '', { ...style, color: TYPED_COLOR, fontStyle: 'bold' }).setOrigin(0, 0.5);
-    this.#next = scene.add.text(0, 0, '', { ...style, color: OPEN_COLOR }).setOrigin(0, 0.5);
-    this.#rest = scene.add.text(0, 0, '', { ...style, color: OPEN_COLOR }).setOrigin(0, 0.5);
-    this.add([this.#card, this.#typed, this.#next, this.#rest, this.#underline]);
+    this.#letters = letters;
     scene.add.existing(this);
     this.setProgress('', true);
   }
 
   /**
    * Shows `typed` as progress. Words that are no candidate are dimmed; a candidate
-   * with a started prefix is the active word and is lifted onto a card.
+   * with a started prefix glows.
    */
   setProgress(typed: string, candidate: boolean): void {
     const count = candidate ? [...typed].length : 0;
     this.setAlpha(candidate ? 1 : DIMMED_ALPHA);
     if (count === this.#typedCount) return;
     this.#typedCount = count;
-    const chars = [...this.word];
-    this.#typed.setText(chars.slice(0, count).join(''));
-    this.#next.setText(chars[count] ?? '');
-    this.#rest.setText(chars.slice(count + 1).join(''));
-    this.#layout(count > 0);
+    this.#clearError();
+    const shadow = count > 0 ? GLOW : OUTLINE;
+    this.#letters.forEach((letter, i) => {
+      letter.style.color = i < count ? TYPED_COLOR : OPEN_COLOR;
+      letter.style.textShadow = shadow;
+    });
   }
 
   /** A wrong keystroke shows on the words being typed; with nothing typed yet no word is meant. */
@@ -70,51 +69,24 @@ export class WordLabel extends Phaser.GameObjects.Container {
     for (const label of labels) if (candidates.includes(label.word)) label.showError();
   }
 
-  /** Marks a wrong keystroke at the next letter for a moment. */
+  /** Flashes the next letter red for a moment. */
   showError(): void {
-    this.#errorUntil = this.scene.time.now + ERROR_MS;
-    this.#next.setColor(ERROR_COLOR);
-    this.#drawUnderline(true);
-    // A wiggle by angle leaves the position to the scene, which moves enemy words every frame.
-    this.scene.tweens.add({ targets: this, angle: { from: -4, to: 4 }, duration: 50, yoyo: true, repeat: 2, onComplete: () => this.setAngle(0) });
-    this.scene.time.delayedCall(ERROR_MS, () => {
-      if (!this.active || this.scene.time.now < this.#errorUntil) return;
-      this.#next.setColor(OPEN_COLOR);
-      this.#drawUnderline(false);
-    });
+    const next = this.#letters[this.#typedCount];
+    if (!next) return;
+    this.#clearError();
+    next.style.color = ERROR_COLOR;
+    this.#errorTimer = this.scene.time.delayedCall(ERROR_MS, () => this.#clearError());
   }
 
-  #layout(active: boolean): void {
-    // Text widths include the outline on both sides; neighbours overlap by one outline.
-    const parts = [this.#typed, this.#next, this.#rest].filter((part) => part.text !== '');
-    const width = parts.reduce((sum, part) => sum + part.width, 0) - OUTLINE_WIDTH * (parts.length - 1);
-    let x = -width / 2;
-    for (const part of [this.#typed, this.#next, this.#rest]) {
-      part.setX(x);
-      if (part.text !== '') x += part.width - OUTLINE_WIDTH;
-    }
-    this.setScale(active ? ACTIVE_SCALE : 1);
-    if (active && this.parentContainer === null) this.scene.children.bringToTop(this);
-    this.#card.clear();
-    if (active) {
-      const padX = this.#fontSize * 0.3;
-      const height = this.#fontSize * 1.35;
-      this.#card.fillStyle(CARD_COLOR, 0.92).lineStyle(2, CARD_BORDER, 1);
-      this.#card.fillRoundedRect(-width / 2 - padX, -height / 2, width + 2 * padX, height, 6);
-      this.#card.strokeRoundedRect(-width / 2 - padX, -height / 2, width + 2 * padX, height, 6);
-    }
-    this.#drawUnderline(false);
+  #clearError(): void {
+    this.#errorTimer?.remove();
+    this.#errorTimer = null;
+    const next = this.#letters[this.#typedCount];
+    if (next) next.style.color = OPEN_COLOR;
   }
 
-  #drawUnderline(error: boolean): void {
-    this.#underline.clear();
-    if (this.#next.text === '') return;
-    const thickness = Math.max(2, Math.round(this.#fontSize / 10));
-    const y = this.#fontSize * 0.55;
-    const left = this.#next.x + OUTLINE_WIDTH / 2;
-    const width = this.#next.width - OUTLINE_WIDTH;
-    // Light edge first so the line stays visible on dark ground.
-    this.#underline.fillStyle(0xf6efe6, 1).fillRect(left - 1, y - 1, width + 2, thickness + 2);
-    this.#underline.fillStyle(error ? 0xb3261e : 0x1d4fa8, 1).fillRect(left, y, width, thickness);
+  override destroy(fromScene?: boolean): void {
+    this.#errorTimer?.remove();
+    super.destroy(fromScene);
   }
 }

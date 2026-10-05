@@ -25,6 +25,8 @@ async function start(): Promise<void> {
     pixelArt: true,
     // Scenes read typing from native keydown events.
     input: { keyboard: false },
+    // Words are HTML text over the canvas so they stay sharp (see `WordLabel`).
+    dom: { createContainer: true },
   });
   game.scene.add('NameScene', NameScene);
   game.scene.add('CutsceneScene', CutsceneScene);
