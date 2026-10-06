@@ -1,0 +1,4 @@
+# Single images (about 170 MB) stay outside git; replicate.py and predictions.jsonl reproduce them,
+# the sheet-*.jpg contact sheets show them. Sketches are kept: the ControlNet run fetched them from GitHub.
+*.png
+!skizze-*.png

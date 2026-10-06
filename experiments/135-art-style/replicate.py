@@ -3,7 +3,8 @@
 Usage: python3 experiments/135-art-style/replicate.py <job>... [--dry-run]
 Jobs: karte-a, karte-b, monster, oberflaeche. Writes runde4/<name>.png next to this script; existing files are skipped.
 Token: REPLICATE_API_TOKEN=r8_... in .env at the repo root (ignored by git).
-Every prediction is logged to runde4/predictions.jsonl (model version, input, id, time).
+Every prediction is logged to runde4/predictions.jsonl (model version, input, id, time); each job ends with a
+contact sheet runde4/sheet-<job>.jpg. Single images are not committed (runde4/.gitignore).
 
 karte-a paints a whole battle map over the real path of `generateAshMap`: map-json.ts exports the map,
 this script draws it as a colour sketch (img2img) and as a line drawing (ControlNet). Seeds are fixed,
@@ -196,7 +197,8 @@ def predict(version: str, inputs: dict) -> tuple[bytes, dict]:
     if pred["status"] != "succeeded":
         raise RuntimeError(f"{pred['id']}: {pred['status']}: {str(pred.get('error'))[:400]}")
     output = pred["output"]
-    url = output[0] if isinstance(output, list) else output
+    # The ControlNet model returns its control map first and the image last.
+    url = output[-1] if isinstance(output, list) else output
     req = urllib.request.Request(url, headers={"User-Agent": "typingame-art-probe"})
     with urllib.request.urlopen(req, timeout=120) as res:
         return res.read(), pred
@@ -340,6 +342,26 @@ def map_jobs(layout: dict, maps: list[dict], controlnet_url: str | None) -> list
     return jobs
 
 
+# A second img2img pass over a first one that kept the road (0.75): adds painted detail, keeps the layout.
+REFINE_FROM = 0.75
+REFINE_STRENGTHS = (0.5, 0.6)
+
+
+def refine_jobs(maps: list[dict]) -> list[tuple[pathlib.Path, str, dict]]:
+    jobs = []
+    for m in maps:
+        for ground, words in MAP_GROUNDS.items():
+            source = OUT / f"karte-a-{ground}-{m['seed']}-img2img{int(REFINE_FROM * 100)}-{SEEDS[0]}.png"
+            if not source.exists():
+                continue
+            for strength in REFINE_STRENGTHS:
+                for seed in SEEDS[:2]:
+                    inputs = {"prompt": f"{MAP}, {words}", "image": data_uri(source), "strength": strength, "seed": seed, "output_format": "png"}
+                    name = f"karte-a-{ground}-{m['seed']}-zweimal{int(strength * 100)}-{seed}.png"
+                    jobs.append((OUT / name, IMG2IMG, inputs))
+    return jobs
+
+
 # --- sheets ---------------------------------------------------------------------------------------
 
 
@@ -360,7 +382,7 @@ def sheet(paths: list[pathlib.Path], target: pathlib.Path, columns: int, cell: i
         x, y = n % columns * w, n // columns * h
         out.paste(img, (x, y))
         draw.text((x + 4, y + img.height + 2), label, fill="black", font=font)
-    out.save(target)
+    out.save(target, quality=85)
     print("sheet", target.name, flush=True)
 
 
@@ -404,10 +426,11 @@ def main() -> None:
         if name == "karte-a":
             layout, maps = export_maps(MAP_SEEDS)
             run(map_jobs(layout, maps, args.controlnet_url), args.dry_run)
+            run(refine_jobs(maps), args.dry_run)
             for m in maps:
                 results = sorted(OUT.glob(f"karte-a-*-{m['seed']}-*.png"))
                 if results:
-                    sheet(results, OUT / f"sheet-karte-a-{m['seed']}.png", 3, images=[overlay(p, m, layout) for p in results])
+                    sheet(results, OUT / f"sheet-karte-a-{m['seed']}.jpg", 3, images=[overlay(p, m, layout) for p in results])
             continue
         jobs = [
             (OUT / f"{motif}-{seed}.png", TEXT2IMG, {"prompt": prompt, "width": w, "height": h, "seed": seed, "output_format": "png"})
@@ -417,7 +440,7 @@ def main() -> None:
         run(jobs, args.dry_run)
         results = [p for p, _, _ in jobs if p.exists()]
         if results:
-            sheet(results, OUT / f"sheet-{name}.png", len(SEEDS))
+            sheet(results, OUT / f"sheet-{name}.jpg", len(SEEDS))
 
 
 if __name__ == "__main__":
