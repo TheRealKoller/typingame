@@ -31,8 +31,8 @@ interface Round {
   readonly walkers: readonly Part[];
   /** Cut-outs painted facing left; they are mirrored while walking right. */
   readonly facesLeft: readonly Part[];
-  /** Round 3 outlines the road in ink; round 4 lets it bleed into the meadow like a wash. */
-  readonly roadEdge: 'ink' | 'wash';
+  /** Round 3 outlines the road in ink; round 4 lets it bleed into the meadow like a wash; crisp styles get a clean edge. */
+  readonly roadEdge: 'ink' | 'wash' | 'clean';
   readonly meadowScale: number;
   /** Width of a clearing under a build site. */
   readonly clearingWidth: number;
@@ -40,19 +40,21 @@ interface Round {
   readonly shadows: boolean;
 }
 
-type StyleFiles = Record<'meadow' | 'road' | 'clearing' | 'tower' | 'golem' | 'tree' | 'grove' | 'rocks' | 'ruin' | 'pond' | 'scorpion' | 'shell', string>;
+type StyleFiles = Record<'meadow' | 'road' | 'clearing' | 'tower' | 'golem' | 'tree' | 'grove' | 'rocks' | 'ruin' | 'pond' | 'scorpion' | 'shell', string> & {
+  readonly beetle?: string;
+};
 
-/** A round 6 map: every part in one style, laid out like round 5. */
-function styleRound(style: string, files: StyleFiles): Round {
+/** A round 6 or 7 map: every part in one style from `<folder>/<style>-…`, laid out like round 5. */
+function styleRound(style: string, files: StyleFiles, folder = 'demo6', roadEdge: Round['roadEdge'] = 'wash'): Round {
   const pick = Object.fromEntries(
-    Object.entries(files).map(([part, file]) => [part, file.includes('/') ? file : `demo6/${style}-${file}`]),
+    Object.entries(files).map(([part, file]) => [part, file.includes('/') ? file : `${folder}/${style}-${file}`]),
   ) as Record<keyof StyleFiles, string>;
   return {
     pick: { ...pick, clearing: [pick.clearing] },
-    walkers: ['scorpion', 'golem', 'shell'],
+    walkers: files.beetle ? ['scorpion', 'beetle', 'golem', 'shell'] : ['scorpion', 'golem', 'shell'],
     // Monsters were not checked one by one for their facing; they are not mirrored.
     facesLeft: [],
-    roadEdge: 'wash',
+    roadEdge,
     meadowScale: 0.6,
     clearingWidth: 110,
     shadows: true,
@@ -216,10 +218,71 @@ const ROUNDS: Record<string, Round> = {
     scorpion: 'monster-skorpion-11',
     shell: 'monster-panzerkaefer-33',
   }),
+  // Round 7: styles picked only for a tower defense game (replicate.py STYLES7).
+  cartoon: styleRound(
+    'cartoon',
+    {
+      meadow: 'boden3-33',
+      road: 'weg3-22',
+      clearing: 'lichtung-22',
+      tower: 'turm-22',
+      golem: 'golem-22',
+      tree: 'baum-33',
+      grove: 'baum-11',
+      rocks: 'felsen-22',
+      ruin: 'ruine-22',
+      pond: 'weiher-22',
+      scorpion: 'monster-skorpion-22',
+      shell: 'monster-panzerkaefer-22',
+      beetle: 'monster-feuerwespe-22',
+    },
+    'demo7',
+    'clean',
+  ),
+  lowpoly: styleRound(
+    'lowpoly',
+    {
+      meadow: 'boden-22',
+      road: 'weg-11',
+      clearing: 'lichtung-22',
+      tower: 'turm-11',
+      golem: 'golem-11',
+      tree: 'baum-11',
+      grove: 'baum-22',
+      rocks: 'felsen-22',
+      ruin: 'ruine-22',
+      pond: 'weiher-22',
+      scorpion: 'monster-skorpion-11',
+      shell: 'monster-panzerkaefer-22',
+      beetle: 'monster-feuerwespe-22',
+    },
+    'demo7',
+    'clean',
+  ),
+  vektor: styleRound(
+    'vektor',
+    {
+      meadow: 'boden-22',
+      road: 'weg-22',
+      clearing: 'lichtung-11',
+      tower: 'turm-22',
+      golem: 'golem-11',
+      tree: 'baum-11',
+      grove: 'baum-22',
+      rocks: 'felsen-22',
+      ruin: 'ruine-11',
+      pond: 'weiher-11',
+      scorpion: 'monster-skorpion-11',
+      shell: 'monster-panzerkaefer-11',
+      beetle: 'monster-feuerwespe-11',
+    },
+    'demo7',
+    'clean',
+  ),
 };
 const ROUND = ROUNDS[new URLSearchParams(location.search).get('runde') ?? '5'] ?? ROUNDS['5']!;
 
-const urls = import.meta.glob('./demo[3-6]/*.png', { eager: true, import: 'default', query: '?url' }) as Record<string, string>;
+const urls = import.meta.glob('./demo[3-7]/*.png', { eager: true, import: 'default', query: '?url' }) as Record<string, string>;
 
 const { width: WIDTH, deskTop: HEIGHT, pathHalf: PATH_HALF } = LAYOUT;
 const INK = 'rgba(43, 33, 22, 0.85)';
@@ -353,9 +416,10 @@ class MapScene extends Phaser.Scene {
         ctx.restore();
       }
     } else {
-      // A soft, slightly darker band where the wash dried, then the road bleeding out over it.
+      // Wash: a soft, slightly darker band where the wash dried, the road bleeding out over it.
+      // Clean (crisp game styles): the same band with a sharp edge.
       ctx.save();
-      ctx.filter = 'blur(4px)';
+      if (ROUND.roadEdge === 'wash') ctx.filter = 'blur(4px)';
       ctx.strokeStyle = WASH;
       ctx.lineWidth = 2 * PATH_HALF + 8;
       trace(ctx, road);

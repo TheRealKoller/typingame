@@ -264,9 +264,59 @@ MOTIFS6 = {
 for style, style_prompt in STYLES6.items():
     TEXT_JOBS[f"stil-{style}"] = {f"{style}-{motif}": (f"{style_prompt}, {prompt}", 1024, 1024) for motif, prompt in MOTIFS6.items()}
 
+# Round 7: styles chosen only for a tower defense game: towers and enemies must read at small size, maps look good.
+STYLES7 = {
+    # Hand-painted cartoon as in Kingdom Rush: bold outlines and clear shapes read at any size.
+    "cartoon": "hand-painted stylized cartoon game art, bold dark outlines, clean simple shapes, rich but harmonious "
+    "colors, soft painted shading, polished mobile tower defense game asset",
+    # Low poly 3D: clear silhouettes, flat shading, grounds are easy.
+    "lowpoly": "low poly 3D game asset, flat shaded facets, soft ambient light, gentle pastel colors, clean minimal "
+    "render, miniature diorama look",
+    # Flat vector: the clearest of all, every part a few flat colour shapes.
+    "vektor": "flat vector illustration game asset, clean geometric shapes, limited harmonious palette, subtle "
+    "flat shading, thin dark outline, modern casual game art",
+}
+# Round 6 lost the style in the monsters: the long monster text drowned it. Here the style leads and the
+# monster is said in a few words.
+MOTIFS7 = {
+    "boden": MOTIFS6["boden2"],
+    "weg": MOTIFS6["weg2"],
+    "lichtung": MOTIFS6["lichtung2"],
+    **{motif: MOTIFS6[motif] for motif in ("turm", "golem", "baum", "felsen", "ruine")},
+    "weiher": MOTIFS6["weiher2"],
+    **{
+        f"monster-{motif}": f"a menacing monster of glossy black ink {shape}, with a few bright neon magenta and "
+        f"acid green spots, game enemy, {VIEW5}, {ISOLATED}"
+        for motif, shape in {
+            "skorpion": "shaped like a scorpion",
+            "panzerkaefer": "shaped like a heavy shelled beetle",
+            "feuerwespe": "shaped like a wasp, flying",
+        }.items()
+    },
+}
+for style, style_prompt in STYLES7.items():
+    TEXT_JOBS[f"stil-{style}"] = {
+        f"{style}-{motif}": (f"{style_prompt}, {prompt}, {style_prompt}", 1024, 1024) for motif, prompt in MOTIFS7.items()
+    }
+# "game asset" made the cartoon grounds into tile grids; paint them as plain surfaces instead.
+TEXT_JOBS["stil-cartoon"] |= {
+    f"cartoon-{motif}": (
+        f"stylized hand-painted {surface} texture for a cartoon game, soft painted brush strokes, simple, "
+        f"seen straight from above, {GROUND6}",
+        1024,
+        1024,
+    )
+    for motif, surface in {"boden3": "short grass ground", "weg3": "bare sandy earth ground"}.items()
+}
+
 JOBS = (*TEXT_JOBS, "karte-a")
-# Rounds 5 and 6 get their own folders; everything else is round 4.
-FOLDERS = {"karte-5": "runde5", "monster-5": "runde5", **{f"stil-{style}": "runde6" for style in STYLES6}}
+# Rounds 5 to 7 get their own folders; everything else is round 4.
+FOLDERS = {
+    "karte-5": "runde5",
+    "monster-5": "runde5",
+    **{f"stil-{style}": "runde6" for style in STYLES6},
+    **{f"stil-{style}": "runde7" for style in STYLES7},
+}
 
 
 def token() -> str:
