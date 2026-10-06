@@ -216,9 +216,57 @@ TEXT_JOBS: dict[str, dict[str, tuple[str, int, int]]] = {
         for motif, shape in INK_SHAPES.items()
     },
 }
+
+# Round 6: other styles than watercolour, same camera and motifs as round 5, so each style can be laid out
+# as a map in karte.html. Ground textures avoid "tileable" (it made checkerboards in round 3).
+STYLES6 = {
+    # Old book illustration: bold carved lines read well at small size and hold every part together.
+    "holzschnitt": "hand-colored woodcut print, bold black carved lines, simple flat areas of muted color, "
+    "visible wood grain texture, old book illustration",
+    # Fits library, scrolls and words: flat colours, dark outlines, a little gold.
+    "buchmalerei": "medieval illuminated manuscript illustration, flat tempera colors, fine dark outlines, "
+    "small touches of gold leaf, painted on parchment",
+    # Paper golems, book pages: layered paper with clean edges, easy to cut into parts for animation.
+    "scherenschnitt": "layered cut paper craft, papercut diorama, clean cut edges, soft drop shadows between "
+    "the paper layers, matte colored paper, muted palette",
+    # Opaque, clean shapes as in painted tower defense games.
+    "gouache": "opaque gouache painting, clean flat shapes with soft painted shading, clear readable silhouette, "
+    "muted warm palette, storybook illustration",
+    # Ink as the theme itself: Atramentus' monsters are brush strokes.
+    "tusche": "japanese sumi-e ink wash painting, expressive black brush strokes, grey ink washes, "
+    "sparse touches of muted color, on rice paper",
+    # Old atlases: suits the world map, fine but busy.
+    "kupferstich": "antique copperplate engraving with delicate hand-coloring, fine cross-hatching, "
+    "old atlas illustration",
+}
+GROUND6 = "filling the whole image edge to edge, seen from high above, uniform, no objects, no horizon, no border, no text"
+MOTIFS6 = {
+    "boden": f"continuous ground surface of short meadow, {GROUND6}",
+    "weg": f"continuous ground surface of packed sandy dirt, {GROUND6}",
+    "lichtung": f"a small round patch of bare earth in short grass, {VIEW5}, {ISOLATED}",
+    "turm": f"a round stone archer tower with crenellations and a small wooden door, {VIEW5}, game building, {ISOLATED}",
+    "golem": f"a small friendly golem built from folded paper sheets and book pages, ink-blot eyes, walking, {VIEW5}, game character, {ISOLATED}",
+    "baum": f"a single round leafy oak tree, {VIEW5}, game map prop, {ISOLATED}",
+    "felsen": f"a group of three grey boulders, {VIEW5}, game map prop, {ISOLATED}",
+    "ruine": f"a short crumbling ruined stone wall, {VIEW5}, game map prop, {ISOLATED}",
+    "weiher": f"a small round pond with a few reeds, {VIEW5}, game map prop, {ISOLATED}",
+    # Second attempts. First grounds came as framed sheets (papercut, manuscript), with a walking person
+    # (gouache) or as landscapes (ink wash); the ink wash clearing became a boar and the pond a landscape.
+    "boden2": f"flat abstract ground texture of short grass seen straight from above, no frame, no people, no animals, {GROUND6}",
+    "weg2": f"flat abstract ground texture of bare sandy earth seen straight from above, no frame, no people, no animals, {GROUND6}",
+    "lichtung2": f"a flat round patch of bare brown earth on the ground, nothing else, no animals, {VIEW5}, {ISOLATED}",
+    "weiher2": f"a small round pond and nothing else, no landscape, no horizon, no hills, {VIEW5}, {ISOLATED}",
+    **{
+        f"monster-{motif}": f"simple bold silhouette, {INK_BEAST}, {INK_SHAPES[motif]}, {NEON['neonstark']}, {VIEW5}, {ISOLATED}"
+        for motif in ("skorpion", "panzerkaefer")
+    },
+}
+for style, style_prompt in STYLES6.items():
+    TEXT_JOBS[f"stil-{style}"] = {f"{style}-{motif}": (f"{style_prompt}, {prompt}", 1024, 1024) for motif, prompt in MOTIFS6.items()}
+
 JOBS = (*TEXT_JOBS, "karte-a")
-# Round 5 gets its own folder; everything else is round 4.
-FOLDERS = {"karte-5": "runde5", "monster-5": "runde5"}
+# Rounds 5 and 6 get their own folders; everything else is round 4.
+FOLDERS = {"karte-5": "runde5", "monster-5": "runde5", **{f"stil-{style}": "runde6" for style in STYLES6}}
 
 
 def token() -> str:

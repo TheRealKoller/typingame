@@ -40,6 +40,25 @@ interface Round {
   readonly shadows: boolean;
 }
 
+type StyleFiles = Record<'meadow' | 'road' | 'clearing' | 'tower' | 'golem' | 'tree' | 'grove' | 'rocks' | 'ruin' | 'pond' | 'scorpion' | 'shell', string>;
+
+/** A round 6 map: every part in one style, laid out like round 5. */
+function styleRound(style: string, files: StyleFiles): Round {
+  const pick = Object.fromEntries(
+    Object.entries(files).map(([part, file]) => [part, file.includes('/') ? file : `demo6/${style}-${file}`]),
+  ) as Record<keyof StyleFiles, string>;
+  return {
+    pick: { ...pick, clearing: [pick.clearing] },
+    walkers: ['scorpion', 'golem', 'shell'],
+    // Monsters were not checked one by one for their facing; they are not mirrored.
+    facesLeft: [],
+    roadEdge: 'wash',
+    meadowScale: 0.6,
+    clearingWidth: 110,
+    shadows: true,
+  };
+}
+
 const ROUNDS: Record<string, Round> = {
   '3': {
     pick: {
@@ -110,10 +129,97 @@ const ROUNDS: Record<string, Round> = {
     clearingWidth: 104,
     shadows: true,
   },
+  // Round 6: one map per style (replicate.py STYLES6). Files are `<motif>-<seed>` in demo6/<style>-…,
+  // or a full path where a style had no usable picture of its own.
+  holzschnitt: styleRound('holzschnitt', {
+    meadow: 'boden2-22',
+    road: 'weg2-22',
+    clearing: 'lichtung-11',
+    tower: 'turm-22',
+    golem: 'golem-11',
+    tree: 'baum-11',
+    grove: 'baum-22',
+    rocks: 'felsen-22',
+    ruin: 'ruine-33',
+    pond: 'weiher-11',
+    scorpion: 'monster-skorpion-11',
+    shell: 'monster-panzerkaefer-11',
+  }),
+  buchmalerei: styleRound('buchmalerei', {
+    meadow: 'boden2-11',
+    road: 'weg2-22',
+    clearing: 'lichtung-11',
+    tower: 'turm-33',
+    golem: 'golem-22',
+    tree: 'baum-11',
+    grove: 'baum-22',
+    rocks: 'felsen-11',
+    ruin: 'ruine-22',
+    pond: 'weiher-22',
+    scorpion: 'monster-skorpion-22',
+    shell: 'monster-panzerkaefer-22',
+  }),
+  scherenschnitt: styleRound('scherenschnitt', {
+    meadow: 'boden-22',
+    road: 'weg-22',
+    clearing: 'lichtung-22',
+    tower: 'turm-11',
+    golem: 'golem-22',
+    tree: 'baum-11',
+    grove: 'baum-22',
+    rocks: 'felsen-22',
+    ruin: 'ruine-33',
+    pond: 'weiher-22',
+    scorpion: 'monster-skorpion-11',
+    shell: 'monster-panzerkaefer-33',
+  }),
+  gouache: styleRound('gouache', {
+    meadow: 'boden-22',
+    road: 'weg-22',
+    clearing: 'lichtung-11',
+    tower: 'turm-22',
+    golem: 'golem-11',
+    tree: 'baum-11',
+    grove: 'baum-33',
+    rocks: 'felsen-22',
+    ruin: 'ruine-33',
+    pond: 'weiher-11',
+    scorpion: 'monster-skorpion-22',
+    shell: 'monster-panzerkaefer-22',
+  }),
+  tusche: styleRound('tusche', {
+    meadow: 'boden2-22',
+    // Every ink wash road and pond came out as a landscape: plain parchment and a second rock group instead.
+    road: 'demo6/buchmalerei-weg2-22',
+    clearing: 'lichtung2-22',
+    tower: 'turm-11',
+    golem: 'golem-33',
+    tree: 'baum-11',
+    grove: 'baum-33',
+    rocks: 'felsen-22',
+    ruin: 'ruine-22',
+    pond: 'felsen-33',
+    scorpion: 'monster-skorpion-22',
+    shell: 'monster-panzerkaefer-22',
+  }),
+  kupferstich: styleRound('kupferstich', {
+    meadow: 'boden2-33',
+    road: 'weg2-11',
+    clearing: 'lichtung2-22',
+    tower: 'turm-11',
+    golem: 'golem-22',
+    tree: 'baum-22',
+    grove: 'baum-33',
+    rocks: 'felsen-11',
+    ruin: 'ruine-22',
+    pond: 'weiher2-22',
+    scorpion: 'monster-skorpion-11',
+    shell: 'monster-panzerkaefer-33',
+  }),
 };
 const ROUND = ROUNDS[new URLSearchParams(location.search).get('runde') ?? '5'] ?? ROUNDS['5']!;
 
-const urls = import.meta.glob('./demo[345]/*.png', { eager: true, import: 'default', query: '?url' }) as Record<string, string>;
+const urls = import.meta.glob('./demo[3-6]/*.png', { eager: true, import: 'default', query: '?url' }) as Record<string, string>;
 
 const { width: WIDTH, deskTop: HEIGHT, pathHalf: PATH_HALF } = LAYOUT;
 const INK = 'rgba(43, 33, 22, 0.85)';
@@ -190,6 +296,8 @@ class MapScene extends Phaser.Scene {
 
   create(): void {
     const seed = Number(new URLSearchParams(location.search).get('seed') ?? Math.floor(Math.random() * 1e6));
+    // The links in karte.html switch the style but keep this map, so styles compare on the same layout.
+    for (const link of document.querySelectorAll<HTMLAnchorElement>('nav a')) link.search += `&seed=${seed}`;
     const map = generateAshMap(seededRandom(seed), 'probe', 'Probe');
     const road = roundCorners(map.path, CORNER_RADIUS);
     this.#paintGround(road, map.sites);

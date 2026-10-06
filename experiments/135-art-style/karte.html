@@ -4,10 +4,25 @@
     <meta charset="UTF-8" />
     <title>#135 Probe: Karte aus Einzelteilen</title>
     <style>
-      body { margin: 0; background: #222; display: flex; justify-content: center; }
+      body { margin: 0; background: #222; display: flex; flex-direction: column; align-items: center; font: 14px Georgia, serif; }
+      nav { padding: 6px; color: #ccc; }
+      nav a { color: #f0d9a0; margin: 0 6px; }
     </style>
   </head>
   <body>
+    <nav>
+      Runde:
+      <a href="?runde=3">3</a>
+      <a href="?runde=4">4</a>
+      <a href="?runde=5">5</a>
+      – Stile:
+      <a href="?runde=holzschnitt">Holzschnitt</a>
+      <a href="?runde=buchmalerei">Buchmalerei</a>
+      <a href="?runde=scherenschnitt">Scherenschnitt</a>
+      <a href="?runde=gouache">Gouache</a>
+      <a href="?runde=tusche">Tusche</a>
+      <a href="?runde=kupferstich">Kupferstich</a>
+    </nav>
     <script type="module" src="./karte.ts"></script>
   </body>
 </html>

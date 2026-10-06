@@ -17,9 +17,9 @@ from PIL import Image, ImageFilter
 from rembg import new_session, remove
 
 HERE = pathlib.Path(__file__).parent
-TEXTURES = ("boden-wiese", "boden-erde", "weg", "wiese-aquarell")
+TEXTURES = ("boden-wiese", "boden-erde", "weg", "wiese-aquarell", "boden", "boden2", "weg2")
 # Clearings lie flat on the ground: no rim, which would outline them like a sticker, and an edge that fades out.
-NO_RIM = ("lichtung",)
+NO_RIM = ("lichtung", "lichtung2")
 FEATHER = 14
 TEXTURE_SIZE = 512
 # Round 4 paints ground on a sheet with a white margin; cut it off before making the texture seamless.
@@ -87,6 +87,7 @@ def main() -> None:
     parser.add_argument("names", nargs="*")
     parser.add_argument("--no-rim", action="store_true", help="no paper rim around cut-outs")
     parser.add_argument("--saturation", type=float, help="bring every image to this mean saturation (0-1)")
+    parser.add_argument("--margin", type=float, default=TEXTURE_MARGIN, help="share of each side cut off ground sheets")
     args = parser.parse_args()
     src, out = HERE / args.source, HERE / args.target
     out.mkdir(exist_ok=True)
@@ -95,8 +96,11 @@ def main() -> None:
     for path in paths:
         image = Image.open(path).convert("RGB")
         motif = path.stem.rsplit("-", 1)[0]
+        # Round 6 prefixes the style: "holzschnitt-boden2".
+        if motif not in TEXTURES + NO_RIM:
+            motif = motif.split("-", 1)[-1]
         if motif in TEXTURES:
-            m = int(min(image.size) * TEXTURE_MARGIN)
+            m = int(min(image.size) * args.margin)
             image = flatten(image.crop((m, m, image.width - m, image.height - m)))
             result = seamless(image).resize((TEXTURE_SIZE, TEXTURE_SIZE), Image.LANCZOS).convert("RGBA")
         elif motif in NO_RIM:
