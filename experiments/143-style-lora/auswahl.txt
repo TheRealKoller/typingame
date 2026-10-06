@@ -1,0 +1,32 @@
+# Training set of the style LoRA (#143), style "cartoonaquarell". One file of kandidaten/ per line, without .png.
+# Proposal: one picture per motif, chosen for clean cut-outs and no foreign objects. Lines starting with # are ignored.
+turm-pfeil-11
+turm-magier-22
+turm-ballista-22
+turm-kanone-11
+baustein-schlangen-22
+baustein-fernrohr-11
+baustein-flammen-11
+baustein-frost-33
+baustein-morgenlicht3-22
+golem-22
+golem-gross-22
+monster-skorpion-11
+monster-panzerkaefer-22
+monster-feuerwespe-22
+monster-feuerkaefer-22
+monster-schnecke-11
+baum-22
+baumgruppe-22
+busch-11
+tanne-22
+felsen-22
+ruine-22
+bruecke3-22
+zaun-22
+wegweiser-11
+fass-22
+kiste-11
+lichtung3-22
+weiher-22
+boden-wiese-22

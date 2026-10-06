@@ -319,13 +319,94 @@ for style, ground in GROUNDS7.items():
         for motif, surface in {"boden3": "short grass ground", "weg3": "bare sandy earth ground"}.items()
     }
 
+# Issue #143: candidates for the training set of the style LoRA in "cartoonaquarell". Fixes of round 7:
+# props came on small ground plates, clearings and ponds with posts and turrets in them.
+LORA_STYLE = STYLES7["cartoonaquarell"]
+ALONE = "standing directly on the ground, no ground plate, no base, no tile, no platform"
+NOTHING_ON = "nothing standing on it, no posts, no buildings, no objects"
+LORA_MOTIFS = {
+    # Towers: a base shape per kind, as the towers of the sentences will need.
+    "turm-pfeil": "a round stone archer tower with crenellations and arrow slits",
+    "turm-magier": "a slender wizard tower with a pointed blue slate roof",
+    "turm-ballista": "a squat wooden tower with a large crossbow ballista on top",
+    "turm-kanone": "a sturdy square stone bastion with a small bronze cannon",
+    # Building blocks of tower sentences (#145).
+    "baustein-schlangen": "two coiled green vipers twisted into a ring, an ornament",
+    "baustein-fernrohr": "an antique brass telescope on a small mount",
+    "baustein-flammen": "a bundle of bright stylized flames",
+    "baustein-frost": "a cluster of pale blue ice crystals and frost",
+    "baustein-morgenlicht": "a small golden sun emblem with soft rays of morning light",
+    # Characters: the master's friendly golems and Atramentus' ink monsters with neon spots.
+    "golem": "a small friendly golem built from folded paper sheets and book pages, ink-blot eyes, walking",
+    "golem-gross": "a big friendly golem built from stacked books and paper sheets, ink-blot eyes, walking",
+    **{
+        f"monster-{motif}": f"a menacing monster of glossy black ink {shape}, with a few bright neon magenta and "
+        "acid green spots, game enemy"
+        for motif, shape in {
+            "skorpion": "shaped like a scorpion",
+            "panzerkaefer": "shaped like a heavy shelled beetle",
+            "feuerwespe": "shaped like a wasp, flying",
+            "feuerkaefer": "shaped like a hulking bug with embers in its cracks",
+            "schnecke": "shaped like a big slug",
+        }.items()
+    },
+    # Map props.
+    "baum": f"a single round leafy oak tree, {ALONE}",
+    "baumgruppe": f"a small cluster of three leafy trees, {ALONE}",
+    "busch": f"a round green bush, {ALONE}",
+    "tanne": f"a single fir tree, {ALONE}",
+    "felsen": f"a group of three grey boulders, {ALONE}",
+    "ruine": f"a short crumbling ruined stone wall, {ALONE}",
+    "bruecke": "a small wooden footbridge",
+    "zaun": f"a short rustic wooden fence, {ALONE}",
+    "wegweiser": f"a wooden signpost with two blank arrows, no text, {ALONE}",
+    "fass": f"a wooden barrel, {ALONE}",
+    "kiste": f"a wooden crate, {ALONE}",
+    "lichtung": f"a flat round patch of bare brown earth on the ground, {NOTHING_ON}",
+    "weiher": f"a small round pond with a grassy rim, {NOTHING_ON}",
+    "bauplatz": f"a flat round paved stone foundation for a building, {NOTHING_ON}",
+}
+TEXT_JOBS["lora"] = {
+    **{
+        motif: (f"{LORA_STYLE}, {prompt}, {VIEW5}, {ISOLATED}, {LORA_STYLE}", 1024, 1024)
+        for motif, prompt in LORA_MOTIFS.items()
+    },
+    **{
+        f"boden-{motif}": (f"{GROUNDS7['cartoonaquarell'].format(surface=surface)}, seen straight from above, {GROUND6}", 1024, 1024)
+        for motif, surface in {"wiese": "short grass ground", "erde": "bare sandy earth ground"}.items()
+    },
+}
+# "tower defense" in the style put a tower or post into flat motifs (clearing, foundation, bridge, sun emblem).
+# Second try "<motif>2" added "no tower, no post, no pillar": naming them only made them stronger (the model has
+# no negative prompt). Third try "<motif>3": the style without any tower word.
+LORA_STYLE_FLAT = LORA_STYLE.replace("tower defense game asset", "game asset")
+TEXT_JOBS["lora"] |= {
+    f"{motif}2": (
+        f"{LORA_STYLE_FLAT}, no tower, no post, no pillar, {LORA_MOTIFS[motif]}, {VIEW5}, {ISOLATED}, "
+        f"{LORA_STYLE_FLAT}, no tower, no post, no pillar",
+        1024,
+        1024,
+    )
+    for motif in ("lichtung", "bauplatz", "bruecke", "baustein-morgenlicht")
+}
+TEXT_JOBS["lora"] |= {
+    f"{motif}3": (f"{LORA_STYLE_FLAT}, {prompt}, {VIEW5}, {ISOLATED}, {LORA_STYLE_FLAT}", 1024, 1024)
+    for motif, prompt in {
+        "lichtung": "a flat round patch of bare brown earth in the grass",
+        "bauplatz": "a flat round paved stone circle on the ground",
+        "bruecke": "a small arched wooden footbridge over a narrow stream",
+        "baustein-morgenlicht": "a small golden sun emblem with soft rays, an ornament",
+    }.items()
+}
+
 JOBS = (*TEXT_JOBS, "karte-a")
-# Rounds 5 to 7 get their own folders; everything else is round 4.
+# Rounds 5 to 7 get their own folders, the LoRA candidates go to the experiment of #143; everything else is round 4.
 FOLDERS = {
     "karte-5": "runde5",
     "monster-5": "runde5",
     **{f"stil-{style}": "runde6" for style in STYLES6},
     **{f"stil-{style}": "runde7" for style in STYLES7},
+    "lora": "../143-style-lora/kandidaten",
 }
 
 
