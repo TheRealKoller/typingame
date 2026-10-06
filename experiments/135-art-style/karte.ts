@@ -259,6 +259,48 @@ const ROUNDS: Record<string, Round> = {
     'demo7',
     'clean',
   ),
+  // Cartoon and watercolour mixed; trees and props come with a small ground plate in both.
+  cartoonaquarell: styleRound(
+    'cartoonaquarell',
+    {
+      meadow: 'boden3-11',
+      road: 'weg3-22',
+      // Its own clearings and ponds came with posts and towers in them.
+      clearing: 'demo7/aquarellcartoon-lichtung-22',
+      tower: 'turm-22',
+      golem: 'golem-22',
+      tree: 'baum-22',
+      grove: 'baum-33',
+      rocks: 'felsen-22',
+      ruin: 'ruine-22',
+      pond: 'demo7/aquarellcartoon-weiher-22',
+      scorpion: 'monster-skorpion-22',
+      shell: 'monster-panzerkaefer-11',
+      beetle: 'monster-feuerwespe-22',
+    },
+    'demo7',
+    'clean',
+  ),
+  aquarellcartoon: styleRound(
+    'aquarellcartoon',
+    {
+      meadow: 'boden3-22',
+      // Its own roads came out grey-green; the sandy one of the other mix.
+      road: 'demo7/cartoonaquarell-weg3-22',
+      clearing: 'lichtung-22',
+      tower: 'turm-11',
+      golem: 'golem-22',
+      tree: 'baum-22',
+      grove: 'baum-11',
+      rocks: 'felsen-22',
+      ruin: 'ruine-22',
+      pond: 'weiher-22',
+      scorpion: 'monster-skorpion-22',
+      shell: 'monster-panzerkaefer-22',
+      beetle: 'monster-feuerwespe-22',
+    },
+    'demo7',
+  ),
   vektor: styleRound(
     'vektor',
     {

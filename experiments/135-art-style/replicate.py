@@ -275,6 +275,14 @@ STYLES7 = {
     # Flat vector: the clearest of all, every part a few flat colour shapes.
     "vektor": "flat vector illustration game asset, clean geometric shapes, limited harmonious palette, subtle "
     "flat shading, thin dark outline, modern casual game art",
+    # Mixes of cartoon and watercolour (the user's favourites): clear cartoon shapes, painted watercolour surface.
+    # Closer to cartoon: outlines and shapes lead, watercolour only in the colouring.
+    "cartoonaquarell": "hand-painted cartoon game art colored with watercolor, bold dark outlines, clean simple "
+    "shapes, soft transparent watercolor washes with visible paper texture and pigment blooms, warm natural palette, "
+    "tower defense game asset",
+    # Closer to watercolour: loose painting, held together by a clear ink outline.
+    "aquarellcartoon": "loose storybook watercolor painting with a clear confident ink outline, simplified cartoon "
+    "shapes, readable silhouette, soft washes, muted earthy palette with sage green and ochre, game asset",
 }
 # Round 6 lost the style in the monsters: the long monster text drowned it. Here the style leads and the
 # monster is said in a few words.
@@ -299,15 +307,17 @@ for style, style_prompt in STYLES7.items():
         f"{style}-{motif}": (f"{style_prompt}, {prompt}, {style_prompt}", 1024, 1024) for motif, prompt in MOTIFS7.items()
     }
 # "game asset" made the cartoon grounds into tile grids; paint them as plain surfaces instead.
-TEXT_JOBS["stil-cartoon"] |= {
-    f"cartoon-{motif}": (
-        f"stylized hand-painted {surface} texture for a cartoon game, soft painted brush strokes, simple, "
-        f"seen straight from above, {GROUND6}",
-        1024,
-        1024,
-    )
-    for motif, surface in {"boden3": "short grass ground", "weg3": "bare sandy earth ground"}.items()
+GROUNDS7 = {
+    "cartoon": "stylized hand-painted {surface} texture for a cartoon game, soft painted brush strokes, simple",
+    "cartoonaquarell": "{surface} painted in soft transparent watercolor washes for a cartoon game, visible paper "
+    "texture, simple",
+    "aquarellcartoon": "{surface} painted in loose muted watercolor washes, sage green and ochre, simple",
 }
+for style, ground in GROUNDS7.items():
+    TEXT_JOBS[f"stil-{style}"] |= {
+        f"{style}-{motif}": (f"{ground.format(surface=surface)}, seen straight from above, {GROUND6}", 1024, 1024)
+        for motif, surface in {"boden3": "short grass ground", "weg3": "bare sandy earth ground"}.items()
+    }
 
 JOBS = (*TEXT_JOBS, "karte-a")
 # Rounds 5 to 7 get their own folders; everything else is round 4.
