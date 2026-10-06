@@ -94,6 +94,22 @@ MAP_SEEDS = (1, 2)
 STRENGTHS = (0.6, 0.75, 0.8, 0.85, 0.9)
 CONTROLS = ("lineart", "canny")
 
+# Round 5. The camera of a classic painted tower defense game: screen coordinates stay as they are.
+VIEW5 = "high three-quarter top-down view from the front, camera tilted about 40 degrees down"
+MUTED5 = (
+    "loose watercolor painting with a soft thin ink outline, muted earthy palette with sage green, ochre and "
+    "grey-blue, low saturation, soft even daylight from the top left, storybook illustration"
+)
+GROUND5 = (
+    "loose watercolor painting, low saturation, continuous ground surface filling the whole image edge to edge, "
+    "uniform density, no objects, no horizon, no border, no paper edge, no text"
+)
+# Few large smooth shapes, so a body and legs can be cut apart and moved in Phaser.
+SIMPLE5 = (
+    "simple bold game sprite, a few large smooth shapes, clean thick ink outline, flat watercolor washes, "
+    "no fine hairs, no hatching, no tiny details, smooth closed silhouette"
+)
+
 # name -> (prompt, width, height)
 TEXT_JOBS: dict[str, dict[str, tuple[str, int, int]]] = {
     "karte-b": {
@@ -163,8 +179,46 @@ TEXT_JOBS: dict[str, dict[str, tuple[str, int, int]]] = {
         ),
         "siegel": (f"{FEDER}, a single round red wax seal seen from the front, embossed ink drop symbol, {UI}, {ISOLATED}", 1024, 1024),
     },
+    # Round 5: one camera for everything (round 4 mixed top-down ground, side-view grass and towers,
+    # three-quarter props), the muted palette for the map, simpler monsters that can be animated from parts.
+    "karte-5": {
+        "wiese": (
+            f"{GROUND5}, short meadow seen from high above as soft mottled green washes, "
+            "no individual grass blades, no flowers",
+            1024,
+            1024,
+        ),
+        # "wiese" came out as a photo of a lawn: say watercolor on paper, and what the washes look like.
+        "wiese-aquarell": (
+            "loose watercolor painting on rough paper, soft blotchy overlapping washes of muted sage green with a "
+            "little ochre, visible pigment granulation and wet-in-wet blooms, a few faint short brush dabs, "
+            "flat ground seen from high above, filling the whole image edge to edge, no objects, no horizon, "
+            "no border, no text",
+            1024,
+            1024,
+        ),
+        "lichtung": (f"{MUTED5}, a small round patch of bare earth whose edges fade softly into short grass, {VIEW5}, {ISOLATED}", 1024, 1024),
+        "turm": (f"{MUTED5}, a round stone archer tower with crenellations and a small wooden door, {VIEW5}, game building, {ISOLATED}", 1024, 1024),
+        "golem": (
+            f"{MUTED5}, a small friendly golem built from folded paper sheets and book pages, ink-blot eyes, "
+            f"walking, {VIEW5}, game character, {ISOLATED}",
+            1024,
+            1024,
+        ),
+        "baum": (f"{MUTED5}, a single round leafy oak tree, {VIEW5}, game map prop, {ISOLATED}", 1024, 1024),
+        "baumgruppe": (f"{MUTED5}, a small cluster of three leafy trees, {VIEW5}, game map prop, {ISOLATED}", 1024, 1024),
+        "felsen": (f"{MUTED5}, a group of three grey boulders, {VIEW5}, game map prop, {ISOLATED}", 1024, 1024),
+        "ruine": (f"{MUTED5}, a short crumbling ruined stone wall, {VIEW5}, game map prop, {ISOLATED}", 1024, 1024),
+        "weiher": (f"{MUTED5}, a small round pond with a few reeds, {VIEW5}, game map prop, {ISOLATED}", 1024, 1024),
+    },
+    "monster-5": {
+        motif: (f"{SIMPLE5}, {INK_BEAST}, {shape}, {NEON['neonstark']}, {VIEW5}, {ISOLATED}", 1024, 1024)
+        for motif, shape in INK_SHAPES.items()
+    },
 }
 JOBS = (*TEXT_JOBS, "karte-a")
+# Round 5 gets its own folder; everything else is round 4.
+FOLDERS = {"karte-5": "runde5", "monster-5": "runde5"}
 
 
 def token() -> str:
@@ -402,7 +456,8 @@ def run(jobs: list[tuple[pathlib.Path, str, dict]], dry_run: bool) -> None:
     print(f"{len(todo)} of {len(jobs)} images to generate", flush=True)
     if dry_run or not todo:
         return
-    log = (OUT / "predictions.jsonl").open("a")
+    # All jobs of one call share a folder.
+    log = (todo[0][0].parent / "predictions.jsonl").open("a")
 
     def one(job: tuple[pathlib.Path, str, dict]) -> None:
         path, version, inputs = job
@@ -440,15 +495,17 @@ def main() -> None:
                 if results:
                     sheet(results, OUT / f"sheet-karte-a-{m['seed']}.jpg", 3, images=[overlay(p, m, layout) for p in results])
             continue
+        out = HERE / FOLDERS.get(name, OUT.name)
+        out.mkdir(exist_ok=True)
         jobs = [
-            (OUT / f"{motif}-{seed}.png", TEXT2IMG, {"prompt": prompt, "width": w, "height": h, "seed": seed, "output_format": "png"})
+            (out / f"{motif}-{seed}.png", TEXT2IMG, {"prompt": prompt, "width": w, "height": h, "seed": seed, "output_format": "png"})
             for motif, (prompt, w, h) in TEXT_JOBS[name].items()
             for seed in SEEDS
         ]
         run(jobs, args.dry_run)
         results = [p for p, _, _ in jobs if p.exists()]
         if results:
-            sheet(results, OUT / f"sheet-{name}.jpg", len(SEEDS))
+            sheet(results, out / f"sheet-{name}.jpg", len(SEEDS))
 
 
 if __name__ == "__main__":

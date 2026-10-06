@@ -29,9 +29,15 @@ interface Round {
   readonly pick: Partial<Record<Exclude<Part, 'clearing'>, string>> & { readonly clearing?: readonly string[] };
   /** Enemies walking the road, in turn. */
   readonly walkers: readonly Part[];
+  /** Cut-outs painted facing left; they are mirrored while walking right. */
+  readonly facesLeft: readonly Part[];
   /** Round 3 outlines the road in ink; round 4 lets it bleed into the meadow like a wash. */
   readonly roadEdge: 'ink' | 'wash';
   readonly meadowScale: number;
+  /** Width of a clearing under a build site. */
+  readonly clearingWidth: number;
+  /** Round 5 drops the paper rim and grounds cut-outs with a soft shadow instead. */
+  readonly shadows: boolean;
 }
 
 const ROUNDS: Record<string, Round> = {
@@ -49,9 +55,12 @@ const ROUNDS: Record<string, Round> = {
       ruin: 'demo3/ruine-11',
     },
     walkers: ['golem'],
+    facesLeft: [],
     roadEdge: 'ink',
     // At full size the flowers are as large as the props and drown them.
     meadowScale: 0.45,
+    clearingWidth: 0,
+    shadows: false,
   },
   '4': {
     pick: {
@@ -71,13 +80,40 @@ const ROUNDS: Record<string, Round> = {
       shell: 'demo4/panzerkaefer-neonstark-33',
     },
     walkers: ['scorpion', 'beetle', 'golem', 'shell'],
+    facesLeft: ['beetle', 'scorpion', 'shell'],
     roadEdge: 'wash',
     meadowScale: 0.5,
+    clearingWidth: 140,
+    shadows: false,
+  },
+  // One camera for all parts (high three-quarter view), matched saturation, no paper rim, simpler monsters.
+  '5': {
+    pick: {
+      meadow: 'demo5/wiese-aquarell-33',
+      road: 'demo4/weg-11',
+      clearing: ['demo5/lichtung-22'],
+      golem: 'demo5/golem-11',
+      tower: 'demo5/turm-11',
+      tree: 'demo5/baum-33',
+      grove: 'demo5/baumgruppe-33',
+      rocks: 'demo5/felsen-11',
+      pond: 'demo5/weiher-11',
+      ruin: 'demo5/ruine-11',
+      beetle: 'demo5/feuerkaefer-33',
+      scorpion: 'demo5/skorpion-22',
+      shell: 'demo5/panzerkaefer-33',
+    },
+    walkers: ['scorpion', 'beetle', 'golem', 'shell'],
+    facesLeft: ['shell'],
+    roadEdge: 'wash',
+    meadowScale: 0.8,
+    clearingWidth: 104,
+    shadows: true,
   },
 };
-const ROUND = ROUNDS[new URLSearchParams(location.search).get('runde') ?? '4'] ?? ROUNDS['4']!;
+const ROUND = ROUNDS[new URLSearchParams(location.search).get('runde') ?? '5'] ?? ROUNDS['5']!;
 
-const urls = import.meta.glob('./demo[34]/*.png', { eager: true, import: 'default', query: '?url' }) as Record<string, string>;
+const urls = import.meta.glob('./demo[345]/*.png', { eager: true, import: 'default', query: '?url' }) as Record<string, string>;
 
 const { width: WIDTH, deskTop: HEIGHT, pathHalf: PATH_HALF } = LAYOUT;
 const INK = 'rgba(43, 33, 22, 0.85)';
@@ -97,10 +133,6 @@ const HEIGHTS: Partial<Record<Part, number>> = {
   scorpion: 54,
   shell: 66,
 };
-/** Width of a clearing under a build site. */
-const CLEARING_WIDTH = 140;
-/** Cut-outs painted facing left. */
-const FACES_LEFT: Partial<Record<Part, true>> = { beetle: true, scorpion: true, shell: true };
 
 /** The generator's path turns at right angles; round each corner with a quadratic curve. */
 function roundCorners(points: readonly Point[], radius: number): Point[] {
@@ -166,7 +198,7 @@ class MapScene extends Phaser.Scene {
     map.sites.forEach((site, i) => {
       if (clearings.length === 0) return;
       const image = this.add.image(site.x, site.y + 8, `clearing-${i % clearings.length}`).setDepth(1);
-      image.setScale(CLEARING_WIDTH / image.width);
+      image.setScale(ROUND.clearingWidth / image.width);
     });
 
     for (const prop of map.props) {
@@ -238,7 +270,17 @@ class MapScene extends Phaser.Scene {
   #cutOut(part: Part, x: number, y: number): Phaser.GameObjects.Image {
     const height = HEIGHTS[part]!;
     const image = this.add.image(x, y, part).setOrigin(0.5, 1).setDepth(y);
-    return image.setScale(height / image.height);
+    image.setScale(height / image.height);
+    if (ROUND.shadows) image.setData('shadow', this.#shadow(x, y, image.displayWidth));
+    return image;
+  }
+
+  /** A soft shadow on the ground (light from the top left), two faint ellipses so the edge is not hard. */
+  #shadow(x: number, y: number, width: number): Phaser.GameObjects.Container {
+    const shadow = this.add.container(x + width * 0.08, y - 2).setDepth(2);
+    shadow.add(this.add.ellipse(0, 0, width * 0.95, width * 0.26, 0x2b2116, 0.1));
+    shadow.add(this.add.ellipse(0, 0, width * 0.7, width * 0.18, 0x2b2116, 0.14));
+    return shadow;
   }
 
   #walker(part: Part, road: readonly Point[], delay: number): void {
@@ -258,8 +300,9 @@ class MapScene extends Phaser.Scene {
       onUpdate: () => {
         const point = path.getPoint(progress.t);
         // The monsters are painted facing left: mirror them while they walk right.
-        if (FACES_LEFT[part] && point.x !== enemy.x) enemy.setFlipX(point.x > enemy.x);
+        if (ROUND.facesLeft.includes(part) && point.x !== enemy.x) enemy.setFlipX(point.x > enemy.x);
         enemy.setPosition(point.x, point.y + 20).setDepth(point.y + 20);
+        (enemy.getData('shadow') as Phaser.GameObjects.Container | undefined)?.setPosition(point.x + enemy.displayWidth * 0.08, point.y + 18);
       },
     });
   }
