@@ -60,6 +60,25 @@ INK_BEAST = (
     "shaped by a few bold sweeping brush strokes, visible bristle marks, ink dripping and splattering from it, "
     "small glowing ember eyes, side view, game enemy character"
 )
+INK_SHAPES = {
+    "skorpion": "shaped like a small scorpion with a raised stinger tail",
+    "feuerwespe": "shaped like a small wasp with ragged ink wings and an orange ember glow, flying",
+    "feuerkaefer": "shaped like a large hulking bug with orange embers glowing through cracks",
+    "panzerkaefer": "shaped like a heavy beetle under a domed shell of hardened glossy ink with brush strokes painted across it",
+}
+# Third try: colours from outside the painting, so the monsters read on the map and plainly do not belong.
+NEON = {
+    "neon": (
+        "a few small jarring splashes of glowing neon magenta and acid green paint on its body that clash "
+        "with the muted painting, as if they do not belong"
+    ),
+    "neonadern": "thin glowing neon cyan cracks and veins running through the black ink, clashing with the muted painting",
+    # The first two stay small accents that vanish at game size.
+    "neonstark": (
+        "bold large splashes and drips of glowing fluorescent neon magenta and acid green paint covering a third of "
+        "its black ink body, garish, clashing with the muted painting"
+    ),
+}
 UI = "game interface element, front view, flat, no text, no letters, no writing"
 MAP = (
     f"{AQUARELL}, orthographic top-down view seen exactly from directly above, flat map of a landscape, "
@@ -111,23 +130,12 @@ TEXT_JOBS: dict[str, dict[str, tuple[str, int, int]]] = {
             1024,
             1024,
         ),
-        "skorpion-tinte": (f"{FEDER}, {INK_BEAST}, shaped like a small scorpion with a raised stinger tail, {ISOLATED}", 1024, 1024),
-        "feuerwespe-tinte": (
-            f"{FEDER}, {INK_BEAST}, shaped like a small wasp with ragged ink wings and an orange ember glow, flying, {ISOLATED}",
-            1024,
-            1024,
-        ),
-        "feuerkaefer-tinte": (
-            f"{FEDER}, {INK_BEAST}, shaped like a large hulking bug with orange embers glowing through cracks, {ISOLATED}",
-            1024,
-            1024,
-        ),
-        "panzerkaefer-tinte": (
-            f"{FEDER}, {INK_BEAST}, shaped like a heavy beetle under a domed shell of hardened glossy ink with "
-            f"brush strokes painted across it, {ISOLATED}",
-            1024,
-            1024,
-        ),
+        **{f"{motif}-tinte": (f"{FEDER}, {INK_BEAST}, {shape}, {ISOLATED}", 1024, 1024) for motif, shape in INK_SHAPES.items()},
+        **{
+            f"{motif}-{accent}": (f"{FEDER}, {INK_BEAST}, {shape}, {words}, {ISOLATED}", 1024, 1024)
+            for accent, words in NEON.items()
+            for motif, shape in INK_SHAPES.items()
+        },
     },
     "oberflaeche": {
         "pult": (

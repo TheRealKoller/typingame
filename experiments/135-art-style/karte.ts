@@ -2,31 +2,105 @@
 // Probe for issue #135: a battle map assembled from painted parts.
 // Ground textures and the road are painted into a canvas along the path of the real map generator;
 // props, towers and enemies are cut-outs with a paper rim. Reload for a new map, `?seed=N` for a fixed one.
+// `?runde=3` shows round 3 (bright pen style, ink-edged road); the default is round 4, variant B: muted
+// watercolour parts, a road with a soft wash edge, painted clearings and Atramentus' ink monsters with neon paint.
 import Phaser from 'phaser';
 import { generateAshMap, LAYOUT, seededRandom } from '../../src/content/mapgen';
 import type { Point } from '../../src/battle/path';
 
-const PICK = {
-  meadow: 'boden-wiese-22',
-  earth: 'boden-erde-22',
-  road: 'weg-22',
-  golem: 'golem-22',
-  tower: 'turm-33',
-  tree: 'baum-33',
-  grove: 'baumgruppe-11',
-  rocks: 'felsen-22',
-  pond: 'weiher-33',
-  ruin: 'ruine-11',
-} as const;
-type Part = keyof typeof PICK;
+type Part =
+  | 'meadow'
+  | 'earth'
+  | 'road'
+  | 'clearing'
+  | 'tower'
+  | 'tree'
+  | 'grove'
+  | 'rocks'
+  | 'pond'
+  | 'ruin'
+  | 'golem'
+  | 'beetle'
+  | 'scorpion'
+  | 'shell';
 
-const urls = import.meta.glob('./demo3/*.png', { eager: true, import: 'default', query: '?url' }) as Record<string, string>;
+interface Round {
+  /** Image per part, as `<folder>/<file>` without `.png`; clearings may have several. */
+  readonly pick: Partial<Record<Exclude<Part, 'clearing'>, string>> & { readonly clearing?: readonly string[] };
+  /** Enemies walking the road, in turn. */
+  readonly walkers: readonly Part[];
+  /** Round 3 outlines the road in ink; round 4 lets it bleed into the meadow like a wash. */
+  readonly roadEdge: 'ink' | 'wash';
+  readonly meadowScale: number;
+}
+
+const ROUNDS: Record<string, Round> = {
+  '3': {
+    pick: {
+      meadow: 'demo3/boden-wiese-22',
+      earth: 'demo3/boden-erde-22',
+      road: 'demo3/weg-22',
+      golem: 'demo3/golem-22',
+      tower: 'demo3/turm-33',
+      tree: 'demo3/baum-33',
+      grove: 'demo3/baumgruppe-11',
+      rocks: 'demo3/felsen-22',
+      pond: 'demo3/weiher-33',
+      ruin: 'demo3/ruine-11',
+    },
+    walkers: ['golem'],
+    roadEdge: 'ink',
+    // At full size the flowers are as large as the props and drown them.
+    meadowScale: 0.45,
+  },
+  '4': {
+    pick: {
+      meadow: 'demo4/boden-wiese-33',
+      road: 'demo4/weg-11',
+      clearing: ['demo4/lichtung-11', 'demo4/lichtung-22'],
+      // Towers and golems are not redone in the muted style yet.
+      golem: 'demo3/golem-22',
+      tower: 'demo3/turm-33',
+      tree: 'demo4/baum-22',
+      grove: 'demo4/baumgruppe-22',
+      rocks: 'demo4/felsen-22',
+      pond: 'demo4/weiher-11',
+      ruin: 'demo4/ruine-22',
+      beetle: 'demo4/feuerkaefer-neonstark-22',
+      scorpion: 'demo4/skorpion-neonstark-11',
+      shell: 'demo4/panzerkaefer-neonstark-33',
+    },
+    walkers: ['scorpion', 'beetle', 'golem', 'shell'],
+    roadEdge: 'wash',
+    meadowScale: 0.5,
+  },
+};
+const ROUND = ROUNDS[new URLSearchParams(location.search).get('runde') ?? '4'] ?? ROUNDS['4']!;
+
+const urls = import.meta.glob('./demo[34]/*.png', { eager: true, import: 'default', query: '?url' }) as Record<string, string>;
 
 const { width: WIDTH, deskTop: HEIGHT, pathHalf: PATH_HALF } = LAYOUT;
 const INK = 'rgba(43, 33, 22, 0.85)';
+/** The darker rim a watercolour wash leaves where it dries. */
+const WASH = 'rgba(120, 92, 58, 0.45)';
 const CORNER_RADIUS = 70;
 /** On-screen heights of the cut-outs. */
-const HEIGHTS: Partial<Record<Part, number>> = { golem: 64, tower: 104, tree: 92, grove: 110, rocks: 56, pond: 70, ruin: 72 };
+const HEIGHTS: Partial<Record<Part, number>> = {
+  golem: 64,
+  tower: 104,
+  tree: 92,
+  grove: 110,
+  rocks: 56,
+  pond: 70,
+  ruin: 72,
+  beetle: 62,
+  scorpion: 54,
+  shell: 66,
+};
+/** Width of a clearing under a build site. */
+const CLEARING_WIDTH = 140;
+/** Cut-outs painted facing left. */
+const FACES_LEFT: Partial<Record<Part, true>> = { beetle: true, scorpion: true, shell: true };
 
 /** The generator's path turns at right angles; round each corner with a quadratic curve. */
 function roundCorners(points: readonly Point[], radius: number): Point[] {
@@ -77,7 +151,9 @@ function paintMasked(ctx: CanvasRenderingContext2D, texture: HTMLImageElement, s
 
 class MapScene extends Phaser.Scene {
   preload(): void {
-    for (const part of Object.keys(PICK) as Part[]) this.load.image(part, urls[`./demo3/${PICK[part]}.png`]!);
+    const { clearing = [], ...parts } = ROUND.pick;
+    for (const [part, file] of Object.entries(parts)) this.load.image(part, urls[`./${file}.png`]!);
+    clearing.forEach((file, i) => this.load.image(`clearing-${i}`, urls[`./${file}.png`]!));
   }
 
   create(): void {
@@ -85,6 +161,13 @@ class MapScene extends Phaser.Scene {
     const map = generateAshMap(seededRandom(seed), 'probe', 'Probe');
     const road = roundCorners(map.path, CORNER_RADIUS);
     this.#paintGround(road, map.sites);
+    // Round 4: build sites stand on painted clearings; they lie flat, under everything that stands.
+    const clearings = ROUND.pick.clearing ?? [];
+    map.sites.forEach((site, i) => {
+      if (clearings.length === 0) return;
+      const image = this.add.image(site.x, site.y + 8, `clearing-${i % clearings.length}`).setDepth(1);
+      image.setScale(CLEARING_WIDTH / image.width);
+    });
 
     for (const prop of map.props) {
       const part: Part = prop.kind === 'rock' ? (prop.variant === 0 ? 'rocks' : 'ruin') : (['tree', 'grove', 'tree', 'pond'] as const)[(prop.variant ?? 0) % 4]!;
@@ -95,7 +178,7 @@ class MapScene extends Phaser.Scene {
       if (i % 2 === 0) this.#cutOut('tower', site.x, site.y + 24);
       else this.add.ellipse(site.x, site.y + 10, 56, 22).setStrokeStyle(2, 0x2b2116, 0.6).setDepth(site.y);
     });
-    for (let i = 0; i < 4; i++) this.#walker(road, i * 2600);
+    for (let i = 0; i < 4; i++) this.#walker(ROUND.walkers[i % ROUND.walkers.length]!, road, i * 2600);
     this.add.text(8, HEIGHT - 22, `seed ${seed}`, { fontFamily: 'Georgia, serif', fontSize: '14px', color: '#2b2116' }).setDepth(2000);
   }
 
@@ -105,26 +188,36 @@ class MapScene extends Phaser.Scene {
     const ctx = canvas.getContext('2d')!;
     const image = (key: Part) => this.textures.get(key).getSourceImage() as HTMLImageElement;
     const meadow = ctx.createPattern(image('meadow'), 'repeat')!;
-    // At full size the flowers are as large as the props and drown them.
-    meadow.setTransform(new DOMMatrix().scale(0.45));
+    meadow.setTransform(new DOMMatrix().scale(ROUND.meadowScale));
     ctx.fillStyle = meadow;
     ctx.fillRect(0, 0, WIDTH, HEIGHT);
-    // Build sites stand on clearings of bare earth.
-    paintMasked(ctx, image('earth'), 0.5, (mask) => {
-      mask.filter = 'blur(10px)';
-      for (const site of sites) {
-        mask.beginPath();
-        mask.ellipse(site.x, site.y + 8, 62, 40, 0, 0, Math.PI * 2);
-        mask.fill();
-      }
-    });
-    // Ink edge first, then the road surface over it: a pen outline with a little wobble.
     ctx.lineCap = ctx.lineJoin = 'round';
-    ctx.strokeStyle = INK;
-    for (const [dx, dy, w] of [[0, 0, 10], [2, -1.5, 7]] as const) {
+    if (ROUND.roadEdge === 'ink') {
+      // Build sites stand on clearings of bare earth.
+      paintMasked(ctx, image('earth'), 0.5, (mask) => {
+        mask.filter = 'blur(10px)';
+        for (const site of sites) {
+          mask.beginPath();
+          mask.ellipse(site.x, site.y + 8, 62, 40, 0, 0, Math.PI * 2);
+          mask.fill();
+        }
+      });
+      // Ink edge first, then the road surface over it: a pen outline with a little wobble.
+      ctx.strokeStyle = INK;
+      for (const [dx, dy, w] of [[0, 0, 10], [2, -1.5, 7]] as const) {
+        ctx.save();
+        ctx.translate(dx, dy);
+        ctx.lineWidth = 2 * PATH_HALF + w;
+        trace(ctx, road);
+        ctx.stroke();
+        ctx.restore();
+      }
+    } else {
+      // A soft, slightly darker band where the wash dried, then the road bleeding out over it.
       ctx.save();
-      ctx.translate(dx, dy);
-      ctx.lineWidth = 2 * PATH_HALF + w;
+      ctx.filter = 'blur(4px)';
+      ctx.strokeStyle = WASH;
+      ctx.lineWidth = 2 * PATH_HALF + 8;
       trace(ctx, road);
       ctx.stroke();
       ctx.restore();
@@ -133,6 +226,7 @@ class MapScene extends Phaser.Scene {
       mask.lineCap = mask.lineJoin = 'round';
       mask.lineWidth = 2 * PATH_HALF - 2;
       mask.strokeStyle = '#fff';
+      if (ROUND.roadEdge === 'wash') mask.filter = 'blur(5px)';
       trace(mask, road);
       mask.stroke();
     });
@@ -147,8 +241,8 @@ class MapScene extends Phaser.Scene {
     return image.setScale(height / image.height);
   }
 
-  #walker(road: readonly Point[], delay: number): void {
-    const enemy = this.#cutOut('golem', road[0]!.x, road[0]!.y + 20);
+  #walker(part: Part, road: readonly Point[], delay: number): void {
+    const enemy = this.#cutOut(part, road[0]!.x, road[0]!.y + 20);
     const baseScale = enemy.scaleX;
     this.tweens.add({ targets: enemy, angle: { from: -5, to: 5 }, duration: 380, yoyo: true, repeat: -1, ease: 'Sine.easeInOut' });
     this.tweens.add({ targets: enemy, scaleY: baseScale * 0.93, duration: 190, yoyo: true, repeat: -1, ease: 'Sine.easeInOut' });
@@ -163,6 +257,8 @@ class MapScene extends Phaser.Scene {
       repeat: -1,
       onUpdate: () => {
         const point = path.getPoint(progress.t);
+        // The monsters are painted facing left: mirror them while they walk right.
+        if (FACES_LEFT[part] && point.x !== enemy.x) enemy.setFlipX(point.x > enemy.x);
         enemy.setPosition(point.x, point.y + 20).setDepth(point.y + 20);
       },
     });

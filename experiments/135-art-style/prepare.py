@@ -1,24 +1,36 @@
-"""Prepare round 3 images for the Phaser probe: seamless ground textures, cut-out props with a paper rim.
+"""Prepare generated images for the Phaser probes: seamless ground textures, cut-out props with a paper rim.
 
-Usage: ~/.cache/typingame-art-venv/bin/python experiments/135-art-style/prepare.py
-Needs `rembg[gpu]` (BiRefNet, MIT) and Pillow. Reads runde3/, writes demo3/.
+Usage: ~/.cache/typingame-art-venv/bin/python experiments/135-art-style/prepare.py <source> <target> [name...]
+  round 3: prepare.py runde3 demo3
+  round 4: prepare.py runde4 demo4 boden-wiese-11 boden-erde-11 weg-22 lichtung-11 ...
+Needs `rembg[gpu]` (BiRefNet, MIT) and Pillow. Without names every PNG of <source> is prepared.
 """
 
 import pathlib
+import sys
 
 import numpy as np
 from PIL import Image, ImageFilter
 from rembg import new_session, remove
 
 HERE = pathlib.Path(__file__).parent
-SRC = HERE / "runde3"
-OUT = HERE / "demo3"
 TEXTURES = ("boden-wiese", "boden-erde", "weg")
+# Clearings lie flat on the ground: no rim, which would outline them like a sticker.
+NO_RIM = ("lichtung",)
 TEXTURE_SIZE = 512
+# Round 4 paints ground on a sheet with a white margin; cut it off before making the texture seamless.
+TEXTURE_MARGIN = 0.12
 PROP_MAX = 512
 # A pale paper rim around cut-outs keeps them readable on any ground.
 RIM = 6
 RIM_COLOR = (250, 244, 228)
+
+
+def flatten(image: Image.Image) -> Image.Image:
+    """Remove light falloff across the sheet (round 4 is lighter at the top), which shows as bands when tiled."""
+    a = np.asarray(image, dtype=np.float32)
+    blur = np.asarray(image.filter(ImageFilter.GaussianBlur(min(image.size) / 8)), dtype=np.float32)
+    return Image.fromarray(np.clip(a - blur + blur.mean(axis=(0, 1)), 0, 255).astype(np.uint8))
 
 
 def seamless(image: Image.Image) -> Image.Image:
@@ -32,29 +44,37 @@ def seamless(image: Image.Image) -> Image.Image:
     return Image.fromarray((a * weight + b * (1 - weight)).astype(np.uint8))
 
 
-def cut_out(image: Image.Image, session) -> Image.Image:
+def cut_out(image: Image.Image, session, rim: int) -> Image.Image:
     rgba = remove(image, session=session)
     rgba = rgba.crop(rgba.getbbox())
-    rgba.thumbnail((PROP_MAX - 2 * RIM, PROP_MAX - 2 * RIM))
-    canvas = Image.new("RGBA", (rgba.width + 2 * RIM, rgba.height + 2 * RIM))
-    canvas.paste(rgba, (RIM, RIM))
+    rgba.thumbnail((PROP_MAX - 2 * rim, PROP_MAX - 2 * rim))
+    canvas = Image.new("RGBA", (rgba.width + 2 * rim, rgba.height + 2 * rim))
+    canvas.paste(rgba, (rim, rim))
+    if rim == 0:
+        return canvas
     alpha = canvas.getchannel("A").point(lambda p: 255 if p > 96 else 0)
-    rim_alpha = alpha.filter(ImageFilter.MaxFilter(2 * RIM - 1)).filter(ImageFilter.GaussianBlur(1.5))
-    rim = Image.new("RGBA", canvas.size, RIM_COLOR + (0,))
-    rim.putalpha(rim_alpha)
-    return Image.alpha_composite(rim, canvas)
+    rim_alpha = alpha.filter(ImageFilter.MaxFilter(2 * rim - 1)).filter(ImageFilter.GaussianBlur(1.5))
+    rim_layer = Image.new("RGBA", canvas.size, RIM_COLOR + (0,))
+    rim_layer.putalpha(rim_alpha)
+    return Image.alpha_composite(rim_layer, canvas)
 
 
 def main() -> None:
-    OUT.mkdir(exist_ok=True)
+    source, target, *names = sys.argv[1:]
+    src, out = HERE / source, HERE / target
+    out.mkdir(exist_ok=True)
     session = new_session("birefnet-general")
-    for path in sorted(SRC.glob("*.png")):
+    paths = [src / f"{name}.png" for name in names] if names else sorted(src.glob("*.png"))
+    for path in paths:
         image = Image.open(path).convert("RGB")
-        if path.stem.rsplit("-", 1)[0] in TEXTURES:
+        motif = path.stem.rsplit("-", 1)[0]
+        if motif in TEXTURES:
+            m = int(min(image.size) * TEXTURE_MARGIN)
+            image = flatten(image.crop((m, m, image.width - m, image.height - m)))
             result = seamless(image).resize((TEXTURE_SIZE, TEXTURE_SIZE), Image.LANCZOS)
         else:
-            result = cut_out(image, session)
-        result.save(OUT / path.name, optimize=True)
+            result = cut_out(image, session, 0 if motif in NO_RIM else RIM)
+        result.save(out / path.name, optimize=True)
         print(path.name, result.size, flush=True)
 
 
