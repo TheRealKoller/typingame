@@ -461,6 +461,13 @@ KLEIN_SET = (
     ("kaefer-angriff", ("monster-panzerkaefer-22",), f"The same ink beetle monster charging forward, head lowered, mandibles wide open. {KEEP}"),
     ("kaefer-getroffen", ("monster-panzerkaefer-22",), f"The same ink beetle monster knocked back by a hit, tilted backwards, ink splashing off it. {KEEP}"),
     ("skorpion-getroffen", ("monster-skorpion-11",), f"The same ink scorpion monster knocked back by a hit, tilted backwards, ink splashing off it. {KEEP}"),
+    # The first hit poses splashed ink (and sometimes blue water) around the monster, which frays when cut out at game
+    # size. Second try: the pose alone.
+    *(
+        (f"{name}-getroffen2", (ref,), f"The same ink {what} monster flinching from a hit: body tilted backwards, legs "
+         f"lifted, eyes squeezed shut. Nothing around it: no splashes, no drops, no puddle, no water. {KEEP}")
+        for name, ref, what in (("kaefer", "monster-panzerkaefer-22", "beetle"), ("skorpion", "monster-skorpion-11", "scorpion"))
+    ),
     ("turm-magier-stufe2", ("turm-magier-22",), f"The same tower upgraded: a glowing blue crystal on the roof tip and a small wooden balcony. {KEEP_TOWER}"),
     ("turm-kanone-stufe2", ("turm-kanone-11",), f"The same tower upgraded: a second, bigger bronze cannon and a small red banner. {KEEP_TOWER}"),
     # Parts for animation, one per picture: asking for all at once put the whole figure next to them.

@@ -35,12 +35,16 @@ DRAW = 1.25
 OUTDOOR = (
     "Paint this rough game map sketch as a finished hand-painted watercolor cartoon tower defense battlefield seen from "
     "above, bold dark outlines, soft watercolor washes. The flat shapes are placeholders and keep their place and size: "
-    "the light blue oval is a small natural pond set into the ground with reeds and a muddy bank; dark green circles are "
-    "leafy trees seen from above; grey circles are mossy boulders; grey-brown rectangles are low crumbling stone ruins "
+    "the light blue oval is a small natural pond set into the ground with reeds and a muddy bank; {trees}; grey circles are "
+    "mossy boulders; grey-brown rectangles are low crumbling stone ruins "
     "overgrown with grass. Each grows straight out of the ground, no plates or bases. Add no other water. {ground} Give the "
     "sandy roads ruts, small pebbles and a ragged, grassy edge. Keep every road exactly where it is, with the same width "
     "and shape, also where roads join. No text, no border, no characters, no buildings added."
 )
+LEAFY = "dark green circles are leafy trees seen from above"
+# The first ash maps came with green trees: the sketch drew them green. Now they are drawn and named burnt.
+BURNT = "dark brown circles are burnt trees seen from above, bare and leafless, with charred black branches and no green at all"
+BURNT_COLOURS = ((92, 70, 56), (104, 80, 62), (82, 62, 50))
 MEADOW = "Vary the meadow with darker and lighter green, wildflowers and grass tufts."
 # Second try (`--plaetze`): klein put a pond into a bend of the road, where the best site lies, nearly every time.
 # The sites go into the sketch as flat stone slabs, and the prompt rules out any other water.
@@ -108,11 +112,14 @@ def sketch(m: dict, layout: dict) -> Image.Image:
         # Props stand by their centre, half their height (32 at scale 1) above the ground.
         ground = y + 32 * s * k
         if prop["kind"] == "tree" and prop.get("variant", 0) % 4 == 1:
-            shapes = [(-18, 4, 18, (79, 138, 58)), (16, 2, 20, (92, 152, 66)), (0, -16, 20, (70, 127, 51))]
+            colours = BURNT_COLOURS if m.get("ash") else ((79, 138, 58), (92, 152, 66), (70, 127, 51))
+            shapes = [(dx, dy, r, c) for (dx, dy, r), c in zip(((-18, 4, 18), (16, 2, 20), (0, -16, 20)), colours)]
         elif prop["kind"] == "tree" and prop.get("variant", 0) % 4 == 3 and not pond and not indoor:
             pond = True
             draw.ellipse((x - 42 * s * k, ground - 23 * s * k, x + 42 * s * k, ground + 23 * s * k), fill=(111, 183, 217))
             continue
+        elif prop["kind"] == "tree" and m.get("ash"):
+            shapes = [(0, -8, 24, BURNT_COLOURS[0])]
         elif prop["kind"] == "rock" and prop.get("variant", 0) % 2 == 1:
             draw.rectangle((x - 26 * s * k, ground - 16 * s * k, x + 26 * s * k, ground + 16 * s * k), fill=(154, 143, 128))
             continue
@@ -204,6 +211,9 @@ def main() -> None:
     for m in data["maps"]:
         if args.base:
             m["key"] += "-b"
+        # Ash fields since their trees are sketched and named burnt.
+        if m.get("ash") and not m["indoor"]:
+            m["key"] += "-verbrannt"
         if args.plaetze:
             m["key"] += "-p"
         template = OUT / f"skizze-{m['key']}.png"
@@ -216,7 +226,7 @@ def main() -> None:
         if m["indoor"]:
             prompt = INDOOR.format(ash=", blackened with soot where the library burnt" if m.get("ash") else "")
         else:
-            prompt = OUTDOOR.format(ground=ASH if m.get("ash") else MEADOW)
+            prompt = OUTDOOR.format(ground=ASH if m.get("ash") else MEADOW, trees=BURNT if m.get("ash") else LEAFY)
         if args.plaetze:
             prompt += PLOTS
         uri = jpeg_uri(template)
