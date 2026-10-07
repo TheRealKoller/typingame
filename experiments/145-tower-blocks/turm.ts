@@ -265,26 +265,12 @@ interface MapData {
   readonly sites: readonly { readonly x: number; readonly y: number }[];
 }
 
-/** The same map painted with two looks of build plots (karten.py --platz). */
-const PLOT_LOOKS = { ring: 'Steinring', pflaster: 'Pflaster' } as const;
-let plotLook: keyof typeof PLOT_LOOKS = 'ring';
-
 async function renderMap(): Promise<void> {
   const canvas = document.querySelector<HTMLCanvasElement>('#karte')!;
-  const buttons = Object.entries(PLOT_LOOKS).map(([look, label]) => {
-    const button = document.createElement('button');
-    button.textContent = `Bauplatz: ${label}`;
-    button.classList.toggle('on', look === plotLook);
-    button.onclick = () => {
-      plotLook = look as keyof typeof PLOT_LOOKS;
-      void renderMap();
-    };
-    return button;
-  });
-  document.querySelector('#plaetze')!.replaceChildren(...buttons);
   const ctx = canvas.getContext('2d')!;
   const map = (await (await fetch(mapArt['./karte/karte.json']!)).json()) as MapData;
-  ctx.drawImage(await load(mapArt[`./karte/karte-${plotLook}.png`]!), 0, 0, canvas.width, canvas.height);
+  // Build plots as stone rings (karten.py --platz ring); flat paving and round slabs looked like boulders.
+  ctx.drawImage(await load(mapArt['./karte/karte.png']!), 0, 0, canvas.width, canvas.height);
   // A tower stage II is 104 px tall at scale 1, as in the game; it stands on its site, lower ones in front.
   // Every third site stays empty, to see a free plot next to built ones.
   const placed = map.sites
