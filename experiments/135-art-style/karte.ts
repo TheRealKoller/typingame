@@ -485,10 +485,13 @@ class MapScene extends Phaser.Scene {
     const road = roundCorners(map.path, CORNER_RADIUS);
     // #143: `?gemalt=<file>` shows a map repainted by FLUX.2 klein (replicate.py klein-karte) instead of ground,
     // road, clearings and props; it was painted over the `?vorlage` of the same seed.
-    if (this.textures.exists('painted')) {
-      this.add.image(0, 0, 'painted').setOrigin(0).setDisplaySize(WIDTH, HEIGHT);
-    } else {
-      this.#paintGround(road, map.sites);
+    // `?vorlage=skizze`: props as flat coloured shapes, which klein paints into the ground instead of copying the
+    // cut-outs, and no clearings, which klein took for ponds; `&plaetze` lays them over the painted map instead.
+    const painted = this.textures.exists('painted');
+    const sketch = params.get('vorlage') === 'skizze';
+    if (painted) this.add.image(0, 0, 'painted').setOrigin(0).setDisplaySize(WIDTH, HEIGHT);
+    else this.#paintGround(road, map.sites);
+    if (painted ? params.has('plaetze') : !sketch) {
       // Round 4: build sites stand on painted clearings; they lie flat, under everything that stands.
       const clearings = ROUND.pick.clearing ?? [];
       map.sites.forEach((site, i) => {
@@ -496,10 +499,13 @@ class MapScene extends Phaser.Scene {
         const image = this.add.image(site.x, site.y + 8, `clearing-${i % clearings.length}`).setDepth(1);
         image.setScale(ROUND.clearingWidth / image.width);
       });
+    }
+    if (!painted) {
       for (const prop of map.props) {
         const part: Part = prop.kind === 'rock' ? (prop.variant === 0 ? 'rocks' : 'ruin') : (['tree', 'grove', 'tree', 'pond'] as const)[(prop.variant ?? 0) % 4]!;
         // Props are placed by their centre, half of 64 px above the ground.
-        this.#cutOut(part, prop.x, prop.y + 32);
+        if (sketch) this.#sketch(part, prop.x, prop.y);
+        else this.#cutOut(part, prop.x, prop.y + 32);
       }
     }
     // `?vorlage`: the map without towers and enemies, the template klein repaints.
@@ -516,6 +522,20 @@ class MapScene extends Phaser.Scene {
       for (let i = 0; i < 4; i++) this.#walker(ROUND.walkers[i % ROUND.walkers.length]!, road, i * 2600);
     }
     this.add.text(8, HEIGHT - 22, `seed ${seed}`, { fontFamily: 'Georgia, serif', fontSize: '14px', color: '#2b2116' }).setDepth(2000);
+  }
+
+  /** A prop as flat shapes in its colours, centred on (x, y): the hint klein paints a pond, trees or rocks from. */
+  #sketch(part: Part, x: number, y: number): void {
+    const g = this.add.graphics().setDepth(y);
+    const blobs: Partial<Record<Part, readonly (readonly [number, number, number, number])[]>> = {
+      // [dx, dy, radius, colour]
+      tree: [[0, 10, 5, 0x6b4a2b], [0, -8, 24, 0x4f8a3a]],
+      grove: [[-18, 4, 18, 0x4f8a3a], [16, 2, 20, 0x5c9842], [0, -16, 20, 0x467f33]],
+      rocks: [[-12, 6, 12, 0x8d8d88], [10, 6, 13, 0x9a9a94], [0, -8, 12, 0x85857f]],
+    };
+    if (part === 'pond') g.fillStyle(0x6fb7d9).fillEllipse(x, y, 84, 46);
+    else if (part === 'ruin') g.fillStyle(0x9a8f80).fillRect(x - 26, y - 16, 52, 32).lineStyle(3, 0x6d655a).strokeRect(x - 26, y - 16, 52, 32);
+    else for (const [dx, dy, r, colour] of blobs[part] ?? []) g.fillStyle(colour).fillCircle(x + dx, y + dy, r);
   }
 
   #paintGround(road: readonly Point[], sites: readonly Point[]): void {

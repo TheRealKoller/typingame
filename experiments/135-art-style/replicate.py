@@ -492,14 +492,77 @@ KEEP_LAYOUT = (
     "Keep the exact layout: the winding road, the round dirt clearings, the trees, rocks, ruins and pond stay exactly "
     "where they are, with the same size and shape. No text, no border, no characters, no buildings added."
 )
+# name: (template file, prompt). "vorlage" has the props as cut-outs, "skizze" as flat shapes (karte.ts #sketch),
+# so ponds, trees and rocks are painted into the ground instead of lying on it.
 KLEIN_MAP_PROMPTS = {
-    "reich": "Repaint this game map as a richly detailed hand-painted watercolor cartoon tower defense battlefield seen "
-    "from above. Make the meadow lively: several shades of green, darker and lighter patches, small flowers, tufts of "
-    "grass, little stones. Make the road a worn dirt path with wheel ruts, pebbles, uneven edges and grass growing over "
-    f"its border. Bold dark outlines, soft watercolor washes, visible paper texture. {KEEP_LAYOUT}",
-    "behutsam": "Add painted detail to this game map without moving anything: vary the meadow with patches of darker "
-    "and lighter green, scattered wildflowers and grass tufts; give the sandy road ruts, small pebbles and a ragged, "
-    f"grassy edge. Same hand-painted watercolor cartoon style. {KEEP_LAYOUT}",
+    "reich": (
+        "vorlage-{seed}",
+        "Repaint this game map as a richly detailed hand-painted watercolor cartoon tower defense battlefield seen "
+        "from above. Make the meadow lively: several shades of green, darker and lighter patches, small flowers, tufts "
+        "of grass, little stones. Make the road a worn dirt path with wheel ruts, pebbles, uneven edges and grass growing "
+        f"over its border. Bold dark outlines, soft watercolor washes, visible paper texture. {KEEP_LAYOUT}",
+    ),
+    "behutsam": (
+        "vorlage-{seed}",
+        "Add painted detail to this game map without moving anything: vary the meadow with patches of darker and "
+        "lighter green, scattered wildflowers and grass tufts; give the sandy road ruts, small pebbles and a ragged, "
+        f"grassy edge. Same hand-painted watercolor cartoon style. {KEEP_LAYOUT}",
+    ),
+    "skizze": (
+        "skizze-{seed}",
+        "Paint this rough game map sketch as a finished hand-painted watercolor cartoon tower defense battlefield seen "
+        "from above, bold dark outlines, soft watercolor washes. The flat shapes are placeholders: paint the blue oval as "
+        "a natural pond set into the ground with reeds and a muddy, grassy bank; the green circles as leafy trees seen "
+        "from above; the grey circles as mossy boulders half sunk into the grass; the brown-grey rectangles as low "
+        "crumbling stone ruins overgrown with grass and moss. Everything grows out of the meadow, no plates or bases "
+        "under them. Vary the meadow with patches of darker and lighter green, wildflowers and grass tufts; give the "
+        "sandy road ruts, small pebbles and a ragged, grassy edge. Keep the winding road and the round dirt clearings "
+        "exactly where they are, with the same size and shape, and every feature at the place of its shape. No text, "
+        "no border, no characters, no buildings added.",
+    ),
+    # The first sketch prompt turned the clearings into ponds and schnell painted big ponds into the road's bends.
+    "skizze2": (
+        "skizze-{seed}",
+        "Paint this rough game map sketch as a finished hand-painted watercolor cartoon tower defense battlefield seen "
+        "from above, bold dark outlines, soft watercolor washes. The round patches of brown dirt with a green rim are "
+        "building plots: keep them as bare brown dirt, never water. Only the single light blue oval is water: paint it "
+        "as a small natural pond of the same size, set into the ground with reeds and a muddy bank. Dark green circles "
+        "are leafy trees seen from above, grey circles are mossy boulders, grey-brown rectangles are low crumbling stone "
+        "ruins overgrown with grass; each grows straight out of the meadow, no plates or bases. Add no other water, "
+        "trees or rocks. Vary the meadow with darker and lighter green, wildflowers and grass tufts; give the sandy road "
+        "ruts, small pebbles and a ragged, grassy edge. Keep the road and the plots exactly where they are, with the "
+        "same size and shape. No text, no border, no characters, no buildings added.",
+    ),
+    # Second pass over the best repaint: only the props lose their plates and sink into the ground.
+    "einbetten": (
+        "karte-{seed}-behutsam-schnell-11",
+        "Blend the pond, the trees, the rocks and the ruins into the ground of this game map: the pond becomes a natural "
+        "pond set into the meadow with reeds and a muddy bank, without a raised grassy rim; trees, rocks and ruins lose "
+        "the round grass plates under them and grow straight out of the meadow. Change nothing else: the road, the round "
+        "dirt plots, the meadow and the style stay exactly the same.",
+    ),
+    # Third try: the sketch without clearings (karte.html?vorlage=skizze since then; skizze-N.png still show them),
+    # so the blue oval is the only round thing; the game lays the clearings over the painted map.
+    "skizze3": (
+        "skizze-frei-{seed}",
+        "Paint this rough game map sketch as a finished hand-painted watercolor cartoon tower defense battlefield seen "
+        "from above, bold dark outlines, soft watercolor washes. The flat shapes are placeholders and keep their place "
+        "and size: the light blue oval is a small natural pond set into the ground with reeds and a muddy bank; dark "
+        "green circles are leafy trees seen from above; grey circles are mossy boulders; grey-brown rectangles are low "
+        "crumbling stone ruins overgrown with grass. Each grows straight out of the meadow, no plates or bases. Add no "
+        "other water. Vary the meadow with darker and lighter green, wildflowers and grass tufts; give the sandy road "
+        "ruts, small pebbles and a ragged, grassy edge. Keep the road exactly where it is, with the same width and "
+        "shape. No text, no border, no characters, no buildings added.",
+    ),
+    # skizze3: base keeps every feature in place but paints flat; schnell paints well but adds big ponds in the
+    # road's bends. "veredeln" lets klein add detail to the base result without moving anything, as "behutsam" did.
+    "veredeln": (
+        "karte-{seed}-skizze3-base-11",
+        "Add painted detail to this game map without moving anything: make the meadow softer and lighter with gentle "
+        "patches of green, scattered wildflowers and grass tufts; give the trees, boulders, ruins and pond more painted "
+        "detail and soft shading where they meet the grass; give the road small pebbles and a ragged, grassy edge. "
+        f"Same hand-painted watercolor cartoon style, bright and friendly. {KEEP_LAYOUT}",
+    ),
 }
 
 JOBS = (*TEXT_JOBS, "karte-a", "klein-text", "klein-edit", "klein-satz", "klein-karte", "flux1-text")
@@ -780,8 +843,8 @@ def klein_set_jobs() -> list[tuple[pathlib.Path, str, dict]]:
 def klein_map_jobs() -> list[tuple[pathlib.Path, str, dict]]:
     jobs = []
     for map_seed in KLEIN_MAP_SEEDS:
-        template = jpeg_uri(KLEIN_MAP_DIR / f"vorlage-{map_seed}.png")
-        for prompt_name, prompt in KLEIN_MAP_PROMPTS.items():
+        for prompt_name, (template_name, prompt) in KLEIN_MAP_PROMPTS.items():
+            template = jpeg_uri(KLEIN_MAP_DIR / f"{template_name.format(seed=map_seed)}.png")
             for model, version in KLEIN_MODELS.items():
                 for seed in KLEIN_SEEDS:
                     inputs = {"prompt": prompt, "seed": seed, "output_format": "png", "images": [template], "aspect_ratio": "match_input_image"}
@@ -791,12 +854,25 @@ def klein_map_jobs() -> list[tuple[pathlib.Path, str, dict]]:
     return jobs
 
 
+# One sheet per template: sheet-<name>-<map seed>.jpg.
+MAP_SHEETS = {
+    "karte": "vorlage-{seed}",
+    "skizze": "skizze-{seed}",
+    "einbetten": "karte-{seed}-behutsam-schnell-11",
+    "skizze-frei": "skizze-frei-{seed}",
+    "veredeln": "karte-{seed}-skizze3-base-11",
+}
+
+
 def klein_map_sheets() -> None:
-    """Per map: the template and every repaint, with the real road centre line and build sites drawn over them."""
+    """Per map and template: the template and its repaints, with the real road centre line and build sites over them."""
     layout, maps = export_maps(KLEIN_MAP_SEEDS)
     for m in maps:
-        paths = [KLEIN_MAP_DIR / f"vorlage-{m['seed']}.png", *sorted(KLEIN_MAP_DIR.glob(f"karte-{m['seed']}-*.png"))]
-        sheet(paths, KLEIN_MAP_DIR / f"sheet-karte-{m['seed']}.jpg", 3, cell=300, images=[overlay(p, m, layout) for p in paths])
+        for sheet_name, template_name in MAP_SHEETS.items():
+            names = [name for name, (template, _) in KLEIN_MAP_PROMPTS.items() if template == template_name]
+            results = [p for name in names for p in sorted(KLEIN_MAP_DIR.glob(f"karte-{m['seed']}-{name}-*.png"))]
+            paths = [KLEIN_MAP_DIR / f"{template_name.format(seed=m['seed'])}.png", *results]
+            sheet(paths, KLEIN_MAP_DIR / f"sheet-{sheet_name}-{m['seed']}.jpg", 3, cell=300, images=[overlay(p, m, layout) for p in paths])
 
 
 def klein_set_sheet() -> None:
