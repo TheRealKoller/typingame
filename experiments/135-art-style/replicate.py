@@ -484,7 +484,25 @@ KLEIN_SET = (
 )
 KLEIN_SET_MODELS = {"turm-magier-stufe2": KLEIN_MODELS, "turm-kanone-stufe2": KLEIN_MODELS}
 
-JOBS = (*TEXT_JOBS, "karte-a", "klein-text", "klein-edit", "klein-satz", "flux1-text")
+# klein-karte: the assembled map (karte.html?runde=satz&vorlage, without towers and enemies) repainted with more
+# detail. Z-Image's img2img either kept the road or painted well (round 4); klein keeps shapes when editing.
+KLEIN_MAP_DIR = HERE.parent / "143-style-lora" / "karte-klein"
+KLEIN_MAP_SEEDS = (42, 7, 1234)
+KEEP_LAYOUT = (
+    "Keep the exact layout: the winding road, the round dirt clearings, the trees, rocks, ruins and pond stay exactly "
+    "where they are, with the same size and shape. No text, no border, no characters, no buildings added."
+)
+KLEIN_MAP_PROMPTS = {
+    "reich": "Repaint this game map as a richly detailed hand-painted watercolor cartoon tower defense battlefield seen "
+    "from above. Make the meadow lively: several shades of green, darker and lighter patches, small flowers, tufts of "
+    "grass, little stones. Make the road a worn dirt path with wheel ruts, pebbles, uneven edges and grass growing over "
+    f"its border. Bold dark outlines, soft watercolor washes, visible paper texture. {KEEP_LAYOUT}",
+    "behutsam": "Add painted detail to this game map without moving anything: vary the meadow with patches of darker "
+    "and lighter green, scattered wildflowers and grass tufts; give the sandy road ruts, small pebbles and a ragged, "
+    f"grassy edge. Same hand-painted watercolor cartoon style. {KEEP_LAYOUT}",
+}
+
+JOBS = (*TEXT_JOBS, "karte-a", "klein-text", "klein-edit", "klein-satz", "klein-karte", "flux1-text")
 # Rounds 5 to 7 get their own folders, the LoRA candidates go to the experiment of #143; everything else is round 4.
 FOLDERS = {
     "karte-5": "runde5",
@@ -759,6 +777,28 @@ def klein_set_jobs() -> list[tuple[pathlib.Path, str, dict]]:
     ]
 
 
+def klein_map_jobs() -> list[tuple[pathlib.Path, str, dict]]:
+    jobs = []
+    for map_seed in KLEIN_MAP_SEEDS:
+        template = jpeg_uri(KLEIN_MAP_DIR / f"vorlage-{map_seed}.png")
+        for prompt_name, prompt in KLEIN_MAP_PROMPTS.items():
+            for model, version in KLEIN_MODELS.items():
+                for seed in KLEIN_SEEDS:
+                    inputs = {"prompt": prompt, "seed": seed, "output_format": "png", "images": [template], "aspect_ratio": "match_input_image"}
+                    if model == "base":
+                        inputs["guidance"] = 4
+                    jobs.append((KLEIN_MAP_DIR / f"karte-{map_seed}-{prompt_name}-{model}-{seed}.png", version, inputs))
+    return jobs
+
+
+def klein_map_sheets() -> None:
+    """Per map: the template and every repaint, with the real road centre line and build sites drawn over them."""
+    layout, maps = export_maps(KLEIN_MAP_SEEDS)
+    for m in maps:
+        paths = [KLEIN_MAP_DIR / f"vorlage-{m['seed']}.png", *sorted(KLEIN_MAP_DIR.glob(f"karte-{m['seed']}-*.png"))]
+        sheet(paths, KLEIN_MAP_DIR / f"sheet-karte-{m['seed']}.jpg", 3, cell=300, images=[overlay(p, m, layout) for p in paths])
+
+
 def klein_set_sheet() -> None:
     paths: list[pathlib.Path] = []
     for name, refs, _ in KLEIN_SET:
@@ -874,6 +914,10 @@ def main() -> None:
             KLEIN_DIR.mkdir(exist_ok=True)
             run(klein_text_jobs() if name == "klein-text" else klein_edit_jobs(), args.dry_run)
             klein_sheets()
+            continue
+        if name == "klein-karte":
+            run(klein_map_jobs(), args.dry_run)
+            klein_map_sheets()
             continue
         if name == "klein-satz":
             run(klein_set_jobs(), args.dry_run)

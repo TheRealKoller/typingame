@@ -38,7 +38,7 @@ interface Round {
   readonly clearingWidth: number;
   /** Round 5 drops the paper rim and grounds cut-outs with a soft shadow instead. */
   readonly shadows: boolean;
-  /** #143: a full map set with tower upgrades, enemy poses and a golem from parts; replaces walkers and towers. */
+  /** #143: a full map set with tower upgrades and enemy poses; replaces walkers and towers. */
   readonly set?: MapSet;
 }
 
@@ -49,8 +49,6 @@ interface MapSet {
   readonly towers: readonly (readonly [string, string])[];
   /** Walk pose on the road, hit pose when struck, attack pose at the end of the road. */
   readonly enemies: readonly SetEnemy[];
-  /** A golem put together from parts; its limbs swing while it walks. Limbs are painted lying, joint on the left. */
-  readonly puppet: { readonly body: string; readonly arm: string; readonly leg: string };
 }
 
 interface SetEnemy {
@@ -383,9 +381,6 @@ const ROUNDS: Record<string, Round> = {
           'kaefer-links-base-22',
           'kaefer-angriff-base-22',
           'kaefer-getroffen-base-11',
-          'golem-teil-rumpf-base-11',
-          'golem-teil-arm2-base-11',
-          'golem-teil-bein2-base-22',
         ].map((file) => [file, `demo8/${file}`]),
       ),
       towers: [
@@ -398,7 +393,6 @@ const ROUNDS: Record<string, Round> = {
         { walk: 'golem-links-base-11', hit: 'golem-getroffen-base-11', attack: 'golem-angriff-base-22', height: 64, facesLeft: true },
         { walk: 'kaefer-links-base-22', hit: 'kaefer-getroffen-base-11', attack: 'kaefer-angriff-base-22', height: 60, facesLeft: true },
       ],
-      puppet: { body: 'golem-teil-rumpf-base-11', arm: 'golem-teil-arm2-base-11', leg: 'golem-teil-bein2-base-22' },
     },
   },
 };
@@ -478,32 +472,41 @@ class MapScene extends Phaser.Scene {
     for (const [part, file] of Object.entries(parts)) this.load.image(part, urls[`./${file}.png`]!);
     clearing.forEach((file, i) => this.load.image(`clearing-${i}`, urls[`./${file}.png`]!));
     for (const [key, file] of Object.entries(ROUND.set?.files ?? {})) this.load.image(key, urls[`./${file}.png`]!);
+    const painted = new URLSearchParams(location.search).get('gemalt');
+    if (painted) this.load.image('painted', urls[`./demo8/${painted}.png`]!);
   }
 
   create(): void {
-    const seed = Number(new URLSearchParams(location.search).get('seed') ?? Math.floor(Math.random() * 1e6));
+    const params = new URLSearchParams(location.search);
+    const seed = Number(params.get('seed') ?? Math.floor(Math.random() * 1e6));
     // The links in karte.html switch the style but keep this map, so styles compare on the same layout.
     for (const link of document.querySelectorAll<HTMLAnchorElement>('nav a')) link.search += `&seed=${seed}`;
     const map = generateAshMap(seededRandom(seed), 'probe', 'Probe');
     const road = roundCorners(map.path, CORNER_RADIUS);
-    this.#paintGround(road, map.sites);
-    // Round 4: build sites stand on painted clearings; they lie flat, under everything that stands.
-    const clearings = ROUND.pick.clearing ?? [];
-    map.sites.forEach((site, i) => {
-      if (clearings.length === 0) return;
-      const image = this.add.image(site.x, site.y + 8, `clearing-${i % clearings.length}`).setDepth(1);
-      image.setScale(ROUND.clearingWidth / image.width);
-    });
-
-    for (const prop of map.props) {
-      const part: Part = prop.kind === 'rock' ? (prop.variant === 0 ? 'rocks' : 'ruin') : (['tree', 'grove', 'tree', 'pond'] as const)[(prop.variant ?? 0) % 4]!;
-      // Props are placed by their centre, half of 64 px above the ground.
-      this.#cutOut(part, prop.x, prop.y + 32);
+    // #143: `?gemalt=<file>` shows a map repainted by FLUX.2 klein (replicate.py klein-karte) instead of ground,
+    // road, clearings and props; it was painted over the `?vorlage` of the same seed.
+    if (this.textures.exists('painted')) {
+      this.add.image(0, 0, 'painted').setOrigin(0).setDisplaySize(WIDTH, HEIGHT);
+    } else {
+      this.#paintGround(road, map.sites);
+      // Round 4: build sites stand on painted clearings; they lie flat, under everything that stands.
+      const clearings = ROUND.pick.clearing ?? [];
+      map.sites.forEach((site, i) => {
+        if (clearings.length === 0) return;
+        const image = this.add.image(site.x, site.y + 8, `clearing-${i % clearings.length}`).setDepth(1);
+        image.setScale(ROUND.clearingWidth / image.width);
+      });
+      for (const prop of map.props) {
+        const part: Part = prop.kind === 'rock' ? (prop.variant === 0 ? 'rocks' : 'ruin') : (['tree', 'grove', 'tree', 'pond'] as const)[(prop.variant ?? 0) % 4]!;
+        // Props are placed by their centre, half of 64 px above the ground.
+        this.#cutOut(part, prop.x, prop.y + 32);
+      }
     }
+    // `?vorlage`: the map without towers and enemies, the template klein repaints.
+    if (params.has('vorlage')) return;
     if (ROUND.set) {
       this.#setTowers(ROUND.set, map.sites);
       ROUND.set.enemies.forEach((enemy, i) => this.#setWalker(enemy, road, i * 3200));
-      this.#puppet(ROUND.set.puppet, road, ROUND.set.enemies.length * 3200);
       this.#strikes();
     } else {
       map.sites.forEach((site, i) => {
@@ -688,44 +691,6 @@ class MapScene extends Phaser.Scene {
         if (!enemy) return;
         enemy.setData('hitUntil', this.time.now + 450).setTint(0xffffff).setTintMode(Phaser.TintModes.FILL);
         this.time.delayedCall(70, () => enemy.clearTint().setTintMode(Phaser.TintModes.MULTIPLY));
-      },
-    });
-  }
-
-  /** The golem from parts: body, two arms and two legs swinging in opposite pairs; the back pair is darker. */
-  #puppet(parts: MapSet['puppet'], road: readonly Point[], delay: number): void {
-    const LEG = 22;
-    const limb = (key: string, length: number, x: number, y: number, back: boolean) => {
-      const image = this.add.image(x, y, key).setOrigin(0.06, 0.5).setAngle(90);
-      image.setScale(length / image.width);
-      return back ? image.setTint(0xb8b0a0) : image;
-    };
-    const body = this.add.image(0, -LEG + 6, parts.body).setOrigin(0.5, 1);
-    body.setScale(46 / body.height);
-    const [w, h] = [body.displayWidth, body.displayHeight];
-    const legs = [limb(parts.leg, LEG, -w * 0.18, -LEG + 2, true), limb(parts.leg, LEG, w * 0.18, -LEG + 2, false)];
-    const arms = [limb(parts.arm, 20, -w * 0.42, -LEG - h * 0.45, true), limb(parts.arm, 20, w * 0.42, -LEG - h * 0.45, false)];
-    const golem = this.add.container(road[0]!.x, road[0]!.y + 20, [legs[0]!, arms[0]!, body, legs[1]!, arms[1]!]).setVisible(false);
-    const shadow = this.#shadow(golem.x, golem.y, w);
-    const swing = { phase: 0 };
-    this.tweens.add({ targets: swing, phase: Math.PI * 2, duration: 760, repeat: -1 });
-    const path = roadPath(road);
-    const progress = { t: 0 };
-    this.tweens.add({
-      targets: progress,
-      t: 1,
-      delay,
-      duration: 16000,
-      repeat: -1,
-      onUpdate: () => {
-        const point = path.getPoint(progress.t);
-        const s = Math.sin(swing.phase) * 28;
-        legs.forEach((leg, i) => leg.setAngle(90 + (i ? s : -s)));
-        arms.forEach((arm, i) => arm.setAngle(90 + (i ? -s : s)));
-        body.setY(-LEG + 6 - Math.abs(Math.cos(swing.phase)) * 2);
-        if (Math.abs(point.x - golem.x) > 0.01) golem.setScale(point.x > golem.x ? -1 : 1, 1);
-        golem.setPosition(point.x, point.y + 20).setDepth(point.y + 20).setVisible(true);
-        shadow.setPosition(point.x + w * 0.08, point.y + 18);
       },
     });
   }

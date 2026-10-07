@@ -1,0 +1,3 @@
+# Repainted maps stay outside git; replicate.py and predictions.jsonl reproduce them, sheet-*.jpg show them.
+# The templates vorlage-*.png are screenshots of karte.html?runde=satz&vorlage&seed=N and stay in git.
+karte-*.png
