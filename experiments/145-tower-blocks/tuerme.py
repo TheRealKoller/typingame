@@ -51,6 +51,12 @@ CHOSEN: dict[str, dict[str, str]] = {
     "stufe1": {"jagd": "jagd-1-11", "eisnadel": "eisnadel-1-11", "viper": "viper-1-22"},
     "stufe2": {"jagd": "jagd-2-sockel-11", "eisnadel": "eisnadel-2-sockel-11", "viper": "viper-2-sockel-22"},
 }
+# The bases in use, stage I to III per kind (turm.ts, BASES).
+FINAL = {
+    "jagd": ("jagd-1-11", "jagd-2-sockel-11", "jagd-3-sockel-22"),
+    "eisnadel": ("eisnadel-1-11", "eisnadel-2-sockel-11", "eisnadel-3-sockel-11"),
+    "viper": ("viper-1-22", "viper-2-sockel-22", "viper-3-sockel-11"),
+}
 
 BLOCKS = {
     "wilde": "two small colorful pennant flags fluttering on thin wooden poles, crossed, an ornament",
@@ -59,6 +65,8 @@ BLOCKS = {
     "frostige": "a straight horizontal row of icicles hanging below a thin strip of snow and frost, seen from the front",
     "flammende": "a round iron fire bowl on three short legs with bright stylized flames rising from it",
     "der-viper": "a green viper coiled into a ring, its head raised, seen from the front, an ornament",
+    # The living viper did not please; a carved one fits a stone tower better.
+    "der-viper-stein": "a coiled viper carved from weathered grey-green stone, a relief ornament with its head raised, seen from the front",
     "im-morgengrauen": "a round golden sun disc emblem with short rays, an ornament",
     "um-mitternacht": "a silver crescent moon emblem with three small stars, an ornament",
 }
@@ -82,12 +90,23 @@ def jobs_for(name: str) -> list[tuple[pathlib.Path, str, dict]]:
         for word, motif in BLOCKS.items():
             prompt = f"A new game ornament {STYLE}: {motif}. Single object, alone, centered, plain white background, nothing else."
             jobs += [job(f"baustein-{word}", refs, prompt, seed) for seed in SEEDS]
+    elif name == "umschlungen":
+        # The other wish for »der viper«: a snake winding around the whole tower, in front of it and behind it, so it is
+        # painted into each base instead of laid on top.
+        prompt = (
+            "The same tower with a long green viper winding around it in a loose spiral from its foot up to its top, "
+            "passing in front of the tower and behind it, its head raised beside the crown. Same tower, design, colors "
+            "and style. Single object, centered, plain white background."
+        )
+        for kind, stages in FINAL.items():
+            for stage, picked in enumerate(stages, 1):
+                jobs += [job(f"{kind}-{stage}-viper", (OUT / f"{picked}.png",), prompt, seed, "match_input_image") for seed in SEEDS]
     return jobs
 
 
 def main() -> None:
     parser = argparse.ArgumentParser()
-    parser.add_argument("jobs", nargs="+", choices=["stufe1", "stufe2", "stufe3", "bausteine"])
+    parser.add_argument("jobs", nargs="+", choices=["stufe1", "stufe2", "stufe3", "bausteine", "umschlungen"])
     parser.add_argument("--dry-run", action="store_true")
     args = parser.parse_args()
     OUT.mkdir(exist_ok=True)

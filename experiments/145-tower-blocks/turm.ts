@@ -7,6 +7,11 @@ import { GRAMMAR, LEXICON } from '../../src/content/lexicon';
 
 const art = import.meta.glob('./teile/*.png', { eager: true, import: 'default', query: '?url' }) as Record<string, string>;
 const mapArt = import.meta.glob('./karte/*', { eager: true, import: 'default', query: '?url' }) as Record<string, string>;
+/** Where each plain base lies in its wrapped picture: wrapped pixel = plain pixel × scale + (dx, dy) (ausrichten.py). */
+const ALIGN = (Object.values(import.meta.glob('./teile/ausrichtung.json', { eager: true, import: 'default' }))[0] ?? {}) as Record<
+  string,
+  { readonly scale: number; readonly dx: number; readonly dy: number }
+>;
 
 /** Base pictures per tower kind and stage (tuerme.py, CHOSEN). */
 const BASES: Record<string, readonly [string, string, string]> = {
@@ -14,6 +19,17 @@ const BASES: Record<string, readonly [string, string, string]> = {
   eisnadel: ['eisnadel-1-11', 'eisnadel-2-sockel-11', 'eisnadel-3-sockel-11'],
   viper: ['viper-1-22', 'viper-2-sockel-22', 'viper-3-sockel-11'],
 };
+/**
+ * »der viper« was a living snake laid on the tower; two other ways, switched on the page: a snake winding around the
+ * whole tower, painted into each base (tuerme.py umschlungen), or a snake carved from stone as a block.
+ */
+const WRAPPED: Record<string, readonly [string, string, string]> = {
+  jagd: ['jagd-1-viper-11', 'jagd-2-viper-22', 'jagd-3-viper-11'],
+  eisnadel: ['eisnadel-1-viper-11', 'eisnadel-2-viper-22', 'eisnadel-3-viper-22'],
+  viper: ['viper-1-viper-11', 'viper-2-viper-22', 'viper-3-viper-11'],
+};
+const SNAKES = { umschlungen: 'Schlange um den Turm', stein: 'Stein-Schlange', lebend: 'lebende Schlange (bisher)' } as const;
+let snake: keyof typeof SNAKES = 'umschlungen';
 /** Each stage stands a little taller on the map. */
 const STAGE_HEIGHT = [0.82, 1, 1.15];
 
@@ -38,6 +54,7 @@ const BLOCKS: Record<string, Block> = {
   'im morgengrauen': { file: 'baustein-im-morgengrauen-11', anchor: 'emblem', width: 0.36, layer: 2 },
   'um mitternacht': { file: 'baustein-um-mitternacht-22', anchor: 'emblem', width: 0.36, layer: 2 },
 };
+const STONE_SNAKE: Block = { file: 'baustein-der-viper-stein-22', anchor: 'front', width: 0.5, layer: 3 };
 
 /** The outline of a base: for each row of the picture the leftmost and rightmost opaque pixel. */
 interface Shape {
@@ -134,11 +151,14 @@ function drawTower(ctx: CanvasRenderingContext2D, sentence: readonly Lexeme[], x
   const base = sentence.find((lexeme) => lexeme.role === 'base');
   if (!tower || !base) return;
   const stage = (tower.level ?? 1) - 1;
+  const wrapped = snake === 'umschlungen' && sentence.some((lexeme) => lexeme.word === 'der viper');
+  // Anchors and size always come from the plain base; a wrapped one is drawn over it, lined up pixel for pixel.
   const shape = shapes.get(BASES[base.word]![stage]!)!;
   const scale = (height * STAGE_HEIGHT[stage]!) / (shape.bottom - shape.top);
   const originX = x - middleAt(shape, shape.bottom - 2) * scale;
   const originY = y - shape.bottom * scale;
-  const blocks = sentence.flatMap((lexeme) => (BLOCKS[lexeme.word] ? [BLOCKS[lexeme.word]!] : [])).sort((a, b) => a.layer - b.layer);
+  const blockOf = (word: string): Block | undefined => (word === 'der viper' ? (wrapped ? undefined : snake === 'stein' ? STONE_SNAKE : BLOCKS[word]) : BLOCKS[word]);
+  const blocks = sentence.flatMap((lexeme) => blockOf(lexeme.word) ?? []).sort((a, b) => a.layer - b.layer);
   const drawBlock = (block: Block) => {
     const image = images.get(block.file)!;
     const at = place(shape, block.anchor);
@@ -149,7 +169,14 @@ function drawTower(ctx: CanvasRenderingContext2D, sentence: readonly Lexeme[], x
     ctx.drawImage(image, bx, by, width, h);
   };
   for (const block of blocks.filter((b) => b.layer < 0)) drawBlock(block);
-  ctx.drawImage(shape.image, originX, originY, shape.image.width * scale, shape.image.height * scale);
+  if (wrapped) {
+    const file = WRAPPED[base.word]![stage]!;
+    const image = images.get(file)!;
+    const { scale: s, dx, dy } = ALIGN[file]!;
+    ctx.drawImage(image, originX - (dx / s) * scale, originY - (dy / s) * scale, (image.width / s) * scale, (image.height / s) * scale);
+  } else {
+    ctx.drawImage(shape.image, originX, originY, shape.image.width * scale, shape.image.height * scale);
+  }
   for (const block of blocks.filter((b) => b.layer >= 0)) drawBlock(block);
 }
 
@@ -200,13 +227,15 @@ function renderBuilder(): void {
 
 // --- examples -----------------------------------------------------------------------------------------
 
-/** Sentences of two to five words, every word at least once. */
+/** Sentences of two to five words, every word at least once, »der viper« on every kind of tower. */
 const EXAMPLES = [
   ['jagd'],
   ['wilde', 'jagd'],
   ['frostige', 'eisnadel', 'um mitternacht'],
   ['weite', 'flammende', 'jagd', 'im morgengrauen'],
   ['wilde', 'schwere', 'viper', 'der viper'],
+  ['schwere', 'jagd', 'der viper'],
+  ['frostige', 'eisnadel', 'der viper'],
   ['wilde', 'schwere', 'weite', 'flammende', 'jagd'],
   ['schwere', 'weite', 'frostige', 'eisnadel', 'im morgengrauen'],
 ] as const;
@@ -214,14 +243,15 @@ const EXAMPLES = [
 function renderGallery(): void {
   const canvas = document.querySelector<HTMLCanvasElement>('#galerie')!;
   const ctx = canvas.getContext('2d')!;
+  ctx.clearRect(0, 0, canvas.width, canvas.height);
   const step = canvas.width / EXAMPLES.length;
-  ctx.font = '13px Georgia';
+  ctx.font = '12px Georgia';
   ctx.textAlign = 'center';
   ctx.fillStyle = '#2b2116';
   EXAMPLES.forEach((words, i) => {
     const sentence = sentenceOf(words);
-    drawTower(ctx, sentence, step * (i + 0.5), canvas.height - 40, 200);
-    ctx.fillText(read(sentence), step * (i + 0.5), canvas.height - 14, step - 8);
+    drawTower(ctx, sentence, step * (i + 0.5), canvas.height - 40, 190);
+    ctx.fillText(read(sentence), step * (i + 0.5), canvas.height - 14, step - 6);
   });
 }
 
@@ -243,9 +273,27 @@ async function renderMap(): Promise<void> {
 }
 
 async function start(): Promise<void> {
-  const files = [...Object.values(BASES).flat(), ...Object.values(BLOCKS).map((block) => block.file)];
+  const bases = Object.values(BASES).flat();
+  const files = [...bases, ...Object.values(WRAPPED).flat(), ...Object.values(BLOCKS).map((block) => block.file), STONE_SNAKE.file];
   await Promise.all(files.map(async (file) => images.set(file, await load(art[`./teile/${file}.png`]!))));
-  for (const file of Object.values(BASES).flat()) shapes.set(file, measure(images.get(file)!));
+  for (const file of bases) shapes.set(file, measure(images.get(file)!));
+  await renderAll();
+}
+
+/** Switches how »der viper« looks and draws everything again. */
+async function renderAll(): Promise<void> {
+  document.querySelector('#schlange')!.replaceChildren(
+    ...Object.entries(SNAKES).map(([key, label]) => {
+      const button = document.createElement('button');
+      button.textContent = `der viper: ${label}`;
+      button.classList.toggle('on', key === snake);
+      button.onclick = () => {
+        snake = key as keyof typeof SNAKES;
+        void renderAll();
+      };
+      return button;
+    }),
+  );
   renderBuilder();
   renderGallery();
   await renderMap();
