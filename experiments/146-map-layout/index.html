@@ -1,0 +1,25 @@
+<!doctype html>
+<html lang="de">
+  <head>
+    <meta charset="UTF-8" />
+    <title>#146 Probe: Bauplätze und Zoomstufe</title>
+    <style>
+      body { margin: 0; background: #222; display: flex; flex-direction: column; align-items: center; font: 14px Georgia, serif; }
+      nav { padding: 6px; color: #ccc; }
+      nav a { color: #f0d9a0; margin: 0 6px; }
+    </style>
+  </head>
+  <body>
+    <nav>
+      Maßstab:
+      <a href="?massstab=1" data-keep="wege">1,0</a>
+      <a href="?massstab=0.9" data-keep="wege">0,9</a>
+      <a href="?massstab=0.8" data-keep="wege">0,8</a>
+      – Wege:
+      <a href="?wege=1" data-keep="massstab">1</a>
+      <a href="?wege=2" data-keep="massstab">2</a>
+      – <a href="?" data-keep="massstab wege" data-new>neue Karte</a>
+    </nav>
+    <script type="module" src="./layout.ts"></script>
+  </body>
+</html>
