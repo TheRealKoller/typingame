@@ -5,7 +5,7 @@ import type { BuildSite, Spell, TowerKind } from '../battle/level';
 import { read, type Grammar } from '../battle/sentence';
 import type { Point } from '../battle/path';
 import { MASTER_NAME, MASTER_VERDICTS, pageText } from '../content/cutscenes';
-import { JOURNEY_VERDICTS, journeyBattle, rewardText, worldPoint, type Reward, type WorldPoint } from '../content/journey';
+import { JOURNEY_VERDICTS, journeyBattle, rewardText, WORLD_POINTS, worldPoint, type Reward, type WorldPoint } from '../content/journey';
 import { practiceLevel, practiceMap, READING_ROOM, type BattleMap, type Prop } from '../content/library';
 import { RAID_LEVEL } from '../content/raid';
 import { JOURNEY, RAID, allKeysSetup, STAGES, stageIndex, stageSetup, type StageSetup } from '../content/tutorial';
@@ -131,6 +131,11 @@ export interface BattleSceneData {
   readonly round?: number;
   /** On the journey: id of the world map point fought for. */
   readonly point?: string;
+  /**
+   * Development only (`?karte=wege2` in `main.ts`): a battle of the last place of the journey on a fresh map with
+   * this many paths, before any chapter has such places. It frees no place; Enter after the end starts another.
+   */
+  readonly trialPaths?: number;
 }
 
 interface EnemyView {
@@ -167,6 +172,8 @@ interface Placed {
 export class BattleScene extends Phaser.Scene {
   #progress!: Progress;
   #battle!: Battle;
+  /** The map's scale (`Level.scale`): towers, enemies, props, path and pads are drawn this much smaller; words are not. */
+  #scale = 1;
   #commands!: Commands;
   #engine!: TypingEngine;
   #keyboard!: KeyboardView;
@@ -211,6 +218,7 @@ export class BattleScene extends Phaser.Scene {
   #raid = false;
   /** The world map point fought for on the journey; null in the library. */
   #point: WorldPoint | null = null;
+  #trialPaths: number | undefined;
   /** Shelves that can still catch fire in the raid, in the order they burn. */
   #shelves: Phaser.GameObjects.Image[] = [];
   #darkness: Phaser.GameObjects.Rectangle | null = null;
@@ -225,8 +233,10 @@ export class BattleScene extends Phaser.Scene {
   create(data: BattleSceneData): void {
     createBattleArt(this);
     this.#progress = data.progress;
-    this.#raid = this.#progress.stage === RAID;
-    this.#point = this.#progress.stage === JOURNEY && data.point ? worldPoint(data.point) : null;
+    this.#trialPaths = data.trialPaths;
+    this.#raid = !this.#trialPaths && this.#progress.stage === RAID;
+    const last = WORLD_POINTS[WORLD_POINTS.length - 1]!;
+    this.#point = this.#trialPaths ? { ...last, paths: this.#trialPaths } : this.#progress.stage === JOURNEY && data.point ? worldPoint(data.point) : null;
     const tutorial = !this.#raid && !this.#point;
     // The raid and the journey are fought with every key of the tutorial; a place of the journey brings its own map and towers.
     const journey = this.#point ? journeyBattle(this.#point, Math.random, this.#progress.freed) : null;
@@ -247,6 +257,7 @@ export class BattleScene extends Phaser.Scene {
     // The raid always strikes the reading room.
     this.#map = journey?.map ?? (this.#raid ? READING_ROOM : practiceMap(this.#round));
     this.#battle = new Battle(journey?.level ?? (this.#raid ? RAID_LEVEL : practiceLevel(STAGES[this.#stage]!.section, this.#map)));
+    this.#scale = this.#battle.level.scale ?? 1;
     this.#shelves = [];
     this.#darkness = null;
     this.#commands = this.#newCommands();
@@ -339,7 +350,8 @@ export class BattleScene extends Phaser.Scene {
       event.preventDefault();
       if (event.repeat) return;
       if (this.#ended()) {
-        if (this.#point) this.scene.start('WorldMapScene', { progress: this.#progress });
+        if (this.#trialPaths) this.scene.restart({ progress: this.#progress, trialPaths: this.#trialPaths } satisfies BattleSceneData);
+        else if (this.#point) this.scene.start('WorldMapScene', { progress: this.#progress });
         else if (!this.#raid) this.scene.restart({ progress: this.#progress, round: this.#round + 1 } satisfies BattleSceneData);
         return;
       }
@@ -482,7 +494,7 @@ export class BattleScene extends Phaser.Scene {
     if (!this.#scroll) {
       const x = site.x < this.scale.width / 2 ? this.scale.width - SentenceScroll.width - SCROLL_MARGIN : SCROLL_MARGIN;
       this.#scroll = new SentenceScroll(this, x, SCROLL_MARGIN).setDepth(1000).setData('site', site.id);
-      this.#siteMarker = this.add.circle(site.x, site.y, 40).setStrokeStyle(4, 0x3d8bff, 1).setDepth(site.y + 60);
+      this.#siteMarker = this.add.circle(site.x, site.y, 40 * this.#scale).setStrokeStyle(4, 0x3d8bff, 1).setDepth(site.y + 60);
       this.tweens.add({ targets: this.#siteMarker, scale: { from: 1, to: 1.15 }, alpha: { from: 1, to: 0.5 }, duration: 700, yoyo: true, repeat: -1 });
     }
     this.#scroll.setFooter(this.#sentenceHint());
@@ -568,7 +580,9 @@ export class BattleScene extends Phaser.Scene {
 
   /** Words above a free site sit just over its pad; over a tower they clear its top. */
   #labelY(site: BuildSite): number {
-    return this.#battle.towerAt(site) ? Math.max(TOWER_LABEL_OFFSET_MIN, site.y - TOWER_LABEL_OFFSET) : site.y - LABEL_OFFSET;
+    if (!this.#battle.towerAt(site)) return site.y - LABEL_OFFSET;
+    // Over a smaller tower the word sits lower; it keeps its own size.
+    return Math.max(TOWER_LABEL_OFFSET_MIN, site.y - LABEL_OFFSET - (TOWER_LABEL_OFFSET - LABEL_OFFSET) * this.#scale);
   }
 
   /** The map of this battle: floor, walls or grass, the path, its props, the build sites and the ward circle. */
@@ -579,6 +593,8 @@ export class BattleScene extends Phaser.Scene {
 
     for (const prop of this.#map.props) {
       const image = this.#propImage(prop);
+      // Shelves line the back wall, which keeps its size; everything standing on the floor shrinks with the map.
+      if (prop.kind !== 'bookshelf' && prop.kind !== 'burnt-bookshelf') image.setScale(this.#scale);
       // Props stand on their lower edge, so they sort with towers and golems by that line.
       image.setOrigin(0.5, 1);
       image.setY(prop.y + image.displayHeight / 2).setDepth(prop.y + image.displayHeight / 2);
@@ -595,10 +611,10 @@ export class BattleScene extends Phaser.Scene {
 
   /** Build sites, the ward circle at the end of the path and the Enter prompt in it. */
   #drawSitesAndWard(): void {
-    const path = this.#battle.level.path;
+    const path = this.#battle.level.paths[0]!;
     for (const site of this.#battle.level.sites) {
       this.add
-        .rectangle(site.x, site.y, 56, 56, PAD_COLOR)
+        .rectangle(site.x, site.y, 56 * this.#scale, 56 * this.#scale, PAD_COLOR)
         .setStrokeStyle(3, PAD_EDGE)
         .setDepth(2);
     }
@@ -668,12 +684,12 @@ export class BattleScene extends Phaser.Scene {
     for (const x of this.#map.banners ?? []) this.add.image(x, 8, DUNGEON, BANNER_FRAME).setOrigin(0.5, 0).setScale(LIBRARY_SCALE);
     for (const x of this.#map.torches ?? []) this.add.sprite(x, 44, TORCH).setScale(LIBRARY_SCALE).play(TORCH_FLAME);
 
-    layPath(this, this.#battle.level.path, {
+    layPath(this, this.#battle.level.paths, {
       texture: DUNGEON,
       frame: CARPET_FRAME,
       edgeColor: CARPET_EDGE,
-      tileScale: LIBRARY_SCALE,
-      width: PATH_WIDTH,
+      tileScale: LIBRARY_SCALE * this.#scale,
+      width: PATH_WIDTH * this.#scale,
       depth: 1,
     });
   }
@@ -681,12 +697,12 @@ export class BattleScene extends Phaser.Scene {
   /** The courtyard: grass and a sand path. */
   #drawCourtyard(): void {
     this.add.tileSprite(0, 0, this.scale.width, DESK_TOP, GRASS_TILESET, GRASS_FRAME).setOrigin(0);
-    layPath(this, this.#battle.level.path, {
+    layPath(this, this.#battle.level.paths, {
       texture: GRASS_TILESET,
       frame: SAND_FRAME,
       edgeColor: SAND_EDGE,
-      tileScale: 1,
-      width: PATH_WIDTH,
+      tileScale: this.#scale,
+      width: PATH_WIDTH * this.#scale,
       depth: 1,
     });
   }
@@ -808,7 +824,7 @@ export class BattleScene extends Phaser.Scene {
       const reward = point && !this.#progress.freed.has(point.id) ? (point.reward ?? null) : null;
       if (this.#raid) this.#endRaid();
       else this.#showEnd(reward);
-      if (point) {
+      if (point && !this.#trialPaths) {
         this.#progress.free(point.id);
         void this.#progress.save();
       }
@@ -867,7 +883,7 @@ export class BattleScene extends Phaser.Scene {
       else view.sprite.clearTint();
       // Poison works without shots, so the bar follows the enemy's health directly.
       if (enemy.poisonMs > 0) view.shownHealth = Math.min(view.shownHealth, enemy.health);
-      view.glow?.setPosition(at.x, at.y + 14).setDepth(at.y + 99);
+      view.glow?.setPosition(at.x, at.y + 14 * this.#scale).setDepth(at.y + 99);
       view.last = at;
       this.#drawHealth(view, enemy, at);
     }
@@ -875,7 +891,7 @@ export class BattleScene extends Phaser.Scene {
 
   /** Warm light under a glowing enemy, breathing so it catches the eye. */
   #glow(): Phaser.GameObjects.Ellipse {
-    const glow = this.add.ellipse(0, 0, 76, 38, 0xffd23a, 0.85).setBlendMode(Phaser.BlendModes.ADD);
+    const glow = this.add.ellipse(0, 0, 76 * this.#scale, 38 * this.#scale, 0xffd23a, 0.85).setBlendMode(Phaser.BlendModes.ADD);
     this.tweens.add({ targets: glow, alpha: { from: 0.85, to: 0.35 }, scale: { from: 1, to: 1.2 }, duration: 600, yoyo: true, repeat: -1 });
     return glow;
   }
@@ -893,7 +909,7 @@ export class BattleScene extends Phaser.Scene {
         label = new WordLabel(this, at.x, at.y, word, WORD_SIZE).setDepth(1001);
         this.#enemyLabels.set(enemy.id, label);
       }
-      label.setPosition(at.x, at.y - 58);
+      label.setPosition(at.x, at.y - 58 * this.#scale);
     }
     for (const [id, label] of this.#enemyLabels) {
       if (shown.has(id)) continue;
@@ -978,14 +994,14 @@ export class BattleScene extends Phaser.Scene {
       .clear()
       .setDepth(at.y + 101)
       .fillStyle(0x2f2a24, 0.8)
-      .fillRect(at.x - 18, at.y - 36, 36, 5)
+      .fillRect(at.x - 18, at.y - 36 * this.#scale, 36, 5)
       .fillStyle(share > 0.5 ? 0x8fd16a : 0xe0a040, 1)
-      .fillRect(at.x - 17, at.y - 35, 34 * share, 3);
+      .fillRect(at.x - 17, at.y - 36 * this.#scale + 1, 34 * share, 3);
   }
 
   #enemySprite(enemy: Enemy, at: Point): Phaser.GameObjects.Sprite {
     const sheet = ENEMY_SHEETS[enemy.kind.id];
-    const sprite = this.add.sprite(at.x, at.y, enemy.kind.id).setScale(sheet?.scale ?? 1);
+    const sprite = this.add.sprite(at.x, at.y, enemy.kind.id).setScale((sheet?.scale ?? 1) * this.#scale);
     if (sheet?.tint !== undefined) sprite.setTint(sheet.tint);
     return sprite;
   }
@@ -1001,10 +1017,10 @@ export class BattleScene extends Phaser.Scene {
       this.#enemies.delete(enemy.id);
       view.health.destroy();
       view.glow?.destroy();
-      this.tweens.add({ targets: view.sprite, alpha: 0, scale: 0.4, duration: 300, onComplete: () => view.sprite.destroy() });
+      this.tweens.add({ targets: view.sprite, alpha: 0, scale: 0.4 * view.sprite.scale, duration: 300, onComplete: () => view.sprite.destroy() });
     }
     this.tweens.add({ targets: [this.#ward, this.#wardRing], scale: { from: 1.25, to: 1 }, duration: 350, ease: 'Back.easeOut' });
-    const end = this.#battle.level.path.at(-1)!;
+    const end = this.#battle.level.paths[0]!.at(-1)!;
     const flash = this.add.circle(end.x, end.y, WARD_RING_RADIUS, WARD_LOW_COLOR, 0.6).setDepth(5);
     this.tweens.add({ targets: flash, scale: 1.6, alpha: 0, duration: 400, onComplete: () => flash.destroy() });
     this.cameras.main.shake(180, 0.004);
@@ -1099,10 +1115,11 @@ export class BattleScene extends Phaser.Scene {
     if (!art) return;
     const { x, y } = tower.site;
     // The base stands on the pad; its top square carries the weapon.
-    const base = this.add.sprite(x, y + 32, art.base, art.baseFrame).setOrigin(0.5, 1).setDepth(y + 50);
-    const weapon = this.add.sprite(x, y - 51, art.weapon, 0).setDepth(y + 51);
+    const s = this.#scale;
+    const base = this.add.sprite(x, y + 32 * s, art.base, art.baseFrame).setOrigin(0.5, 1).setScale(s).setDepth(y + 50);
+    const weapon = this.add.sprite(x, y - 51 * s, art.weapon, 0).setScale(s).setDepth(y + 51);
     for (const part of [base, weapon]) part.setAlpha(0);
-    const cloud = this.add.sprite(x, y - 32, CONSTRUCTION, 6).setDepth(y + 52);
+    const cloud = this.add.sprite(x, y - 32 * s, CONSTRUCTION, 6).setScale(s).setDepth(y + 52);
     cloud.play(CONSTRUCTION_REVEAL);
     const before = this.#towers.get(tower.site.id);
     this.time.delayedCall(150, () => {
@@ -1139,7 +1156,8 @@ export class BattleScene extends Phaser.Scene {
     // The Spire weapons and projectiles point up.
     view.weapon.setRotation(angle + Math.PI / 2).play(art.weaponAttack);
 
-    const projectile = this.add.image(from.x, from.y, art.projectile).setRotation(angle + Math.PI / 2).setScale(art.shotScale).setDepth(900);
+    const shotScale = (art.shotScale ?? 1) * this.#scale;
+    const projectile = this.add.image(from.x, from.y, art.projectile).setRotation(angle + Math.PI / 2).setScale(shotScale).setDepth(900);
     const duration = (Phaser.Math.Distance.Between(from.x, from.y, target.x, target.y) / PROJECTILE_SPEED) * 1000;
     this.tweens.addCounter({
       from: 0,
@@ -1153,7 +1171,7 @@ export class BattleScene extends Phaser.Scene {
       },
       onComplete: () => {
         projectile.destroy();
-        const impact = this.add.sprite(target.x, target.y, art.impact).setScale(art.shotScale).setDepth(901).play(art.impact);
+        const impact = this.add.sprite(target.x, target.y, art.impact).setScale(shotScale).setDepth(901).play(art.impact);
         impact.once(Phaser.Animations.Events.ANIMATION_COMPLETE, () => impact.destroy());
         for (const { hit, enemyView: other } of hits) this.#land(hit, other);
       },

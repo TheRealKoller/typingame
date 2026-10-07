@@ -73,6 +73,8 @@ export interface Squad {
   readonly delayMs?: number;
   /** Every this many enemies, starting with the first, one glows and carries a word; none if omitted. */
   readonly markEvery?: number;
+  /** Index into `Level.paths` of the way its enemies come; the first if omitted. */
+  readonly path?: number;
 }
 
 /** Squads that advance together during one ebb, each on its own schedule. */
@@ -88,12 +90,21 @@ export interface BuildSite {
 /** One level as data: the map, the ward circle and the waves. */
 export interface Level {
   readonly id: string;
-  /** Waypoints from where the enemies enter to the ward circle at the end. */
-  readonly path: readonly Point[];
+  /**
+   * Ways from where the enemies enter to the ward circle, each with its own waypoints and all ending at the ward.
+   * The first is the main path; others enter elsewhere and join it, sharing its last stretch.
+   */
+  readonly paths: readonly (readonly Point[])[];
   readonly sites: readonly BuildSite[];
   /** Strength of the ward circle at the start; the level is lost when it drops to zero. */
   readonly ward: number;
   /** Ink at the start. */
   readonly ink: number;
   readonly waves: readonly Wave[];
+  /**
+   * Size of the map's world on screen; 1 if omitted. At 0.8 the world is drawn smaller, so more of it fits: tower
+   * ranges, splash radii and every drawn size shrink by it. Words keep their size, and enemies their pace on
+   * screen, so a battle takes as long as at scale 1.
+   */
+  readonly scale?: number;
 }

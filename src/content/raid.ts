@@ -18,8 +18,9 @@ export const SHADOW: EnemyKind = { id: 'shadow', speed: 42, wardDamage: 2, healt
  */
 export const RAID_LEVEL: Level = {
   id: 'raid',
-  path: READING_ROOM.path,
+  paths: READING_ROOM.paths,
   sites: READING_ROOM.sites,
+  scale: READING_ROOM.scale,
   ward: 10,
   ink: 150,
   waves: [

@@ -10,7 +10,9 @@ export type Phase = 'flood' | 'ebb' | 'won' | 'lost';
 export interface Enemy {
   readonly id: number;
   readonly kind: EnemyKind;
-  /** Pixels travelled along the path. */
+  /** Index into `Level.paths` of the way it walks. */
+  readonly path: number;
+  /** Pixels travelled along its path. */
   distance: number;
   health: number;
   /** Glows and carries a word; typing it strikes the enemy down (see `strike`). */
@@ -68,7 +70,10 @@ const NOTHING: Step = { shots: [], arrived: [], withered: [] };
  */
 export class Battle {
   readonly level: Level;
-  readonly #length: number;
+  /** Length of each path, from where its enemies enter to the ward circle. */
+  readonly #lengths: number[];
+  /** Map scale: ranges and splash radii are given at scale 1 and shrink with the map; enemies keep their pace on screen. */
+  readonly #scale: number;
   #phase: Phase = 'flood';
   #wave = 0;
   #ward: number;
@@ -84,12 +89,16 @@ export class Battle {
   readonly #spellCooldowns = new Map<string, number>();
 
   constructor(level: Level) {
-    if (level.path.length < 2) throw new Error(`level ${level.id}: the path needs at least two points`);
+    if (level.paths.length === 0 || level.paths.some((path) => path.length < 2)) throw new Error(`level ${level.id}: every path needs at least two points`);
     if (level.waves.length === 0) throw new Error(`level ${level.id}: there are no waves`);
+    for (const squad of level.waves.flat()) {
+      if (!level.paths[squad.path ?? 0]) throw new Error(`level ${level.id}: no path ${squad.path} for ${squad.kind.id}`);
+    }
     this.level = level;
-    this.#length = pathLength(level.path);
+    this.#lengths = level.paths.map(pathLength);
     this.#ward = level.ward;
     this.#ink = level.ink;
+    this.#scale = level.scale ?? 1;
   }
 
   get phase(): Phase {
@@ -118,7 +127,12 @@ export class Battle {
   }
 
   positionOf(enemy: Enemy): Point {
-    return pointAt(this.level.path, enemy.distance);
+    return pointAt(this.level.paths[enemy.path]!, enemy.distance);
+  }
+
+  /** Pixels left until `enemy` reaches the ward circle. */
+  #left(enemy: Enemy): number {
+    return this.#lengths[enemy.path]! - enemy.distance;
   }
 
   towerAt(site: BuildSite): Tower | undefined {
@@ -195,7 +209,7 @@ export class Battle {
       while (spawned < squad.count && this.#waveMs >= (squad.delayMs ?? 0) + spawned * squad.spacingMs) {
         // Every `markEvery`-th enemy of a squad glows, starting with the first.
         const marked = squad.markEvery !== undefined && spawned % squad.markEvery === 0;
-        this.#enemies.push({ id: this.#nextId++, kind: squad.kind, distance: 0, health: squad.kind.health, marked, slowMs: 0, slowFactor: 1, poisonMs: 0, poisonDps: 0 });
+        this.#enemies.push({ id: this.#nextId++, kind: squad.kind, path: squad.path ?? 0, distance: 0, health: squad.kind.health, marked, slowMs: 0, slowFactor: 1, poisonMs: 0, poisonDps: 0 });
         spawned++;
       }
       this.#spawned[i] = spawned;
@@ -210,8 +224,8 @@ export class Battle {
       enemy.slowMs -= slowed;
     }
     const withered = this.#poison(deltaMs);
-    const arrived = this.#enemies.filter((enemy) => enemy.distance >= this.#length);
-    this.#enemies = this.#enemies.filter((enemy) => enemy.distance < this.#length);
+    const arrived = this.#enemies.filter((enemy) => this.#left(enemy) <= 0);
+    this.#enemies = this.#enemies.filter((enemy) => this.#left(enemy) > 0);
     for (const enemy of arrived) this.#ward = Math.max(0, this.#ward - enemy.kind.wardDamage);
 
     const shots = this.#attack(deltaMs);
@@ -239,7 +253,7 @@ export class Battle {
   }
 
   /**
-   * Every ready tower hits the enemy in range that is furthest along the path;
+   * Every ready tower hits the enemy in range that is closest to the ward circle, whichever path it walks;
    * a splashing tower hits every enemy near the target as well.
    */
   #attack(deltaMs: number): Shot[] {
@@ -250,9 +264,9 @@ export class Battle {
       const target = this.#enemies
         .filter((enemy) => {
           const at = this.positionOf(enemy);
-          return Math.hypot(at.x - tower.site.x, at.y - tower.site.y) <= tower.kind.range;
+          return Math.hypot(at.x - tower.site.x, at.y - tower.site.y) <= tower.kind.range * this.#scale;
         })
-        .reduce<Enemy | undefined>((best, enemy) => (best && best.distance >= enemy.distance ? best : enemy), undefined);
+        .reduce<Enemy | undefined>((best, enemy) => (best && this.#left(best) <= this.#left(enemy) ? best : enemy), undefined);
       if (!target) continue;
 
       tower.cooldownMs = tower.kind.cooldownMs;
@@ -265,7 +279,7 @@ export class Battle {
           : this.#enemies.filter((enemy) => {
               if (enemy === target) return false;
               const at = this.positionOf(enemy);
-              return Math.hypot(at.x - center.x, at.y - center.y) <= splash;
+              return Math.hypot(at.x - center.x, at.y - center.y) <= splash * this.#scale;
             });
       const [hit, ...splashed] = [target, ...others].map((enemy) => this.#hit(enemy, tower));
       shots.push({ ...hit!, tower, splash: splashed });
