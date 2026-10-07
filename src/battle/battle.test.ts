@@ -184,6 +184,26 @@ describe('towers', () => {
     expect(shots.map((shot) => shot.enemy.id)).toEqual([leader!.id, leader!.id]);
   });
 
+  it('shrinks reach and splash with the map scale, while enemies keep their pace on screen', () => {
+    // At half scale the bow reaches 30 px, short of the path 40 px away; enemies still walk 100 px a second.
+    const reach = new Battle(level({ scale: 0.5, waves: [[{ kind: BUG, count: 1, spacingMs: 1000 }]] }));
+    reach.build(reach.level.sites[0]!, BOW);
+    reach.endFlood();
+    run(reach, 1000);
+    expect(reach.enemies[0]!.distance).toBe(100);
+    run(reach, 1500);
+    expect(reach.enemies[0]!.health).toBe(BUG.health);
+
+    // Three bugs 20 px apart: the splash of 30 px covers only 15 px, so the next one is spared.
+    const blot: TowerKind = { ...BOW, range: 1000, damage: 20, cooldownMs: 10_000, splash: 30 };
+    const splash = new Battle(level({ scale: 0.5, waves: [[{ kind: BUG, count: 3, spacingMs: 200 }]] }));
+    splash.build(splash.level.sites[1]!, blot);
+    splash.endFlood();
+    splash.towers[0]!.cooldownMs = 600;
+    const shots = Array.from({ length: 6 }, () => splash.update(100).shots).flat();
+    expect(shots.map((shot) => shot.splash.length)).toEqual([0]);
+  });
+
   it('splashes the enemies near the target, not those further away, and collects ink for all defeated', () => {
     // Three bugs 20 px apart along the path; the splash reaches 30 px around the leading one.
     const blot: TowerKind = { ...BOW, range: 500, damage: 20, cooldownMs: 10_000, splash: 30 };

@@ -20,6 +20,7 @@ export const RAID_LEVEL: Level = {
   id: 'raid',
   path: READING_ROOM.path,
   sites: READING_ROOM.sites,
+  scale: READING_ROOM.scale,
   ward: 10,
   ink: 150,
   waves: [

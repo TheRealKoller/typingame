@@ -69,6 +69,8 @@ const NOTHING: Step = { shots: [], arrived: [], withered: [] };
 export class Battle {
   readonly level: Level;
   readonly #length: number;
+  /** Map scale: ranges and splash radii are given at scale 1 and shrink with the map; enemies keep their pace on screen. */
+  readonly #scale: number;
   #phase: Phase = 'flood';
   #wave = 0;
   #ward: number;
@@ -90,6 +92,7 @@ export class Battle {
     this.#length = pathLength(level.path);
     this.#ward = level.ward;
     this.#ink = level.ink;
+    this.#scale = level.scale ?? 1;
   }
 
   get phase(): Phase {
@@ -250,7 +253,7 @@ export class Battle {
       const target = this.#enemies
         .filter((enemy) => {
           const at = this.positionOf(enemy);
-          return Math.hypot(at.x - tower.site.x, at.y - tower.site.y) <= tower.kind.range;
+          return Math.hypot(at.x - tower.site.x, at.y - tower.site.y) <= tower.kind.range * this.#scale;
         })
         .reduce<Enemy | undefined>((best, enemy) => (best && best.distance >= enemy.distance ? best : enemy), undefined);
       if (!target) continue;
@@ -265,7 +268,7 @@ export class Battle {
           : this.#enemies.filter((enemy) => {
               if (enemy === target) return false;
               const at = this.positionOf(enemy);
-              return Math.hypot(at.x - center.x, at.y - center.y) <= splash;
+              return Math.hypot(at.x - center.x, at.y - center.y) <= splash * this.#scale;
             });
       const [hit, ...splashed] = [target, ...others].map((enemy) => this.#hit(enemy, tower));
       shots.push({ ...hit!, tower, splash: splashed });

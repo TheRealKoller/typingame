@@ -96,4 +96,10 @@ export interface Level {
   /** Ink at the start. */
   readonly ink: number;
   readonly waves: readonly Wave[];
+  /**
+   * Size of the map's world on screen; 1 if omitted. At 0.8 the world is drawn smaller, so more of it fits: tower
+   * ranges, splash radii and every drawn size shrink by it. Words keep their size, and enemies their pace on
+   * screen, so a battle takes as long as at scale 1.
+   */
+  readonly scale?: number;
 }

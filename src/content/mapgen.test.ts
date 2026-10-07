@@ -1,55 +1,91 @@
 import { describe, expect, it } from 'vitest';
 import { CELLAR, RUIN, SHELLED_BEETLE, SILENT_WASP } from './journey';
-import { PRACTICE_MAPS, type BattleMap } from './library';
-import { distanceToPath, generateAshMap, generateWaves, LAYOUT, MARKED_FROM, SWIFT_FROM, seededRandom, siteFits, touchesPath, waveCount } from './mapgen';
+import { MAP_SCALE, PRACTICE_MAPS, SHELF_BOTTOM, type BattleMap } from './library';
+import {
+  alongPath,
+  coverage,
+  distanceToPath,
+  generateAshMap,
+  generateWaves,
+  LAYOUT,
+  MARKED_FROM,
+  MIN_COVERAGE,
+  pathEnd,
+  SITE_COUNT,
+  SWIFT_FROM,
+  seededRandom,
+  siteFits,
+  touchesPath,
+  waveCount,
+} from './mapgen';
 import { SILENT_FIREBUG, SILENT_SCORPION } from './raid';
 
-const FIXED_MAPS: readonly BattleMap[] = [...PRACTICE_MAPS, RUIN, CELLAR];
 const GENERATED = Array.from({ length: 200 }, (_, seed) => generateAshMap(seededRandom(seed), 'test', 'Test'));
+/** Every battle map follows the rules of #146: its scale, seven sites, none of them weak. */
+const MAPS: readonly BattleMap[] = [...PRACTICE_MAPS, RUIN, CELLAR, ...GENERATED];
 
-function expectSitesFit(map: BattleMap): void {
-  expect(map.sites).toHaveLength(5);
-  for (const site of map.sites) expect(siteFits(map.path, site.x, site.y), `site ${site.id} at ${site.x}, ${site.y}`).toBe(true);
-}
-
-describe('fixed maps', () => {
-  it.each(FIXED_MAPS.map((map) => [map.name, map] as const))('%s keeps sites and their words off the path and above the desk', (_, map) => {
-    expectSitesFit(map);
-  });
-});
-
-describe('generated maps', () => {
-  it('keep sites and their words off the path and above the desk', () => {
-    for (const map of GENERATED) expectSitesFit(map);
+describe('battle maps', () => {
+  it('are drawn at the map scale with seven sites, their words off the path and above the desk', () => {
+    for (const map of MAPS) {
+      expect(map.scale).toBe(MAP_SCALE);
+      expect(map.sites).toHaveLength(SITE_COUNT);
+      for (const site of map.sites) expect(siteFits(map.path, site.x, site.y, map.scale), `${map.name}: site ${site.id} at ${site.x}, ${site.y}`).toBe(true);
+    }
   });
 
-  it('lead from beyond the left edge to the ward circle, in straight runs that turn', () => {
-    for (const map of GENERATED) {
-      const { path } = map;
-      expect(path[0]!.x).toBeLessThan(0);
-      expect(path[path.length - 1]!.x).toBe(1150);
-      for (let i = 1; i < path.length; i++) {
-        const [from, to] = [path[i - 1]!, path[i]!];
-        expect(from.x === to.x || from.y === to.y).toBe(true);
-        expect(Math.max(from.y, to.y) + LAYOUT.pathHalf).toBeLessThan(LAYOUT.deskTop);
+  it('keep indoor sites below the shelves on the back wall', () => {
+    for (const map of MAPS.filter((candidate) => candidate.indoor)) {
+      for (const site of map.sites) expect(site.y - LAYOUT.siteHalf * MAP_SCALE, `${map.name}: site ${site.id}`).toBeGreaterThanOrEqual(SHELF_BOTTOM);
+    }
+  });
+
+  it('have no weak site: a tower anywhere reaches at least a tenth of the path', () => {
+    for (const map of MAPS) {
+      for (const site of map.sites) {
+        expect(coverage(map.path, site.x, site.y, MAP_SCALE), `${map.name}: site ${site.id}`).toBeGreaterThanOrEqual(MIN_COVERAGE);
       }
     }
   });
 
-  it('put every site within reach of the path, apart from the others', () => {
-    for (const map of GENERATED) {
+  it('spread the sites along the path: two in each third, one near the ward circle, apart from each other', () => {
+    for (const map of MAPS) {
+      const thirds = [0, 0, 0];
+      for (const site of map.sites) thirds[Math.min(Math.floor(alongPath(map.path, site.x, site.y) * 3), 2)]!++;
+      expect(Math.min(...thirds), `${map.name}: sites per third ${thirds.join(', ')}`).toBeGreaterThanOrEqual(2);
+      expect(map.sites.some((site) => alongPath(map.path, site.x, site.y) > 0.85), map.name).toBe(true);
       for (const site of map.sites) {
-        expect(distanceToPath(map.path, site.x, site.y)).toBeLessThan(150);
         for (const other of map.sites) {
-          if (other !== site) expect(Math.hypot(site.x - other.x, site.y - other.y)).toBeGreaterThanOrEqual(150);
+          if (other !== site) expect(Math.hypot(site.x - other.x, site.y - other.y), `${map.name}: ${site.id}, ${other.id}`).toBeGreaterThanOrEqual(120);
         }
       }
     }
   });
+});
+
+describe('generated maps', () => {
+  it('lead from beyond the left edge to the ward circle, in straight runs that turn', () => {
+    for (const map of GENERATED) {
+      const { path } = map;
+      expect(path[0]!.x).toBeLessThan(0);
+      expect(path[path.length - 1]!.x).toBe(pathEnd(MAP_SCALE));
+      for (let i = 1; i < path.length; i++) {
+        const [from, to] = [path[i - 1]!, path[i]!];
+        expect(from.x === to.x || from.y === to.y).toBe(true);
+        expect(Math.max(from.y, to.y) + LAYOUT.pathHalf * MAP_SCALE).toBeLessThan(LAYOUT.deskTop);
+      }
+    }
+  });
+
+  it('put every site within reach of the path', () => {
+    for (const map of GENERATED) {
+      for (const site of map.sites) expect(distanceToPath(map.path, site.x, site.y)).toBeLessThanOrEqual(110 * MAP_SCALE);
+    }
+  });
 
   it('keep trees and rocks off the path', () => {
+    const s = MAP_SCALE;
     for (const map of GENERATED) {
-      for (const prop of map.props) expect(touchesPath(map.path, prop.x, prop.y + 4, 26, 26), `${prop.kind} at ${prop.x}, ${prop.y}`).toBe(false);
+      for (const prop of map.props) expect(touchesPath(map.path, prop.x, prop.y + 4 * s, 26 * s, 26 * s, s), `${prop.kind} at ${prop.x}, ${prop.y}`).toBe(false);
     }
   });
 });
