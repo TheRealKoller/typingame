@@ -1,0 +1,2 @@
+# Single images stay outside git; karten.py and predictions.jsonl reproduce them, sheet-*.jpg show them.
+*.png
