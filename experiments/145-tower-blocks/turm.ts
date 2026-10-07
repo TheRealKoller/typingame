@@ -20,20 +20,19 @@ const BASES: Record<string, readonly [string, string, string]> = {
   viper: ['viper-1-22', 'viper-2-sockel-22', 'viper-3-sockel-11'],
 };
 /**
- * »der viper« was a living snake laid on the tower; two other ways, switched on the page: a snake winding around the
- * whole tower, painted into each base (tuerme.py umschlungen), or a snake carved from stone as a block.
+ * »der viper« winds a snake around the whole tower, in front of it and behind it, so it is painted into a second
+ * picture of each base (tuerme.py umschlungen) instead of laid on top. A living snake laid in front and a carved
+ * stone snake were tried and liked less.
  */
 const WRAPPED: Record<string, readonly [string, string, string]> = {
   jagd: ['jagd-1-viper-11', 'jagd-2-viper-22', 'jagd-3-viper-11'],
   eisnadel: ['eisnadel-1-viper-11', 'eisnadel-2-viper-22', 'eisnadel-3-viper-22'],
   viper: ['viper-1-viper-11', 'viper-2-viper-22', 'viper-3-viper-11'],
 };
-const SNAKES = { umschlungen: 'Schlange um den Turm', stein: 'Stein-Schlange', lebend: 'lebende Schlange (bisher)' } as const;
-let snake: keyof typeof SNAKES = 'umschlungen';
 /** Each stage stands a little taller on the map. */
 const STAGE_HEIGHT = [0.82, 1, 1.15];
 
-type Anchor = 'top' | 'topLeft' | 'topRight' | 'crown' | 'band' | 'front' | 'emblem';
+type Anchor = 'top' | 'topLeft' | 'topRight' | 'crown' | 'band' | 'emblem';
 /**
  * Where a word's block sits, how wide it is (share of the width of the tower at that point) and its layer:
  * below 0 behind the tower, above 0 in front, higher numbers over lower ones.
@@ -50,11 +49,9 @@ const BLOCKS: Record<string, Block> = {
   weite: { file: 'baustein-weite-11', anchor: 'topRight', width: 0.55, layer: 4 },
   frostige: { file: 'baustein-frostige-22', anchor: 'crown', width: 1.02, layer: 2 },
   flammende: { file: 'baustein-flammende-11', anchor: 'top', width: 0.6, layer: 3 },
-  'der viper': { file: 'baustein-der-viper-22', anchor: 'front', width: 0.55, layer: 3 },
   'im morgengrauen': { file: 'baustein-im-morgengrauen-11', anchor: 'emblem', width: 0.36, layer: 2 },
   'um mitternacht': { file: 'baustein-um-mitternacht-22', anchor: 'emblem', width: 0.36, layer: 2 },
 };
-const STONE_SNAKE: Block = { file: 'baustein-der-viper-stein-22', anchor: 'front', width: 0.5, layer: 3 };
 
 /** The outline of a base: for each row of the picture the leftmost and rightmost opaque pixel. */
 interface Shape {
@@ -134,10 +131,6 @@ function place(shape: Shape, anchor: Anchor): { x: number; y: number; across: nu
       const y = shape.crownBottom + body * 0.42;
       return { x: middleAt(shape, y), y, across: widthAt(shape, y), centre: true };
     }
-    case 'front': {
-      const y = shape.crownBottom + body * 0.78;
-      return { x: middleAt(shape, y) - widthAt(shape, y) * 0.08, y, across: widthAt(shape, shape.crownBottom + body * 0.5), centre: false };
-    }
     case 'emblem': {
       const y = shape.crownBottom + body * 0.2;
       return { x: middleAt(shape, y), y, across: widthAt(shape, y), centre: true };
@@ -151,14 +144,13 @@ function drawTower(ctx: CanvasRenderingContext2D, sentence: readonly Lexeme[], x
   const base = sentence.find((lexeme) => lexeme.role === 'base');
   if (!tower || !base) return;
   const stage = (tower.level ?? 1) - 1;
-  const wrapped = snake === 'umschlungen' && sentence.some((lexeme) => lexeme.word === 'der viper');
+  const wrapped = sentence.some((lexeme) => lexeme.word === 'der viper');
   // Anchors and size always come from the plain base; a wrapped one is drawn over it, lined up pixel for pixel.
   const shape = shapes.get(BASES[base.word]![stage]!)!;
   const scale = (height * STAGE_HEIGHT[stage]!) / (shape.bottom - shape.top);
   const originX = x - middleAt(shape, shape.bottom - 2) * scale;
   const originY = y - shape.bottom * scale;
-  const blockOf = (word: string): Block | undefined => (word === 'der viper' ? (wrapped ? undefined : snake === 'stein' ? STONE_SNAKE : BLOCKS[word]) : BLOCKS[word]);
-  const blocks = sentence.flatMap((lexeme) => blockOf(lexeme.word) ?? []).sort((a, b) => a.layer - b.layer);
+  const blocks = sentence.flatMap((lexeme) => BLOCKS[lexeme.word] ?? []).sort((a, b) => a.layer - b.layer);
   const drawBlock = (block: Block) => {
     const image = images.get(block.file)!;
     const at = place(shape, block.anchor);
@@ -274,26 +266,9 @@ async function renderMap(): Promise<void> {
 
 async function start(): Promise<void> {
   const bases = Object.values(BASES).flat();
-  const files = [...bases, ...Object.values(WRAPPED).flat(), ...Object.values(BLOCKS).map((block) => block.file), STONE_SNAKE.file];
+  const files = [...bases, ...Object.values(WRAPPED).flat(), ...Object.values(BLOCKS).map((block) => block.file)];
   await Promise.all(files.map(async (file) => images.set(file, await load(art[`./teile/${file}.png`]!))));
   for (const file of bases) shapes.set(file, measure(images.get(file)!));
-  await renderAll();
-}
-
-/** Switches how »der viper« looks and draws everything again. */
-async function renderAll(): Promise<void> {
-  document.querySelector('#schlange')!.replaceChildren(
-    ...Object.entries(SNAKES).map(([key, label]) => {
-      const button = document.createElement('button');
-      button.textContent = `der viper: ${label}`;
-      button.classList.toggle('on', key === snake);
-      button.onclick = () => {
-        snake = key as keyof typeof SNAKES;
-        void renderAll();
-      };
-      return button;
-    }),
-  );
   renderBuilder();
   renderGallery();
   await renderMap();
