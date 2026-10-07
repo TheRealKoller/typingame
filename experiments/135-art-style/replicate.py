@@ -455,8 +455,36 @@ KLEIN_EDITS = (
      "style as the reference images: a small round stone well with a wooden roof. Single object, centered, plain white background."),
 )
 KLEIN_SEEDS = (11, 22)
+PART = "Only this one piece, alone and complete, nothing else in the image."
+# klein-satz: what a full map set still lacks after klein-edit. Poses and parts with base, upgrades with both.
+KLEIN_SET = (
+    ("kaefer-angriff", ("monster-panzerkaefer-22",), f"The same ink beetle monster charging forward, head lowered, mandibles wide open. {KEEP}"),
+    ("kaefer-getroffen", ("monster-panzerkaefer-22",), f"The same ink beetle monster knocked back by a hit, tilted backwards, ink splashing off it. {KEEP}"),
+    ("skorpion-getroffen", ("monster-skorpion-11",), f"The same ink scorpion monster knocked back by a hit, tilted backwards, ink splashing off it. {KEEP}"),
+    ("turm-magier-stufe2", ("turm-magier-22",), f"The same tower upgraded: a glowing blue crystal on the roof tip and a small wooden balcony. {KEEP_TOWER}"),
+    ("turm-kanone-stufe2", ("turm-kanone-11",), f"The same tower upgraded: a second, bigger bronze cannon and a small red banner. {KEEP_TOWER}"),
+    # Parts for animation, one per picture: asking for all at once put the whole figure next to them.
+    ("golem-teil-rumpf", ("golem-22",), f"Only the body block of this paper golem with its face, without arms and without legs. {PART} {KEEP}"),
+    ("golem-teil-arm", ("golem-22",), f"Only one single arm of this paper golem, upright. {PART} {KEEP}"),
+    ("golem-teil-bein", ("golem-22",), f"Only one single leg with its foot of this paper golem, upright. {PART} {KEEP}"),
+    ("skorpion-teil-rumpf", ("monster-skorpion-11",), f"Only the body and head of this ink scorpion, without legs, claws and tail. {PART} {KEEP}"),
+    ("skorpion-teil-schwanz", ("monster-skorpion-11",), f"Only the curled tail with the stinger of this ink scorpion. {PART} {KEEP}"),
+    ("skorpion-teil-schere", ("monster-skorpion-11",), f"Only one single claw of this ink scorpion. {PART} {KEEP}"),
+    # Second try: "this golem" kept the whole figure, so ask for a new loose object painted like the reference.
+    *(
+        (f"{name}2", (ref,), f"A single loose {thing} lying alone on plain white background, no body attached, painted exactly like "
+         f"the {owner} in the reference image: same colors, outline and hand-painted watercolor cartoon style. Nothing else in the image.")
+        for name, ref, thing, owner in (
+            ("golem-teil-arm", "golem-22", "cartoon arm, a short rounded brown limb", "arms of the paper golem"),
+            ("golem-teil-bein", "golem-22", "cartoon leg with a foot, a short rounded brown limb", "legs of the paper golem"),
+            ("skorpion-teil-schwanz", "monster-skorpion-11", "curled segmented scorpion tail with a stinger", "tail of the ink scorpion"),
+            ("skorpion-teil-schere", "monster-skorpion-11", "scorpion pincer claw", "claws of the ink scorpion"),
+        )
+    ),
+)
+KLEIN_SET_MODELS = {"turm-magier-stufe2": KLEIN_MODELS, "turm-kanone-stufe2": KLEIN_MODELS}
 
-JOBS = (*TEXT_JOBS, "karte-a", "klein-text", "klein-edit", "flux1-text")
+JOBS = (*TEXT_JOBS, "karte-a", "klein-text", "klein-edit", "klein-satz", "flux1-text")
 # Rounds 5 to 7 get their own folders, the LoRA candidates go to the experiment of #143; everything else is round 4.
 FOLDERS = {
     "karte-5": "runde5",
@@ -722,6 +750,24 @@ def klein_sheets() -> None:
         sheet(paths, KLEIN_DIR / target, width, cell=256, images=images)
 
 
+def klein_set_jobs() -> list[tuple[pathlib.Path, str, dict]]:
+    return [
+        (KLEIN_DIR / f"{name}-{model}-{seed}.png", version, klein_inputs(model, prompt, seed, refs))
+        for name, refs, prompt in KLEIN_SET
+        for model, version in KLEIN_SET_MODELS.get(name, {"base": KLEIN_BASE}).items()
+        for seed in KLEIN_SEEDS
+    ]
+
+
+def klein_set_sheet() -> None:
+    paths: list[pathlib.Path] = []
+    for name, refs, _ in KLEIN_SET:
+        row = [CANDIDATES / f"{refs[0]}.png"] + sorted(KLEIN_DIR.glob(f"{name}-*-*.png"))
+        paths += row + [BLANK] * (5 - len(row))
+    images = [Image.new("RGB", (16, 16), "white") if p == BLANK else Image.open(p).convert("RGB") for p in paths]
+    sheet(paths, KLEIN_DIR / "sheet-klein-satz.jpg", 5, cell=256, images=images)
+
+
 BLANK = pathlib.Path(" ")
 
 # flux1-text (#143): FLUX.1 dev on Replicate, which allows commercial use of images generated there (not of the
@@ -828,6 +874,10 @@ def main() -> None:
             KLEIN_DIR.mkdir(exist_ok=True)
             run(klein_text_jobs() if name == "klein-text" else klein_edit_jobs(), args.dry_run)
             klein_sheets()
+            continue
+        if name == "klein-satz":
+            run(klein_set_jobs(), args.dry_run)
+            klein_set_sheet()
             continue
         if name == "flux1-text":
             FLUX1_DIR.mkdir(exist_ok=True)

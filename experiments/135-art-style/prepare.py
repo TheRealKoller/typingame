@@ -19,7 +19,7 @@ from rembg import new_session, remove
 HERE = pathlib.Path(__file__).parent
 TEXTURES = ("boden-wiese", "boden-erde", "weg", "wiese-aquarell", "boden", "boden2", "weg2", "boden3", "weg3")
 # Clearings lie flat on the ground: no rim, which would outline them like a sticker, and an edge that fades out.
-NO_RIM = ("lichtung", "lichtung2")
+NO_RIM = ("lichtung", "lichtung2", "lichtung3")
 FEATHER = 14
 TEXTURE_SIZE = 512
 # Round 4 paints ground on a sheet with a white margin; cut it off before making the texture seamless.

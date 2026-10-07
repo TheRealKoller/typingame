@@ -38,6 +38,28 @@ interface Round {
   readonly clearingWidth: number;
   /** Round 5 drops the paper rim and grounds cut-outs with a soft shadow instead. */
   readonly shadows: boolean;
+  /** #143: a full map set with tower upgrades, enemy poses and a golem from parts; replaces walkers and towers. */
+  readonly set?: MapSet;
+}
+
+/** Keys of `files` name the textures; values are `<folder>/<file>` without `.png`. */
+interface MapSet {
+  readonly files: Readonly<Record<string, string>>;
+  /** [base, upgraded] per tower kind; one tower after another upgrades while the map runs. */
+  readonly towers: readonly (readonly [string, string])[];
+  /** Walk pose on the road, hit pose when struck, attack pose at the end of the road. */
+  readonly enemies: readonly SetEnemy[];
+  /** A golem put together from parts; its limbs swing while it walks. Limbs are painted lying, joint on the left. */
+  readonly puppet: { readonly body: string; readonly arm: string; readonly leg: string };
+}
+
+interface SetEnemy {
+  readonly walk: string;
+  readonly hit: string;
+  readonly attack: string;
+  readonly height: number;
+  /** The walk pose is painted facing left; mirror it while walking right. */
+  readonly facesLeft: boolean;
 }
 
 type StyleFiles = Record<'meadow' | 'road' | 'clearing' | 'tower' | 'golem' | 'tree' | 'grove' | 'rocks' | 'ruin' | 'pond' | 'scorpion' | 'shell', string> & {
@@ -321,10 +343,68 @@ const ROUNDS: Record<string, Round> = {
     'demo7',
     'clean',
   ),
+  // #143: the chosen style as a full map set. Props and base pictures by Z-Image Turbo, poses and upgrades
+  // by FLUX.2 klein 4B from those pictures (replicate.py klein-edit, klein-satz).
+  satz: {
+    ...styleRound(
+      'cartoonaquarell',
+      {
+        meadow: 'demo8/boden-wiese-22',
+        road: 'demo8/boden-erde-22',
+        clearing: 'demo8/lichtung3-22',
+        tower: 'demo8/turm-pfeil-11',
+        golem: 'demo8/golem-22',
+        tree: 'demo8/baum-22',
+        grove: 'demo8/baumgruppe-22',
+        rocks: 'demo8/felsen-22',
+        ruin: 'demo8/ruine-22',
+        pond: 'demo8/weiher-22',
+        scorpion: 'demo8/monster-skorpion-11',
+        shell: 'demo8/monster-panzerkaefer-22',
+      },
+      'demo8',
+      'clean',
+    ),
+    set: {
+      files: Object.fromEntries(
+        [
+          'turm-pfeil-11',
+          'turm-magier-22',
+          'turm-kanone-11',
+          'turm-pfeil-stufe2-schnell-11',
+          'turm-magier-stufe2-schnell-11',
+          'turm-kanone-stufe2-schnell-11',
+          'golem-links-base-11',
+          'golem-angriff-base-22',
+          'golem-getroffen-base-11',
+          'skorpion-links-base-11',
+          'skorpion-angriff-base-11',
+          'skorpion-getroffen-base-11',
+          'kaefer-links-base-22',
+          'kaefer-angriff-base-22',
+          'kaefer-getroffen-base-11',
+          'golem-teil-rumpf-base-11',
+          'golem-teil-arm2-base-11',
+          'golem-teil-bein2-base-22',
+        ].map((file) => [file, `demo8/${file}`]),
+      ),
+      towers: [
+        ['turm-pfeil-11', 'turm-pfeil-stufe2-schnell-11'],
+        ['turm-magier-22', 'turm-magier-stufe2-schnell-11'],
+        ['turm-kanone-11', 'turm-kanone-stufe2-schnell-11'],
+      ],
+      enemies: [
+        { walk: 'skorpion-links-base-11', hit: 'skorpion-getroffen-base-11', attack: 'skorpion-angriff-base-11', height: 58, facesLeft: false },
+        { walk: 'golem-links-base-11', hit: 'golem-getroffen-base-11', attack: 'golem-angriff-base-22', height: 64, facesLeft: true },
+        { walk: 'kaefer-links-base-22', hit: 'kaefer-getroffen-base-11', attack: 'kaefer-angriff-base-22', height: 60, facesLeft: true },
+      ],
+      puppet: { body: 'golem-teil-rumpf-base-11', arm: 'golem-teil-arm2-base-11', leg: 'golem-teil-bein2-base-22' },
+    },
+  },
 };
 const ROUND = ROUNDS[new URLSearchParams(location.search).get('runde') ?? '5'] ?? ROUNDS['5']!;
 
-const urls = import.meta.glob('./demo[3-7]/*.png', { eager: true, import: 'default', query: '?url' }) as Record<string, string>;
+const urls = import.meta.glob('./demo[3-8]/*.png', { eager: true, import: 'default', query: '?url' }) as Record<string, string>;
 
 const { width: WIDTH, deskTop: HEIGHT, pathHalf: PATH_HALF } = LAYOUT;
 const INK = 'rgba(43, 33, 22, 0.85)';
@@ -397,6 +477,7 @@ class MapScene extends Phaser.Scene {
     const { clearing = [], ...parts } = ROUND.pick;
     for (const [part, file] of Object.entries(parts)) this.load.image(part, urls[`./${file}.png`]!);
     clearing.forEach((file, i) => this.load.image(`clearing-${i}`, urls[`./${file}.png`]!));
+    for (const [key, file] of Object.entries(ROUND.set?.files ?? {})) this.load.image(key, urls[`./${file}.png`]!);
   }
 
   create(): void {
@@ -419,11 +500,18 @@ class MapScene extends Phaser.Scene {
       // Props are placed by their centre, half of 64 px above the ground.
       this.#cutOut(part, prop.x, prop.y + 32);
     }
-    map.sites.forEach((site, i) => {
-      if (i % 2 === 0) this.#cutOut('tower', site.x, site.y + 24);
-      else this.add.ellipse(site.x, site.y + 10, 56, 22).setStrokeStyle(2, 0x2b2116, 0.6).setDepth(site.y);
-    });
-    for (let i = 0; i < 4; i++) this.#walker(ROUND.walkers[i % ROUND.walkers.length]!, road, i * 2600);
+    if (ROUND.set) {
+      this.#setTowers(ROUND.set, map.sites);
+      ROUND.set.enemies.forEach((enemy, i) => this.#setWalker(enemy, road, i * 3200));
+      this.#puppet(ROUND.set.puppet, road, ROUND.set.enemies.length * 3200);
+      this.#strikes();
+    } else {
+      map.sites.forEach((site, i) => {
+        if (i % 2 === 0) this.#cutOut('tower', site.x, site.y + 24);
+        else this.add.ellipse(site.x, site.y + 10, 56, 22).setStrokeStyle(2, 0x2b2116, 0.6).setDepth(site.y);
+      });
+      for (let i = 0; i < 4; i++) this.#walker(ROUND.walkers[i % ROUND.walkers.length]!, road, i * 2600);
+    }
     this.add.text(8, HEIGHT - 22, `seed ${seed}`, { fontFamily: 'Georgia, serif', fontSize: '14px', color: '#2b2116' }).setDepth(2000);
   }
 
@@ -482,8 +570,11 @@ class MapScene extends Phaser.Scene {
 
   /** A cut-out standing on (x, y); lower things are drawn in front. */
   #cutOut(part: Part, x: number, y: number): Phaser.GameObjects.Image {
-    const height = HEIGHTS[part]!;
-    const image = this.add.image(x, y, part).setOrigin(0.5, 1).setDepth(y);
+    return this.#standing(part, x, y, HEIGHTS[part]!);
+  }
+
+  #standing(key: string, x: number, y: number, height: number): Phaser.GameObjects.Image {
+    const image = this.add.image(x, y, key).setOrigin(0.5, 1).setDepth(y);
     image.setScale(height / image.height);
     if (ROUND.shadows) image.setData('shadow', this.#shadow(x, y, image.displayWidth));
     return image;
@@ -502,8 +593,7 @@ class MapScene extends Phaser.Scene {
     const baseScale = enemy.scaleX;
     this.tweens.add({ targets: enemy, angle: { from: -5, to: 5 }, duration: 380, yoyo: true, repeat: -1, ease: 'Sine.easeInOut' });
     this.tweens.add({ targets: enemy, scaleY: baseScale * 0.93, duration: 190, yoyo: true, repeat: -1, ease: 'Sine.easeInOut' });
-    const path = new Phaser.Curves.Path(road[0]!.x, road[0]!.y);
-    for (const p of road.slice(1)) path.lineTo(p.x, p.y);
+    const path = roadPath(road);
     const progress = { t: 0 };
     this.tweens.add({
       targets: progress,
@@ -520,6 +610,133 @@ class MapScene extends Phaser.Scene {
       },
     });
   }
+
+  /** Enemies of the map set, for the strikes. */
+  readonly #enemies: Phaser.GameObjects.Image[] = [];
+
+  /** Towers on every other site, kinds in turn; every 2.5 s the next one upgrades, then all start over. */
+  #setTowers(set: MapSet, sites: readonly Point[]): void {
+    const towers = sites.flatMap((site, i) => {
+      if (i % 2 === 1) {
+        this.add.ellipse(site.x, site.y + 10, 56, 22).setStrokeStyle(2, 0x2b2116, 0.6).setDepth(site.y);
+        return [];
+      }
+      const [base, upgraded] = set.towers[(i / 2) % set.towers.length]!;
+      return [{ image: this.#standing(base, site.x, site.y + 24, TOWER_HEIGHT), base, upgraded }];
+    });
+    let next = 0;
+    this.time.addEvent({
+      delay: 2500,
+      loop: true,
+      callback: () => {
+        if (next === towers.length) {
+          for (const { image, base } of towers) image.setTexture(base).setScale(TOWER_HEIGHT / image.height);
+          next = 0;
+          return;
+        }
+        const tower = towers[next++]!;
+        tower.image.setTexture(tower.upgraded).setScale((TOWER_HEIGHT * 1.12) / tower.image.height);
+        const { scaleX, scaleY } = tower.image;
+        this.tweens.add({ targets: tower.image, scaleX: scaleX * 1.12, scaleY: scaleY * 1.12, duration: 140, yoyo: true });
+      },
+    });
+  }
+
+  /** Walk pose along the road, hit pose while struck, attack pose on the last stretch (at the library). */
+  #setWalker(enemy: SetEnemy, road: readonly Point[], delay: number): void {
+    const image = this.#standing(enemy.walk, road[0]!.x, road[0]!.y + 20, enemy.height).setVisible(false);
+    this.#enemies.push(image);
+    const shadow = image.getData('shadow') as Phaser.GameObjects.Container | undefined;
+    shadow?.setVisible(false);
+    const bob = { angle: -5, squash: 1 };
+    this.tweens.add({ targets: bob, angle: 5, duration: 380, yoyo: true, repeat: -1, ease: 'Sine.easeInOut' });
+    this.tweens.add({ targets: bob, squash: 0.93, duration: 190, yoyo: true, repeat: -1, ease: 'Sine.easeInOut' });
+    const path = roadPath(road);
+    const progress = { t: 0 };
+    let right = false;
+    this.tweens.add({
+      targets: progress,
+      t: 1,
+      delay,
+      duration: 16000,
+      repeat: -1,
+      onUpdate: () => {
+        const point = path.getPoint(progress.t);
+        if (Math.abs(point.x - image.x) > 0.01) right = point.x > image.x;
+        const struck = (image.getData('hitUntil') ?? 0) > this.time.now;
+        const key = progress.t > 0.92 ? enemy.attack : struck ? enemy.hit : enemy.walk;
+        if (image.texture.key !== key) image.setTexture(key);
+        const scale = enemy.height / image.height;
+        const walking = key === enemy.walk;
+        image.setScale(scale, scale * (walking ? bob.squash : 1)).setAngle(walking ? bob.angle : 0);
+        // Only the walk pose is painted in profile; hit and attack poses face the viewer and are never mirrored.
+        image.setFlipX(walking && enemy.facesLeft === right);
+        image.setPosition(point.x, point.y + 20).setDepth(point.y + 20).setVisible(true);
+        shadow?.setPosition(point.x + image.displayWidth * 0.08, point.y + 18).setVisible(true);
+      },
+    });
+  }
+
+  /** Every 0.9 s a tower hits a random enemy on the map: a white flash and the hit pose for a moment. */
+  #strikes(): void {
+    this.time.addEvent({
+      delay: 900,
+      loop: true,
+      callback: () => {
+        const visible = this.#enemies.filter((enemy) => enemy.visible);
+        const enemy = visible[Math.floor(Math.random() * visible.length)];
+        if (!enemy) return;
+        enemy.setData('hitUntil', this.time.now + 450).setTint(0xffffff).setTintMode(Phaser.TintModes.FILL);
+        this.time.delayedCall(70, () => enemy.clearTint().setTintMode(Phaser.TintModes.MULTIPLY));
+      },
+    });
+  }
+
+  /** The golem from parts: body, two arms and two legs swinging in opposite pairs; the back pair is darker. */
+  #puppet(parts: MapSet['puppet'], road: readonly Point[], delay: number): void {
+    const LEG = 22;
+    const limb = (key: string, length: number, x: number, y: number, back: boolean) => {
+      const image = this.add.image(x, y, key).setOrigin(0.06, 0.5).setAngle(90);
+      image.setScale(length / image.width);
+      return back ? image.setTint(0xb8b0a0) : image;
+    };
+    const body = this.add.image(0, -LEG + 6, parts.body).setOrigin(0.5, 1);
+    body.setScale(46 / body.height);
+    const [w, h] = [body.displayWidth, body.displayHeight];
+    const legs = [limb(parts.leg, LEG, -w * 0.18, -LEG + 2, true), limb(parts.leg, LEG, w * 0.18, -LEG + 2, false)];
+    const arms = [limb(parts.arm, 20, -w * 0.42, -LEG - h * 0.45, true), limb(parts.arm, 20, w * 0.42, -LEG - h * 0.45, false)];
+    const golem = this.add.container(road[0]!.x, road[0]!.y + 20, [legs[0]!, arms[0]!, body, legs[1]!, arms[1]!]).setVisible(false);
+    const shadow = this.#shadow(golem.x, golem.y, w);
+    const swing = { phase: 0 };
+    this.tweens.add({ targets: swing, phase: Math.PI * 2, duration: 760, repeat: -1 });
+    const path = roadPath(road);
+    const progress = { t: 0 };
+    this.tweens.add({
+      targets: progress,
+      t: 1,
+      delay,
+      duration: 16000,
+      repeat: -1,
+      onUpdate: () => {
+        const point = path.getPoint(progress.t);
+        const s = Math.sin(swing.phase) * 28;
+        legs.forEach((leg, i) => leg.setAngle(90 + (i ? s : -s)));
+        arms.forEach((arm, i) => arm.setAngle(90 + (i ? -s : s)));
+        body.setY(-LEG + 6 - Math.abs(Math.cos(swing.phase)) * 2);
+        if (Math.abs(point.x - golem.x) > 0.01) golem.setScale(point.x > golem.x ? -1 : 1, 1);
+        golem.setPosition(point.x, point.y + 20).setDepth(point.y + 20).setVisible(true);
+        shadow.setPosition(point.x + w * 0.08, point.y + 18);
+      },
+    });
+  }
+}
+
+const TOWER_HEIGHT = 104;
+
+function roadPath(road: readonly Point[]): Phaser.Curves.Path {
+  const path = new Phaser.Curves.Path(road[0]!.x, road[0]!.y);
+  for (const p of road.slice(1)) path.lineTo(p.x, p.y);
+  return path;
 }
 
 new Phaser.Game({
