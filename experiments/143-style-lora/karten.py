@@ -46,22 +46,27 @@ LEAFY = "dark green circles are leafy trees seen from above"
 BURNT = "dark brown circles are burnt trees seen from above, bare and leafless, with charred black branches and no green at all"
 BURNT_COLOURS = ((92, 70, 56), (104, 80, 62), (82, 62, 50))
 MEADOW = "Vary the meadow with darker and lighter green, wildflowers and grass tufts."
-# Second try (`--plaetze`): klein put a pond into a bend of the road, where the best site lies, nearly every time.
-# The sites go into the sketch as flat stone slabs, and the prompt rules out any other water.
-PLOTS = (
-    " The small square beige slabs are flat stone building plots: paint them as plain flat stone slabs set into the "
-    "ground, with nothing standing on them and nothing covering them. Add no other water: no pond, puddle or stream "
-    "anywhere else, also not inside the bends of the roads."
+# Second try (plots in the sketch): klein put a pond into a bend of the road, where the best site lies, nearly every time.
+# The sites go into the sketch as plots, and the prompt rules out any other water. `--platz` picks their look:
+# square slabs (#143); round ones, since the towers of #145 stand on round feet, as flat paving level with the ground
+# or only a ring of stones set into it. Round discs ("rund") came out as stone drums looking like boulders.
+NO_WATER = (
+    " Add no other water: no pond, puddle or stream anywhere else, also not inside the bends of the roads."
 )
+PLOTS = {
+    "quadrat": " The small square beige slabs are flat stone building plots: paint them as plain flat stone slabs set "
+    "into the ground, with nothing standing on them and nothing covering them.",
+    "rund": " The small round beige discs are flat round stone building plots: paint them as plain round stone "
+    "platforms set into the ground, with nothing standing on them and nothing covering them.",
+    "pflaster": " The small flat beige ovals are building plots: paint each as a flat round patch of worn paving "
+    "stones lying level with the ground, completely flat, no height, no rim, no step, not a rock or a pillar, with "
+    "nothing standing on it.",
+    "ring": " The thin beige oval rings are building plots: paint each as a flat ring of small stones laid level into "
+    "the ground around a patch of bare earth, completely flat, not a rock or a pillar, with nothing standing in it.",
+}
 PLOT, PLOT_EDGE = (222, 210, 186), (150, 136, 112)
-# The towers of #145 stand on round feet, so square slabs looked wrong under them: `--rund` sketches round ones,
-# a little wider than a stage I tower's foot.
-PLOTS_ROUND = (
-    " The small round beige discs are flat round stone building plots: paint them as plain round stone platforms set "
-    "into the ground, with nothing standing on them and nothing covering them. Add no other water: no pond, puddle or "
-    "stream anywhere else, also not inside the bends of the roads."
-)
-PLOT_RADIUS = 1.1  # times the half size of a site's pad
+# Round plots as wide as a stage II tower's foot, squashed as seen slightly from above so they read as flat ground.
+PLOT_RADIUS, PLOT_FLAT = 1.0, 0.6
 ASH = (
     "The land is an ash field after a great fire: grey soot and ash lie over pale dry grass, the trees are burnt and "
     "bare, a few embers glow; keep it readable and not too dark."
@@ -209,8 +214,7 @@ def main() -> None:
     parser.add_argument("maps", nargs="+")
     parser.add_argument("--takes", type=int, default=4, help="paintings per map")
     parser.add_argument("--dry-run", action="store_true", help="only draw the sketches")
-    parser.add_argument("--plaetze", action="store_true", help="draw the build sites as stone slabs into the sketch")
-    parser.add_argument("--rund", action="store_true", help="with --plaetze: round slabs instead of square ones")
+    parser.add_argument("--platz", choices=PLOTS, help="draw the build sites into the sketch, in this look")
     parser.add_argument("--base", action="store_true", help="paint with klein 4B base instead of the distilled model")
     args = parser.parse_args()
     OUT.mkdir(exist_ok=True)
@@ -223,26 +227,32 @@ def main() -> None:
         # Ash fields since their trees are sketched and named burnt.
         if m.get("ash") and not m["indoor"]:
             m["key"] += "-verbrannt"
-        if args.plaetze:
-            m["key"] += "-r" if args.rund else "-p"
+        if args.platz:
+            m["key"] += {"quadrat": "-p", "rund": "-r", "pflaster": "-pf", "ring": "-ri"}[args.platz]
         template = OUT / f"skizze-{m['key']}.png"
         img = sketch(m, layout)
-        if args.plaetze:
+        if args.platz:
             draw, half, k = ImageDraw.Draw(img), layout["siteHalf"] * m.get("scale", 1) * DRAW, DRAW
             for site in m["sites"]:
                 x, y = site["x"] * k, site["y"] * k
-                if args.rund:
-                    r = half * PLOT_RADIUS
-                    draw.ellipse((x - r, y - r, x + r, y + r), fill=PLOT, outline=PLOT_EDGE, width=3)
-                else:
+                if args.platz == "quadrat":
                     draw.rectangle((x - half, y - half, x + half, y + half), fill=PLOT, outline=PLOT_EDGE, width=3)
+                    continue
+                # Towers stand with their foot a little below the site's centre (turm.ts), so the plot does too.
+                rx, y = half * PLOT_RADIUS, y + 8 * m.get("scale", 1) * k
+                ry = rx * (PLOT_FLAT if args.platz != "rund" else 1)
+                box = (x - rx, y - ry, x + rx, y + ry)
+                if args.platz == "ring":
+                    draw.ellipse(box, outline=PLOT, width=max(3, round(rx * 0.22)))
+                else:
+                    draw.ellipse(box, fill=PLOT, outline=PLOT_EDGE, width=3)
         img.save(template)
         if m["indoor"]:
             prompt = INDOOR.format(ash=", blackened with soot where the library burnt" if m.get("ash") else "")
         else:
             prompt = OUTDOOR.format(ground=ASH if m.get("ash") else MEADOW, trees=BURNT if m.get("ash") else LEAFY)
-        if args.plaetze:
-            prompt += PLOTS_ROUND if args.rund else PLOTS
+        if args.platz:
+            prompt += PLOTS[args.platz] + NO_WATER
         uri = jpeg_uri(template)
         for take in range(1, args.takes + 1):
             inputs = {"prompt": prompt, "seed": take, "output_format": "png", "images": [uri], "aspect_ratio": "match_input_image"}

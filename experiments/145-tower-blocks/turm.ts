@@ -271,7 +271,11 @@ async function renderMap(): Promise<void> {
   const map = (await (await fetch(mapArt['./karte/karte.json']!)).json()) as MapData;
   ctx.drawImage(await load(mapArt['./karte/karte.png']!), 0, 0, canvas.width, canvas.height);
   // A tower stage II is 104 px tall at scale 1, as in the game; it stands on its site, lower ones in front.
-  const placed = map.sites.map((site, i) => ({ site, sentence: sentenceOf(EXAMPLES[i % EXAMPLES.length]!) })).sort((a, b) => a.site.y - b.site.y);
+  // Every third site stays empty, to see a free plot next to built ones.
+  const placed = map.sites
+    .map((site, i) => ({ site, i, sentence: sentenceOf(EXAMPLES[i % EXAMPLES.length]!) }))
+    .filter(({ i }) => i % 3 !== 2)
+    .sort((a, b) => a.site.y - b.site.y);
   for (const { site, sentence } of placed) drawTower(ctx, sentence, site.x, site.y + 14 * map.scale, 104 * map.scale);
 }
 
