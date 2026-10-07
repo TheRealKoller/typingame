@@ -5,7 +5,7 @@ import type { BuildSite, Spell, TowerKind } from '../battle/level';
 import { read, type Grammar } from '../battle/sentence';
 import type { Point } from '../battle/path';
 import { MASTER_NAME, MASTER_VERDICTS, pageText } from '../content/cutscenes';
-import { JOURNEY_VERDICTS, journeyBattle, rewardText, worldPoint, type Reward, type WorldPoint } from '../content/journey';
+import { JOURNEY_VERDICTS, journeyBattle, rewardText, WORLD_POINTS, worldPoint, type Reward, type WorldPoint } from '../content/journey';
 import { practiceLevel, practiceMap, READING_ROOM, type BattleMap, type Prop } from '../content/library';
 import { RAID_LEVEL } from '../content/raid';
 import { JOURNEY, RAID, allKeysSetup, STAGES, stageIndex, stageSetup, type StageSetup } from '../content/tutorial';
@@ -131,6 +131,11 @@ export interface BattleSceneData {
   readonly round?: number;
   /** On the journey: id of the world map point fought for. */
   readonly point?: string;
+  /**
+   * Development only (`?karte=wege2` in `main.ts`): a battle of the last place of the journey on a fresh map with
+   * this many paths, before any chapter has such places. It frees no place; Enter after the end starts another.
+   */
+  readonly trialPaths?: number;
 }
 
 interface EnemyView {
@@ -213,6 +218,7 @@ export class BattleScene extends Phaser.Scene {
   #raid = false;
   /** The world map point fought for on the journey; null in the library. */
   #point: WorldPoint | null = null;
+  #trialPaths: number | undefined;
   /** Shelves that can still catch fire in the raid, in the order they burn. */
   #shelves: Phaser.GameObjects.Image[] = [];
   #darkness: Phaser.GameObjects.Rectangle | null = null;
@@ -227,8 +233,10 @@ export class BattleScene extends Phaser.Scene {
   create(data: BattleSceneData): void {
     createBattleArt(this);
     this.#progress = data.progress;
-    this.#raid = this.#progress.stage === RAID;
-    this.#point = this.#progress.stage === JOURNEY && data.point ? worldPoint(data.point) : null;
+    this.#trialPaths = data.trialPaths;
+    this.#raid = !this.#trialPaths && this.#progress.stage === RAID;
+    const last = WORLD_POINTS[WORLD_POINTS.length - 1]!;
+    this.#point = this.#trialPaths ? { ...last, paths: this.#trialPaths } : this.#progress.stage === JOURNEY && data.point ? worldPoint(data.point) : null;
     const tutorial = !this.#raid && !this.#point;
     // The raid and the journey are fought with every key of the tutorial; a place of the journey brings its own map and towers.
     const journey = this.#point ? journeyBattle(this.#point, Math.random, this.#progress.freed) : null;
@@ -342,7 +350,8 @@ export class BattleScene extends Phaser.Scene {
       event.preventDefault();
       if (event.repeat) return;
       if (this.#ended()) {
-        if (this.#point) this.scene.start('WorldMapScene', { progress: this.#progress });
+        if (this.#trialPaths) this.scene.restart({ progress: this.#progress, trialPaths: this.#trialPaths } satisfies BattleSceneData);
+        else if (this.#point) this.scene.start('WorldMapScene', { progress: this.#progress });
         else if (!this.#raid) this.scene.restart({ progress: this.#progress, round: this.#round + 1 } satisfies BattleSceneData);
         return;
       }
@@ -602,7 +611,7 @@ export class BattleScene extends Phaser.Scene {
 
   /** Build sites, the ward circle at the end of the path and the Enter prompt in it. */
   #drawSitesAndWard(): void {
-    const path = this.#battle.level.path;
+    const path = this.#battle.level.paths[0]!;
     for (const site of this.#battle.level.sites) {
       this.add
         .rectangle(site.x, site.y, 56 * this.#scale, 56 * this.#scale, PAD_COLOR)
@@ -675,7 +684,7 @@ export class BattleScene extends Phaser.Scene {
     for (const x of this.#map.banners ?? []) this.add.image(x, 8, DUNGEON, BANNER_FRAME).setOrigin(0.5, 0).setScale(LIBRARY_SCALE);
     for (const x of this.#map.torches ?? []) this.add.sprite(x, 44, TORCH).setScale(LIBRARY_SCALE).play(TORCH_FLAME);
 
-    layPath(this, this.#battle.level.path, {
+    layPath(this, this.#battle.level.paths, {
       texture: DUNGEON,
       frame: CARPET_FRAME,
       edgeColor: CARPET_EDGE,
@@ -688,7 +697,7 @@ export class BattleScene extends Phaser.Scene {
   /** The courtyard: grass and a sand path. */
   #drawCourtyard(): void {
     this.add.tileSprite(0, 0, this.scale.width, DESK_TOP, GRASS_TILESET, GRASS_FRAME).setOrigin(0);
-    layPath(this, this.#battle.level.path, {
+    layPath(this, this.#battle.level.paths, {
       texture: GRASS_TILESET,
       frame: SAND_FRAME,
       edgeColor: SAND_EDGE,
@@ -815,7 +824,7 @@ export class BattleScene extends Phaser.Scene {
       const reward = point && !this.#progress.freed.has(point.id) ? (point.reward ?? null) : null;
       if (this.#raid) this.#endRaid();
       else this.#showEnd(reward);
-      if (point) {
+      if (point && !this.#trialPaths) {
         this.#progress.free(point.id);
         void this.#progress.save();
       }
@@ -1011,7 +1020,7 @@ export class BattleScene extends Phaser.Scene {
       this.tweens.add({ targets: view.sprite, alpha: 0, scale: 0.4 * view.sprite.scale, duration: 300, onComplete: () => view.sprite.destroy() });
     }
     this.tweens.add({ targets: [this.#ward, this.#wardRing], scale: { from: 1.25, to: 1 }, duration: 350, ease: 'Back.easeOut' });
-    const end = this.#battle.level.path.at(-1)!;
+    const end = this.#battle.level.paths[0]!.at(-1)!;
     const flash = this.add.circle(end.x, end.y, WARD_RING_RADIUS, WARD_LOW_COLOR, 0.6).setDepth(5);
     this.tweens.add({ targets: flash, scale: 1.6, alpha: 0, duration: 400, onComplete: () => flash.destroy() });
     this.cameras.main.shake(180, 0.004);

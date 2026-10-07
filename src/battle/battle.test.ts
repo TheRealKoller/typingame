@@ -12,10 +12,12 @@ const BOW: TowerKind = { id: 'bow', name: 'Bogen', keyword: 'jagd', cost: 30, ra
 function level(overrides: Partial<Level> = {}): Level {
   return {
     id: 'test',
-    path: [
-      { x: 0, y: 0 },
-      { x: 200, y: 0 },
-      { x: 200, y: 100 },
+    paths: [
+      [
+        { x: 0, y: 0 },
+        { x: 200, y: 0 },
+        { x: 200, y: 100 },
+      ],
     ],
     sites: [
       { id: 'near', x: 100, y: 40 },
@@ -37,7 +39,7 @@ function run(battle: Battle, ms: number, stepMs = 100): void {
 
 describe('pointAt', () => {
   it('follows the path around its corners and stops at the end', () => {
-    const path = level().path;
+    const path = level().paths[0]!;
     expect(pointAt(path, 150)).toEqual({ x: 150, y: 0 });
     expect(pointAt(path, 250)).toEqual({ x: 200, y: 50 });
     expect(pointAt(path, 999)).toEqual({ x: 200, y: 100 });
@@ -182,6 +184,32 @@ describe('towers', () => {
     const [leader, follower] = battle.enemies;
     expect(Math.hypot(battle.positionOf(follower!).x - 100, battle.positionOf(follower!).y - 40)).toBeLessThanOrEqual(60);
     expect(shots.map((shot) => shot.enemy.id)).toEqual([leader!.id, leader!.id]);
+  });
+
+  it('sends each squad along its own path and aims at the enemy closest to the ward, whichever path it walks', () => {
+    // A branch of 400 px from the top joins the main path of 300 px; both end at the ward.
+    const branch = [{ x: 100, y: -200 }, { x: 100, y: 0 }, { x: 200, y: 0 }, { x: 200, y: 100 }];
+    const twoWays = (overrides: Partial<Level> = {}) =>
+      level({
+        paths: [level().paths[0]!, branch],
+        waves: [[{ kind: BUG, count: 1, spacingMs: 1000, path: 1 }, { kind: BUG, count: 1, spacingMs: 1000, delayMs: 500 }]],
+        ...overrides,
+      });
+    const battle = new Battle(twoWays());
+    battle.build(battle.level.sites[1]!, { ...BOW, range: 1000, damage: 1 });
+    battle.endFlood();
+    battle.towers[0]!.cooldownMs = 1600;
+
+    run(battle, 1500);
+    const [onBranch, onMain] = battle.enemies;
+    expect([onBranch!.path, onBranch!.distance, onMain!.path, onMain!.distance]).toEqual([1, 150, 0, 100]);
+    expect(battle.positionOf(onBranch!)).toEqual({ x: 100, y: -50 });
+    // 200 px left on the main path, 250 on the branch: the tower shoots the one on the main path.
+    expect(battle.update(100).shots.map((shot) => shot.enemy.id)).toEqual([onMain!.id]);
+
+    run(battle, 2700);
+    expect(battle.ward).toBe(5 - 2 * BUG.wardDamage);
+    expect(() => new Battle(twoWays({ waves: [[{ kind: BUG, count: 1, spacingMs: 1000, path: 2 }]] }))).toThrow(/no path 2/);
   });
 
   it('shrinks reach and splash with the map scale, while enemies keep their pace on screen', () => {

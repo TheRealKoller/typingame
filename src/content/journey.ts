@@ -18,6 +18,11 @@ export interface WorldPoint {
   readonly difficulty: number;
   /** A fixed map for special places; the others get a fresh one each time. */
   readonly map?: BattleMap;
+  /**
+   * Ways in on a fresh map, 1 if omitted; the same at every visit. From the second chapter some places have two,
+   * late ones three, never all places of a chapter (#147). A fixed map brings its own.
+   */
+  readonly paths?: number;
   /** Found when the place is freed the first time; kept for every later battle. */
   readonly reward?: Reward;
 }
@@ -81,7 +86,7 @@ export const RUIN: BattleMap = {
   floor: 'stone',
   ash: true,
   scale: MAP_SCALE,
-  path: [
+  paths: [[
     { x: -40, y: 250 },
     { x: 190, y: 250 },
     { x: 190, y: 420 },
@@ -92,7 +97,7 @@ export const RUIN: BattleMap = {
     { x: 900, y: 420 },
     { x: 900, y: 280 },
     { x: 1176, y: 280 },
-  ],
+  ]],
   sites: [
     { id: 'a', x: 90, y: 200 },
     { id: 'b', x: 320, y: 340 },
@@ -118,7 +123,7 @@ export const CELLAR: BattleMap = {
   indoor: true,
   floor: 'slab',
   scale: MAP_SCALE,
-  path: [
+  paths: [[
     { x: -40, y: 410 },
     { x: 170, y: 410 },
     { x: 170, y: 250 },
@@ -129,7 +134,7 @@ export const CELLAR: BattleMap = {
     { x: 890, y: 250 },
     { x: 890, y: 400 },
     { x: 1176, y: 400 },
-  ],
+  ]],
   sites: [
     { id: 'a', x: 70, y: 330 },
     { id: 'b', x: 220, y: 200 },
@@ -265,12 +270,12 @@ export function knownWords(freed: ReadonlySet<string>): Set<string> {
  * places in `freed`.
  */
 export function journeyBattle(point: WorldPoint, random: Random, freed: ReadonlySet<string>): JourneyBattle {
-  const map = point.map ?? generateAshMap(random, point.id, point.name);
-  const waves = generateWaves(random, point.difficulty, ASH_FOES);
+  const map = point.map ?? generateAshMap(random, point.id, point.name, point.paths ?? 1);
+  const waves = generateWaves(random, point.difficulty, ASH_FOES, map.paths.length);
   const known = knownWords(freed);
   const grammar = { ...GRAMMAR, lexicon: GRAMMAR.lexicon.filter((lexeme) => known.has(lexeme.word)) };
   const spells = rewardsFor(freed).flatMap((reward) => (reward.spell ? [reward.spell] : []));
-  return { map, grammar, spells, level: { id: `journey-${point.id}`, path: map.path, sites: map.sites, ward: 10, ink: START_INK, waves, scale: map.scale } };
+  return { map, grammar, spells, level: { id: `journey-${point.id}`, paths: map.paths, sites: map.sites, ward: 10, ink: START_INK, waves, scale: map.scale } };
 }
 
 /** Freed points are won; open ones can be fought next; the rest stay locked. */

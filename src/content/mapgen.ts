@@ -40,44 +40,49 @@ export const SITE_RANGE = 160;
 /** Share of the path a tower on any site reaches: no site is a bad one. */
 export const MIN_COVERAGE = 0.1;
 
-/** Whether the rectangle centred on (x, y) with half sizes `hx`, `hy` touches the path drawn at `scale`. */
-export function touchesPath(path: readonly Point[], x: number, y: number, hx: number, hy: number, scale = 1): boolean {
+/** Whether the rectangle centred on (x, y) with half sizes `hx`, `hy` touches any of the paths drawn at `scale`. */
+export function touchesPath(paths: readonly (readonly Point[])[], x: number, y: number, hx: number, hy: number, scale = 1): boolean {
   const half = LAYOUT.pathHalf * scale;
-  return path.slice(1).some((to, i) => {
-    const from = path[i]!;
-    return (
-      x + hx >= Math.min(from.x, to.x) - half &&
-      x - hx <= Math.max(from.x, to.x) + half &&
-      y + hy >= Math.min(from.y, to.y) - half &&
-      y - hy <= Math.max(from.y, to.y) + half
-    );
-  });
+  return paths.some((path) =>
+    path.slice(1).some((to, i) => {
+      const from = path[i]!;
+      return (
+        x + hx >= Math.min(from.x, to.x) - half &&
+        x - hx <= Math.max(from.x, to.x) + half &&
+        y + hy >= Math.min(from.y, to.y) - half &&
+        y - hy <= Math.max(from.y, to.y) + half
+      );
+    }),
+  );
 }
 
-/** Distance from (x, y) to the middle line of the path. */
-export function distanceToPath(path: readonly Point[], x: number, y: number): number {
+/** Distance from (x, y) to the middle line of the nearest path. */
+export function distanceToPath(paths: readonly (readonly Point[])[], x: number, y: number): number {
   return Math.min(
-    ...path.slice(1).map((to, i) => {
-      const from = path[i]!;
-      const cx = Math.max(Math.min(from.x, to.x), Math.min(x, Math.max(from.x, to.x)));
-      const cy = Math.max(Math.min(from.y, to.y), Math.min(y, Math.max(from.y, to.y)));
-      return Math.hypot(x - cx, y - cy);
-    }),
+    ...paths.flatMap((path) =>
+      path.slice(1).map((to, i) => {
+        const from = path[i]!;
+        const cx = Math.max(Math.min(from.x, to.x), Math.min(x, Math.max(from.x, to.x)));
+        const cy = Math.max(Math.min(from.y, to.y), Math.min(y, Math.max(from.y, to.y)));
+        return Math.hypot(x - cx, y - cy);
+      }),
+    ),
   );
 }
 
 /**
  * Whether a build site at (x, y) fits on a map drawn at `scale`: pad and word
- * off the path and the ward circle, the pad above the desk, the word on screen.
+ * off the paths and the ward circle, the pad above the desk, the word on screen.
  */
-export function siteFits(path: readonly Point[], x: number, y: number, scale = 1): boolean {
+export function siteFits(paths: readonly (readonly Point[])[], x: number, y: number, scale = 1): boolean {
   const { label, deskTop, width, wardRadius } = LAYOUT;
   const siteHalf = LAYOUT.siteHalf * scale;
-  const end = path[path.length - 1]!;
+  const main = paths[0]!;
+  const end = main[main.length - 1]!;
   const labelY = y - label.above;
   return (
-    !touchesPath(path, x, y, siteHalf, siteHalf, scale) &&
-    !touchesPath(path, x, labelY, label.halfWidth, label.halfHeight, scale) &&
+    !touchesPath(paths, x, y, siteHalf, siteHalf, scale) &&
+    !touchesPath(paths, x, labelY, label.halfWidth, label.halfHeight, scale) &&
     y + siteHalf < deskTop &&
     labelY - label.halfHeight > 0 &&
     x - label.halfWidth > 0 &&
@@ -99,9 +104,16 @@ function samples(path: readonly Point[]): Point[] {
   return out;
 }
 
-/** Share of the path within reach of a typical tower at (x, y) on a map drawn at `scale`. */
-export function coverage(path: readonly Point[], x: number, y: number, scale = 1): number {
-  const points = samples(path);
+/** Points every 8 px along all paths; where a path runs on the main one, the stretch counts once. */
+function mapSamples(paths: readonly (readonly Point[])[]): Point[] {
+  const main = samples(paths[0]!);
+  const own = paths.slice(1).flatMap((path) => samples(path).filter((p) => main.every((q) => Math.hypot(p.x - q.x, p.y - q.y) > 4)));
+  return [...main, ...own];
+}
+
+/** Share of all paths within reach of a typical tower at (x, y) on a map drawn at `scale`. */
+export function coverage(paths: readonly (readonly Point[])[], x: number, y: number, scale = 1): number {
+  const points = mapSamples(paths);
   return points.filter((p) => Math.hypot(p.x - x, p.y - y) <= SITE_RANGE * scale).length / points.length;
 }
 
@@ -118,14 +130,16 @@ export function alongPath(path: readonly Point[], x: number, y: number): number 
   return closest / (points.length - 1);
 }
 
-/** Sites lie close enough to the path for a tower to reach it, and apart from each other (at scale 1). */
+/** Sites lie close enough to a path for a tower to reach it, and apart from each other (at scale 1). */
 const SITE_REACH = 110;
 const SITE_SPACING = 150;
 const GRID = 10;
 /** A turn of the path moves it at least this far up or down (at scale 1). */
 const MIN_TURN = 130;
-/** The best-covering spots (this share of all) are bends: inside a curve or between two runs of the path. */
+/** The best-covering spots (this share of all) are bends: inside a curve, between two runs or where paths join. */
 const BEND_SHARE = 0.12;
+/** Most entrances of a generated map: the main one on the left, one from the top, one from the bottom. */
+export const MAX_PATHS = 3;
 
 function between(random: Random, low: number, high: number): number {
   return low + random() * (high - low);
@@ -156,33 +170,60 @@ export function pathEnd(scale: number): number {
   return Math.round(LAYOUT.width - 130 * scale);
 }
 
+/**
+ * Another entrance, from the top or the bottom edge, that joins the main path on one of its straight runs in the
+ * middle of the map. Returns the whole way of its enemies (the branch, then the main path from the joint), or null
+ * if the branch would come too close to the main path or to `others` before the joint.
+ */
+function branchPath(random: Random, main: readonly Point[], side: 'top' | 'bottom', others: readonly (readonly Point[])[], scale: number): Point[] | null {
+  const runs = main.slice(1).flatMap((to, i) => (main[i]!.y === to.y && to.x - main[i]!.x > 160 * scale ? [i] : []));
+  const middle = runs.filter((i) => main[i]!.x > LAYOUT.width * 0.25 && main[i]!.x < LAYOUT.width * 0.75);
+  const run = middle[Math.floor(random() * middle.length)];
+  if (run === undefined) return null;
+  const from = main[run]!;
+  const joint = { x: Math.round(between(random, from.x + 60 * scale, main[run + 1]!.x - 60 * scale)), y: from.y };
+  // From the edge left of the joint towards the joint's height, then right and onto the joint if there is room.
+  const turn = MIN_TURN * scale;
+  const edge = side === 'top' ? -40 : LAYOUT.deskTop + 40;
+  const room = side === 'top' ? joint.y - 60 * scale : LAYOUT.deskTop - 60 * scale - joint.y;
+  const startX = Math.round(joint.x - between(random, 150, 260) * scale);
+  const bend = Math.round(between(random, turn, Math.max(room, turn + 10)));
+  const bendY = side === 'top' ? joint.y - bend : joint.y + bend;
+  const branch = room >= turn ? [{ x: startX, y: edge }, { x: startX, y: bendY }, { x: joint.x, y: bendY }, joint] : [{ x: joint.x, y: edge }, joint];
+  // Near the joint the branch meets the main path by design; only the stretch before it must keep clear.
+  const half = LAYOUT.pathHalf * scale;
+  const own = samples(branch).filter((p) => Math.hypot(p.x - joint.x, p.y - joint.y) > 2 * half + 60 * scale);
+  const taken = [main, ...others].flatMap(samples);
+  if (own.some((p) => taken.some((q) => Math.hypot(p.x - q.x, p.y - q.y) < 2 * half + 30 * scale))) return null;
+  return [...branch, ...main.slice(run + 1)];
+}
+
 interface Spot extends Point {
   readonly coverage: number;
-  /** Where along the path the spot lies, 0 at the start, 1 at the ward. */
+  /** Where along the main path the spot lies, 0 at the start, 1 at the ward. */
   readonly along: number;
 }
 
 /**
- * `SITE_COUNT` sites, each reaching at least `MIN_COVERAGE` of the path: one near the ward circle, two of the
- * best-covering spots (bends), then at least two in each third of the path, the rest anywhere. Within each rule the
- * pick is random, weighted by coverage, so maps differ but always offer strong and plainer sites.
+ * `SITE_COUNT` sites, each reaching at least `MIN_COVERAGE` of all paths: one near the ward circle, two of the
+ * best-covering spots (bends, joints), then at least two in each third of the main path, the rest anywhere. Within
+ * each rule the pick is random, weighted by coverage, so maps differ but always offer strong and plainer sites.
  */
-function placeSites(random: Random, path: readonly Point[], scale: number): BuildSite[] | null {
-  const points = samples(path);
+function placeSites(random: Random, paths: readonly (readonly Point[])[], scale: number): BuildSite[] | null {
+  const points = mapSamples(paths);
+  const main = samples(paths[0]!);
   const range = SITE_RANGE * scale;
   const spots: Spot[] = [];
   for (let y = GRID; y < LAYOUT.deskTop; y += GRID) {
     for (let x = GRID; x < LAYOUT.width; x += GRID) {
-      if (!siteFits(path, x, y, scale) || distanceToPath(path, x, y) > SITE_REACH * scale) continue;
-      let inRange = 0;
+      if (!siteFits(paths, x, y, scale) || distanceToPath(paths, x, y) > SITE_REACH * scale) continue;
+      const share = points.filter((p) => Math.hypot(p.x - x, p.y - y) <= range).length / points.length;
+      if (share < MIN_COVERAGE) continue;
       let closest = 0;
-      points.forEach((p, i) => {
-        const d = Math.hypot(p.x - x, p.y - y);
-        if (d <= range) inRange++;
-        if (d < Math.hypot(points[closest]!.x - x, points[closest]!.y - y)) closest = i;
+      main.forEach((p, i) => {
+        if (Math.hypot(p.x - x, p.y - y) < Math.hypot(main[closest]!.x - x, main[closest]!.y - y)) closest = i;
       });
-      const share = inRange / points.length;
-      if (share >= MIN_COVERAGE) spots.push({ x, y, coverage: share, along: closest / (points.length - 1) });
+      spots.push({ x, y, coverage: share, along: closest / (main.length - 1) });
     }
   }
   if (spots.length === 0) return null;
@@ -208,18 +249,20 @@ function placeSites(random: Random, path: readonly Point[], scale: number): Buil
   return chosen.map((spot, i) => ({ id: String.fromCharCode(97 + i), x: spot.x, y: spot.y }));
 }
 
-/** Trees and rocks where they leave path, sites and words free; sizes at scale 1. */
-function placeScenery(random: Random, path: readonly Point[], sites: readonly BuildSite[], scale: number): Prop[] {
+/** Trees and rocks where they leave paths, sites and words free; sizes at scale 1. */
+function placeScenery(random: Random, paths: readonly (readonly Point[])[], sites: readonly BuildSite[], scale: number): Prop[] {
   const props: Prop[] = [];
+  const main = paths[0]!;
+  const end = main[main.length - 1]!;
   for (let tries = 0; tries < 400 && props.length < 12; tries++) {
     const x = Math.round(between(random, 30, LAYOUT.width - 30));
     const y = Math.round(between(random, 40, LAYOUT.deskTop - 10));
     // The prop stands on (x, y) and is about 64 px tall.
     const free =
-      !touchesPath(path, x, y - 28 * scale, 30 * scale, 30 * scale, scale) &&
+      !touchesPath(paths, x, y - 28 * scale, 30 * scale, 30 * scale, scale) &&
       sites.every((site) => Math.abs(site.x - x) > 90 || y < site.y - 110 || y > site.y + 90) &&
       props.every((other) => Math.hypot(other.x - x, other.y - (y - 32 * scale)) > 70 * scale) &&
-      Math.hypot(x - path[path.length - 1]!.x, y - path[path.length - 1]!.y) > 90;
+      Math.hypot(x - end.x, y - end.y) > 90;
     if (!free) continue;
     const tree = random() < 0.65;
     // Props are placed by their centre, half their height above the ground.
@@ -228,15 +271,25 @@ function placeScenery(random: Random, path: readonly Point[], sites: readonly Bu
   return props;
 }
 
-/** A fresh outdoor map of the ash fields at `MAP_SCALE`: grass under soot, a sand path, burnt trees and rocks. */
-export function generateAshMap(random: Random, id: string, name: string): BattleMap {
+/**
+ * A fresh outdoor map of the ash fields at `MAP_SCALE` with `entrances` ways in (1 to `MAX_PATHS`): grass under
+ * soot, sand paths, burnt trees and rocks. The second entrance comes from the top, the third from the bottom.
+ */
+export function generateAshMap(random: Random, id: string, name: string, entrances = 1): BattleMap {
+  if (entrances < 1 || entrances > MAX_PATHS) throw new Error(`${id}: ${entrances} paths, at most ${MAX_PATHS}`);
   const scale = MAP_SCALE;
   const top = Math.round(110 * scale);
   const bottom = Math.round(LAYOUT.deskTop - 70 * scale);
   for (;;) {
-    const path = generatePath(random, scale, top, bottom);
-    const sites = placeSites(random, path, scale);
-    if (sites) return { id, name, indoor: false, ash: true, scale, path, sites, props: placeScenery(random, path, sites, scale) };
+    const paths = [generatePath(random, scale, top, bottom)];
+    for (const side of (['top', 'bottom'] as const).slice(0, entrances - 1)) {
+      const branch = branchPath(random, paths[0]!, side, paths.slice(1), scale);
+      if (!branch) break;
+      paths.push(branch);
+    }
+    if (paths.length < entrances) continue;
+    const sites = placeSites(random, paths, scale);
+    if (sites) return { id, name, indoor: false, ash: true, scale, paths, sites, props: placeScenery(random, paths, sites, scale) };
   }
 }
 
@@ -273,9 +326,11 @@ export function waveCount(difficulty: number): number {
  * later waves together with the small ones; every other wave brings a swarm of
  * swift ones from `SWIFT_FROM` on. From `MARKED_FROM` on every third small one
  * glows and carries a word, and the last wave brings armored ones that only
- * typed words break. They all leave less ink than in the library.
+ * typed words break. They all leave less ink than in the library. On a map
+ * with `paths` entrances the squads of a wave take them in turn, each wave
+ * starting one further, so every entrance sees its share.
  */
-export function generateWaves(random: Random, difficulty: number, foes: Foes): Wave[] {
+export function generateWaves(random: Random, difficulty: number, foes: Foes, paths = 1): Wave[] {
   const waves: Wave[] = [];
   const count = waveCount(difficulty);
   for (let i = 0; i < count; i++) {
@@ -301,7 +356,7 @@ export function generateWaves(random: Random, difficulty: number, foes: Foes): W
     if (difficulty >= MARKED_FROM && i === count - 1) {
       squads.push({ kind: leaner(foes.armored), count: difficulty - MARKED_FROM + 1, spacingMs: 3000, delayMs: 4000, markEvery: 1 });
     }
-    waves.push(squads);
+    waves.push(paths > 1 ? squads.map((squad, s) => ({ ...squad, path: (i + s) % paths })) : squads);
   }
   return waves;
 }

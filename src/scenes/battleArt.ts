@@ -348,18 +348,23 @@ export interface PathStyle {
   readonly depth: number;
 }
 
-/** Lays a path along `points`: outline every segment, then the path again over the inner edges so only the outline of the whole remains. */
-export function layPath(scene: Phaser.Scene, points: readonly Point[], style: PathStyle): void {
+/**
+ * Lays paths along their points: first the outline of every segment of every path, then the paths over the inner
+ * edges, so where paths cross or join only the outline of the whole remains.
+ */
+export function layPath(scene: Phaser.Scene, paths: readonly (readonly Point[])[], style: PathStyle): void {
   const half = style.width / 2;
-  const segments = points.slice(1).map((to, i) => {
-    const from = points[i]!;
-    return {
-      x: Math.min(from.x, to.x) - half,
-      y: Math.min(from.y, to.y) - half,
-      width: Math.abs(to.x - from.x) + style.width,
-      height: Math.abs(to.y - from.y) + style.width,
-    };
-  });
+  const segments = paths.flatMap((points) =>
+    points.slice(1).map((to, i) => {
+      const from = points[i]!;
+      return {
+        x: Math.min(from.x, to.x) - half,
+        y: Math.min(from.y, to.y) - half,
+        width: Math.abs(to.x - from.x) + style.width,
+        height: Math.abs(to.y - from.y) + style.width,
+      };
+    }),
+  );
   const edges = scene.add.graphics().setDepth(style.depth).fillStyle(style.edgeColor, 1);
   for (const s of segments) edges.fillRect(s.x - 3, s.y - 3, s.width + 6, s.height + 6);
   for (const s of segments) {
