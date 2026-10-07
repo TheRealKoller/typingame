@@ -456,7 +456,7 @@ KLEIN_EDITS = (
 )
 KLEIN_SEEDS = (11, 22)
 
-JOBS = (*TEXT_JOBS, "karte-a", "klein-text", "klein-edit")
+JOBS = (*TEXT_JOBS, "karte-a", "klein-text", "klein-edit", "flux1-text")
 # Rounds 5 to 7 get their own folders, the LoRA candidates go to the experiment of #143; everything else is round 4.
 FOLDERS = {
     "karte-5": "runde5",
@@ -724,6 +724,34 @@ def klein_sheets() -> None:
 
 BLANK = pathlib.Path(" ")
 
+# flux1-text (#143): FLUX.1 dev on Replicate, which allows commercial use of images generated there (not of the
+# weights, and not of images generated elsewhere). Same prompts as klein-text, without a LoRA.
+FLUX1 = "6e4a938f85952bdabcc15aa329178c4d681c52bf25a0342403287dc26944661d"  # black-forest-labs/flux-dev
+FLUX1_DIR = HERE.parent / "143-style-lora" / "flux1"
+
+
+def flux1_text_jobs() -> list[tuple[pathlib.Path, str, dict]]:
+    return [
+        (
+            FLUX1_DIR / f"{motif}-flux1-{seed}.png",
+            FLUX1,
+            {"prompt": TEXT_JOBS["lora"][motif][0], "seed": seed, "go_fast": False, "output_format": "png"},
+        )
+        for motif in KLEIN_TEXT
+        for seed in SEEDS
+    ]
+
+
+def flux1_sheet() -> None:
+    """One row per motif: the Z-Image reference, klein base, then FLUX.1 dev over the seeds."""
+    paths: list[pathlib.Path] = []
+    for motif, ref in KLEIN_TEXT.items():
+        paths.append(CANDIDATES / f"{ref}.png")
+        for folder, model in ((KLEIN_DIR, "base"), (FLUX1_DIR, "flux1")):
+            paths += [p if (p := folder / f"{motif}-{model}-{seed}.png").exists() else BLANK for seed in SEEDS]
+    images = [Image.new("RGB", (16, 16), "white") if p == BLANK else Image.open(p).convert("RGB") for p in paths]
+    sheet(paths, FLUX1_DIR / "sheet-flux1-text.jpg", 1 + 2 * len(SEEDS), cell=256, images=images)
+
 
 # --- sheets ---------------------------------------------------------------------------------------
 
@@ -800,6 +828,11 @@ def main() -> None:
             KLEIN_DIR.mkdir(exist_ok=True)
             run(klein_text_jobs() if name == "klein-text" else klein_edit_jobs(), args.dry_run)
             klein_sheets()
+            continue
+        if name == "flux1-text":
+            FLUX1_DIR.mkdir(exist_ok=True)
+            run(flux1_text_jobs(), args.dry_run)
+            flux1_sheet()
             continue
         out = HERE / FOLDERS.get(name, OUT.name)
         out.mkdir(exist_ok=True)
