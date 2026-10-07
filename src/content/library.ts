@@ -1,5 +1,6 @@
 import type { BuildSite, EnemyKind, Level, Wave } from '../battle/level';
 import type { Point } from '../battle/path';
+import { paintings, type PaintedMap } from './paintedMaps';
 
 /** Scale of every battle map: drawn smaller than the art, so more path, sites and enemies fit (#146, see `Level.scale`). */
 export const MAP_SCALE = 0.8;
@@ -13,7 +14,7 @@ export function stronger(kind: EnemyKind, factor: number): EnemyKind {
   return { ...kind, health: Math.round(kind.health * factor), ink: Math.round(kind.ink * (1 + (factor - 1) / 2)) };
 }
 
-/** Things placed on a map; the scene knows how to draw each. */
+/** Things placed on a map; they are painted into its pictures (see `paintedMaps.ts`). */
 export type PropKind = 'bookshelf' | 'burnt-bookshelf' | 'lectern' | 'reading-desk' | 'book-pile' | 'scroll' | 'tree' | 'rock';
 
 export interface Prop {
@@ -27,9 +28,11 @@ export interface Prop {
 
 /**
  * One place for a battle, on a 1280 × 720 screen kept above the desk
- * (y < 470). `indoor` maps have a stone floor, a back wall with banners and
- * torches and a carpet as the path; outdoor maps have grass and a sand path.
- * Maps of the ash fields lie under soot, their trees burnt.
+ * (y < 470). The battle shows a painting of it (see `paintedMaps.ts`); the
+ * rest of the data describes what the painting shows: `indoor` maps have a
+ * stone floor, a back wall with banners and torches and a carpet as the path;
+ * outdoor maps have grass and a sand path. Maps of the ash fields lie under
+ * soot, their trees burnt.
  */
 export interface BattleMap {
   readonly id: string;
@@ -49,9 +52,11 @@ export interface BattleMap {
   readonly scale?: number;
 }
 
-/** Wall shelves stand by their middle at this height and are 128 px tall; build sites keep below them. */
+/** Wall shelves stand by their middle at this height; build sites keep below them. */
 const SHELF_Y = 86;
-export const SHELF_BOTTOM = SHELF_Y + 64;
+/** Height of a shelf on screen; shelves keep their size at every map scale. */
+export const SHELF_HEIGHT = 128;
+export const SHELF_BOTTOM = SHELF_Y + SHELF_HEIGHT / 2;
 
 /** Shelves along the back wall of an indoor map, three looks in turn. */
 export function wallShelves(xs: readonly number[], kind: 'bookshelf' | 'burnt-bookshelf' = 'bookshelf'): Prop[] {
@@ -178,6 +183,9 @@ export const COURTYARD: BattleMap = {
     { kind: 'rock', variant: 0, x: 460, y: 450 },
     { kind: 'rock', variant: 1, x: 1030, y: 450 },
     { kind: 'rock', variant: 0, x: 520, y: 300 },
+    // The empty lawn below the path's end got painted as a big sandy circle that looked like a build site (#151).
+    { kind: 'tree', variant: 1, x: 1040, y: 300 },
+    { kind: 'rock', variant: 0, x: 1120, y: 410 },
     { kind: 'lectern', x: 780, y: 440 },
   ],
 };
@@ -185,9 +193,14 @@ export const COURTYARD: BattleMap = {
 /** Practice battles take turns between these maps. */
 export const PRACTICE_MAPS: readonly BattleMap[] = [READING_ROOM, ARCHIVE, COURTYARD];
 
-/** The map of the `round`-th practice battle (0 for the first). */
-export function practiceMap(round: number): BattleMap {
-  return PRACTICE_MAPS[round % PRACTICE_MAPS.length]!;
+/**
+ * The map of the `round`-th practice battle (0 for the first) and its painting: the maps take turns, and each time a
+ * map comes round again it shows its next painting.
+ */
+export function practiceMap(round: number): PaintedMap {
+  const map = PRACTICE_MAPS[round % PRACTICE_MAPS.length]!;
+  const shown = paintings(map.id);
+  return { map, painting: shown[Math.floor(round / PRACTICE_MAPS.length) % shown.length]! };
 }
 
 /**

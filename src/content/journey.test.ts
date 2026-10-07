@@ -14,6 +14,7 @@ import {
 } from './journey';
 import { LEXICON } from './lexicon';
 import { seededRandom } from './mapgen';
+import { paintings, type Painting } from './paintedMaps';
 import { allKeysSetup } from './tutorial';
 
 describe('world map', () => {
@@ -99,12 +100,12 @@ describe('battles of the journey', () => {
   const ARROWS: Plan = everySite(['jagd']);
 
   /**
-   * Plays the battle at `point` by `plan`: the next step whenever the ink
-   * allows, and, if `typing`, every glowing enemy struck four seconds after it
-   * shows up. Returns the ward left, 0 if lost.
+   * Plays the battle at `point` on `painting` by `plan`: the next step whenever
+   * the ink allows, and, if `typing`, every glowing enemy struck four seconds
+   * after it shows up. Returns the ward left, 0 if lost.
    */
-  function play(point: WorldPoint, seed: number, plan: Plan, typing: boolean): number {
-    const battle = new Battle(journeyBattle(point, seededRandom(seed), new Set()).level);
+  function play(point: WorldPoint, painting: Painting, seed: number, plan: Plan, typing: boolean): number {
+    const battle = new Battle(journeyBattle(point, seededRandom(seed), new Set(), painting).level);
     const sentences = new Map<number, Lexeme[]>();
     const shown = new Map<number, number>();
     let next = 0;
@@ -128,8 +129,10 @@ describe('battles of the journey', () => {
     return battle.phase === 'won' ? battle.ward : 0;
   }
 
+  /** `SEEDS` battles at `point`, its paintings in turn, so every map the place can show is played. */
   function results(point: WorldPoint, plan: Plan, typing: boolean): number[] {
-    return Array.from({ length: SEEDS }, (_, i) => play(point, i + 1, plan, typing));
+    const shown = paintings(point.map?.id ?? point.id);
+    return Array.from({ length: SEEDS }, (_, i) => play(point, shown[i % shown.length]!, i + 1, plan, typing));
   }
 
   const winRate = (wards: readonly number[]) => wards.filter((ward) => ward > 0).length / wards.length;

@@ -1,15 +1,8 @@
 import * as Phaser from 'phaser';
 import type { Point } from '../battle/path';
-import bookPileImage from '../assets/library/book-pile.png';
 import bookshelfBurntImage from '../assets/library/bookshelf-burnt.png';
-import bookshelfImage from '../assets/library/bookshelf.png';
-import lecternImage from '../assets/library/lectern.png';
 import largePaperGolemImage from '../assets/library/paper-golem-large.png';
 import paperGolemImage from '../assets/library/paper-golem.png';
-import readingDeskImage from '../assets/library/reading-desk.png';
-import scrollImage from '../assets/library/scroll.png';
-import dungeonImage from '../assets/lucifer/dungeon/dungeon-tileset.png';
-import torchImage from '../assets/lucifer/lava/torch.png';
 import standingFlagDamagedImage from '../assets/lucifer/lava/standing-flag-damaged.png';
 import waterImage from '../assets/spire/tileset/animated-water-tiles.png';
 import grassTilesetImage from '../assets/spire/tileset/grass-tileset.png';
@@ -77,32 +70,14 @@ const HEADINGS: readonly Heading[] = ['down', 'up', 'side'];
 const WALK_ROW = 3;
 const DEATH_ROW = 6;
 
-/**
- * Frames cut from the Lucifer dungeon tileset (32 × 32 px source tiles, shown
- * twice as large like the rest of the art).
- */
-export const DUNGEON = 'dungeon';
-export const FLOOR_FRAMES = ['floor', 'floor-slab', 'floor-worn'] as const;
-export const BRICK_FRAME = 'brick';
-export const WALL_EDGE_FRAME = 'wall-edge';
-export const CARPET_FRAME = 'carpet';
-export const BANNER_FRAME = 'banner';
-/** Scale of the Lucifer tiles and the library props, which are drawn at half the Spire density. */
-export const LIBRARY_SCALE = 2;
-
-export const TORCH = 'torch';
-export const TORCH_FLAME = 'torch-flame';
-export const BOOKSHELF = 'bookshelf';
+/** Burnt shelves beside the library ruin on the world map (own art, 64 × 128 frames). */
 export const BOOKSHELF_BURNT = 'bookshelf-burnt';
-/** Flames rising from the floor (Fire Trap of the Pixel Trap Pack, frames 32 × 64). */
+/** Flames rising from the floor (Fire Trap of the Pixel Trap Pack, frames 32 × 64), drawn twice as large. */
 export const FIRE = 'fire';
 export const FIRE_BURNING = 'fire-burning';
-export const LECTERN = 'lectern';
-export const READING_DESK = 'reading-desk';
-export const BOOK_PILE = 'book-pile';
-export const SCROLL = 'scroll';
+export const FIRE_SCALE = 2;
 
-/** Frames cut from the Spire grass tileset (64 × 64 px) for the courtyard. */
+/** Frames cut from the Spire grass tileset (64 × 64 px) for the world map. */
 export const GRASS_TILESET = 'grass-tileset';
 export const GRASS_FRAME = 'grass';
 export const SAND_FRAME = 'sand';
@@ -228,15 +203,8 @@ export function deathAnimation(kind: string, heading: Heading): string {
 }
 
 export function preloadBattleArt(scene: Phaser.Scene): void {
-  scene.load.image(DUNGEON, dungeonImage);
-  scene.load.spritesheet(TORCH, torchImage, { frameWidth: 32, frameHeight: 32 });
-  scene.load.spritesheet(BOOKSHELF, bookshelfImage, { frameWidth: 64, frameHeight: 128 });
   scene.load.spritesheet(BOOKSHELF_BURNT, bookshelfBurntImage, { frameWidth: 64, frameHeight: 128 });
   scene.load.spritesheet(FIRE, fireImage, { frameWidth: 32, frameHeight: 64 });
-  scene.load.image(LECTERN, lecternImage);
-  scene.load.image(READING_DESK, readingDeskImage);
-  scene.load.spritesheet(BOOK_PILE, bookPileImage, { frameWidth: 64, frameHeight: 64 });
-  scene.load.image(SCROLL, scrollImage);
   scene.load.image(GRASS_TILESET, grassTilesetImage);
   scene.load.image(WATER, waterImage);
   scene.load.spritesheet(FLAG_DAMAGED, standingFlagDamagedImage, { frameWidth: 32, frameHeight: 64 });
@@ -259,17 +227,6 @@ export function preloadBattleArt(scene: Phaser.Scene): void {
 
 /** Cuts the tile frames and registers the animations; safe to call again after a restart. */
 export function createBattleArt(scene: Phaser.Scene): void {
-  const dungeon = scene.textures.get(DUNGEON);
-  if (!dungeon.has(CARPET_FRAME)) {
-    // Positions in the Lucifer dungeon tileset.
-    dungeon.add(FLOOR_FRAMES[0], 0, 0, 160, 32, 32);
-    dungeon.add(FLOOR_FRAMES[1], 0, 0, 192, 32, 32);
-    dungeon.add(FLOOR_FRAMES[2], 0, 32, 160, 32, 32);
-    dungeon.add(BRICK_FRAME, 0, 32, 32, 32, 32);
-    dungeon.add(WALL_EDGE_FRAME, 0, 136, 56, 32, 8);
-    dungeon.add(CARPET_FRAME, 0, 320, 192, 16, 16);
-    dungeon.add(BANNER_FRAME, 0, 480, 70, 32, 54);
-  }
   const grass = scene.textures.get(GRASS_TILESET);
   if (!grass.has(GRASS_FRAME)) {
     // Positions in the Spire grass tileset: a grass arm and the sand centre of the crosses, trees and rocks on the right.
@@ -311,9 +268,6 @@ export function createBattleArt(scene: Phaser.Scene): void {
     });
   }
 
-  if (!anims.exists(TORCH_FLAME)) {
-    anims.create({ key: TORCH_FLAME, frames: anims.generateFrameNumbers(TORCH, {}), frameRate: FRAME_RATE, repeat: -1 });
-  }
   if (!anims.exists(FLAG_DAMAGED_WAVING)) {
     anims.create({ key: FLAG_DAMAGED_WAVING, frames: anims.generateFrameNumbers(FLAG_DAMAGED, {}), frameRate: FRAME_RATE, repeat: -1 });
   }
@@ -372,7 +326,7 @@ export function layPath(scene: Phaser.Scene, paths: readonly (readonly Point[])[
   }
 }
 
-/** Soot over the ground of the ash fields (world map and battles there). */
+/** Soot over the ground of the ash fields on the world map. */
 export const ASH_COLOR = 0x6e6966;
 /** Trees burnt in the ash fields. */
 export const BURNT_TINT = 0x4a4240;
