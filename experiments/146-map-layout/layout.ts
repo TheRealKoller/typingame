@@ -70,25 +70,28 @@ function samples(path: readonly Point[], step = 8): Point[] {
 const nearest = (points: readonly Point[], x: number, y: number) => Math.min(...points.map((p) => Math.hypot(p.x - x, p.y - y)));
 
 /**
- * A second entrance from the top edge that joins the main path on one of its horizontal runs in the middle third.
- * Returns the whole route of an enemy taking it (the branch, then the main path from the joint), or null if the
- * branch would come too close to the main path before the joint.
+ * Another entrance from the top or bottom edge that joins the main path on one of its horizontal runs in the
+ * middle. Returns the whole route of an enemy taking it (the branch, then the main path from the joint), or null if
+ * the branch would come too close to the main path or to `others` before the joint.
  */
-function branchPath(random: Random, main: readonly Point[]): Point[] | null {
+function branchPath(random: Random, main: readonly Point[], side: 'top' | 'bottom', others: readonly (readonly Point[])[]): Point[] | null {
   const runs = main.slice(1).flatMap((to, i) => (main[i]!.y === to.y && to.x - main[i]!.x > 160 ? [i] : []));
-  const middle = runs.filter((i) => main[i]!.x > WORLD.width * 0.3 && main[i]!.x < WORLD.width * 0.7);
+  const middle = runs.filter((i) => main[i]!.x > WORLD.width * 0.25 && main[i]!.x < WORLD.width * 0.75);
   const run = middle[Math.floor(random() * middle.length)];
   if (run === undefined) return null;
   const from = main[run]!;
   const joint = { x: Math.round(between(random, from.x + 60, main[run + 1]!.x - 60)), y: from.y };
-  // From the top edge left of the joint, down, then right and down onto the joint, if it lies low enough.
+  // From the edge left of the joint, towards the joint's height, then right and onto the joint if there is room.
+  const edge = side === 'top' ? -40 : WORLD.height + 40;
+  const room = side === 'top' ? joint.y - 60 : WORLD.height - 60 - joint.y;
   const startX = Math.round(joint.x - between(random, 150, 260));
-  const bendY = Math.round(between(random, 60, Math.max(joint.y - MIN_TURN, 70)));
-  const branch = joint.y - bendY >= MIN_TURN ? [{ x: startX, y: -40 }, { x: startX, y: bendY }, { x: joint.x, y: bendY }, joint] : [{ x: joint.x, y: -40 }, joint];
+  const bend = Math.round(between(random, MIN_TURN, Math.max(room, MIN_TURN + 10)));
+  const bendY = side === 'top' ? joint.y - bend : joint.y + bend;
+  const branch = room >= MIN_TURN ? [{ x: startX, y: edge }, { x: startX, y: bendY }, { x: joint.x, y: bendY }, joint] : [{ x: joint.x, y: edge }, joint];
   // Near the joint the branch meets the main path by design; only the stretch before it must keep clear.
   const own = samples(branch).filter((p) => Math.hypot(p.x - joint.x, p.y - joint.y) > 2 * PATH_HALF + 60);
-  const mainPoints = samples(main);
-  if (own.some((p) => nearest(mainPoints, p.x, p.y) < 2 * PATH_HALF + 30)) return null;
+  const taken = [main, ...others].flatMap((route) => samples(route));
+  if (own.some((p) => nearest(taken, p.x, p.y) < 2 * PATH_HALF + 30)) return null;
   return [...branch, ...main.slice(run + 1)];
 }
 
@@ -193,11 +196,13 @@ function generate(seed: number): { routes: Point[][]; sites: Site[]; attempts: n
   for (let attempt = 1; attempt <= 300; attempt++) {
     const main = mainPath(random);
     const routes = [main];
-    if (PATHS > 1) {
-      const branch = branchPath(random, main);
-      if (!branch) continue;
+    // The second entrance comes from the top, the third from the bottom.
+    for (const side of (['top', 'bottom'] as const).slice(0, PATHS - 1)) {
+      const branch = branchPath(random, main, side, routes.slice(1));
+      if (!branch) break;
       routes.push(branch);
     }
+    if (routes.length < PATHS) continue;
     const sites = chooseSites(random, routes);
     if (sites) return { routes, sites, attempts: attempt };
   }
