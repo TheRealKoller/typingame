@@ -1,6 +1,6 @@
 import type { EnemyKind, Level, Spell } from '../battle/level';
 import type { Grammar } from '../battle/sentence';
-import { wallShelves, type BattleMap } from './library';
+import { MAP_SCALE, wallShelves, type BattleMap } from './library';
 import { GRAMMAR } from './lexicon';
 import { generateAshMap, generateWaves, type Foes, type Random } from './mapgen';
 import { SILENT_FIREBUG, SILENT_SCORPION } from './raid';
@@ -80,28 +80,33 @@ export const RUIN: BattleMap = {
   indoor: true,
   floor: 'stone',
   ash: true,
+  scale: MAP_SCALE,
   path: [
-    { x: -40, y: 200 },
-    { x: 240, y: 200 },
-    { x: 240, y: 400 },
-    { x: 600, y: 400 },
-    { x: 600, y: 200 },
-    { x: 900, y: 200 },
-    { x: 900, y: 380 },
-    { x: 1150, y: 380 },
+    { x: -40, y: 250 },
+    { x: 190, y: 250 },
+    { x: 190, y: 420 },
+    { x: 420, y: 420 },
+    { x: 420, y: 250 },
+    { x: 660, y: 250 },
+    { x: 660, y: 420 },
+    { x: 900, y: 420 },
+    { x: 900, y: 280 },
+    { x: 1176, y: 280 },
   ],
   sites: [
-    { id: 'a', x: 120, y: 330 },
-    { id: 'b', x: 420, y: 300 },
-    { id: 'c', x: 750, y: 330 },
-    { id: 'd', x: 1030, y: 260 },
-    { id: 'e', x: 780, y: 440 },
+    { id: 'a', x: 90, y: 200 },
+    { id: 'b', x: 320, y: 340 },
+    { id: 'c', x: 450, y: 200 },
+    { id: 'd', x: 580, y: 200 },
+    { id: 'e', x: 760, y: 350 },
+    { id: 'f', x: 940, y: 230 },
+    { id: 'g', x: 1070, y: 230 },
   ],
   props: [
     ...wallShelves([64, 128, 384, 448, 512, 704, 768, 1024, 1088, 1152], 'burnt-bookshelf'),
     { kind: 'book-pile', variant: 1, x: 60, y: 440 },
-    { kind: 'book-pile', variant: 0, x: 1180, y: 250 },
-    { kind: 'scroll', x: 420, y: 160 },
+    { kind: 'book-pile', variant: 0, x: 1120, y: 440 },
+    { kind: 'scroll', x: 540, y: 380 },
     { kind: 'scroll', x: 1220, y: 440 },
   ],
 };
@@ -112,28 +117,33 @@ export const CELLAR: BattleMap = {
   name: 'Kellergewölbe',
   indoor: true,
   floor: 'slab',
+  scale: MAP_SCALE,
   path: [
-    { x: -40, y: 380 },
-    { x: 180, y: 380 },
-    { x: 180, y: 210 },
-    { x: 480, y: 210 },
-    { x: 480, y: 400 },
-    { x: 820, y: 400 },
-    { x: 820, y: 210 },
-    { x: 1150, y: 210 },
+    { x: -40, y: 410 },
+    { x: 170, y: 410 },
+    { x: 170, y: 250 },
+    { x: 410, y: 250 },
+    { x: 410, y: 420 },
+    { x: 650, y: 420 },
+    { x: 650, y: 250 },
+    { x: 890, y: 250 },
+    { x: 890, y: 400 },
+    { x: 1176, y: 400 },
   ],
   sites: [
-    { id: 'a', x: 70, y: 270 },
-    { id: 'b', x: 330, y: 340 },
-    { id: 'c', x: 650, y: 300 },
-    { id: 'd', x: 980, y: 340 },
-    { id: 'e', x: 650, y: 150 },
+    { id: 'a', x: 70, y: 330 },
+    { id: 'b', x: 220, y: 200 },
+    { id: 'c', x: 350, y: 200 },
+    { id: 'd', x: 530, y: 370 },
+    { id: 'e', x: 700, y: 200 },
+    { id: 'f', x: 840, y: 200 },
+    { id: 'g', x: 1010, y: 330 },
   ],
   props: [
     ...wallShelves([96, 288, 352, 960, 1024]),
-    { kind: 'book-pile', variant: 0, x: 330, y: 440 },
-    { kind: 'book-pile', variant: 1, x: 1180, y: 430 },
-    { kind: 'scroll', x: 980, y: 440 },
+    { kind: 'book-pile', variant: 0, x: 60, y: 200 },
+    { kind: 'book-pile', variant: 1, x: 1230, y: 250 },
+    { kind: 'scroll', x: 1000, y: 200 },
   ],
   torches: [180, 560, 760, 1220],
 };
@@ -260,7 +270,7 @@ export function journeyBattle(point: WorldPoint, random: Random, freed: Readonly
   const known = knownWords(freed);
   const grammar = { ...GRAMMAR, lexicon: GRAMMAR.lexicon.filter((lexeme) => known.has(lexeme.word)) };
   const spells = rewardsFor(freed).flatMap((reward) => (reward.spell ? [reward.spell] : []));
-  return { map, grammar, spells, level: { id: `journey-${point.id}`, path: map.path, sites: map.sites, ward: 10, ink: START_INK, waves } };
+  return { map, grammar, spells, level: { id: `journey-${point.id}`, path: map.path, sites: map.sites, ward: 10, ink: START_INK, waves, scale: map.scale } };
 }
 
 /** Freed points are won; open ones can be fought next; the rest stay locked. */
