@@ -1,0 +1,32 @@
+<!doctype html>
+<html lang="de">
+  <head>
+    <meta charset="UTF-8" />
+    <title>#145 Probe: Türme aus Bausteinen</title>
+    <style>
+      body { margin: 0; background: #2a2622; color: #eee; font: 15px Georgia, serif; }
+      main { display: flex; flex-direction: column; align-items: center; gap: 14px; padding: 12px; }
+      .row { display: flex; gap: 8px; flex-wrap: wrap; justify-content: center; }
+      button { font: inherit; padding: 4px 10px; border-radius: 6px; border: 1px solid #8a7a6a; background: #f4ecd6; color: #2b2116; cursor: pointer; }
+      button.on { background: #3d8bff; color: #fff; }
+      button:disabled { opacity: 0.4; cursor: default; }
+      #satz { font-size: 22px; min-height: 28px; }
+      canvas { background: #f4ecd6; border-radius: 8px; }
+      h2 { font-size: 17px; margin: 10px 0 0; color: #f0d9a0; }
+    </style>
+  </head>
+  <body>
+    <main>
+      <h2>Satz zusammenstellen</h2>
+      <div class="row" id="arten"></div>
+      <div class="row" id="woerter"></div>
+      <div id="satz"></div>
+      <canvas id="turm" width="420" height="460"></canvas>
+      <h2>Beispielsätze</h2>
+      <canvas id="galerie" width="1280" height="330"></canvas>
+      <h2>Auf einer gemalten Karte (#143), Maßstab 0,8</h2>
+      <canvas id="karte" width="1280" height="470"></canvas>
+    </main>
+    <script type="module" src="./turm.ts"></script>
+  </body>
+</html>
