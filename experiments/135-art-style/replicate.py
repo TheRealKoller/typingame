@@ -9,11 +9,16 @@ contact sheet runde4/sheet-<job>.jpg. Single images are not committed (runde4/.g
 karte-a paints a whole battle map over the real path of `generateAshMap`: map-json.ts exports the map,
 this script draws it as a colour sketch (img2img) and as a line drawing (ControlNet). Seeds are fixed,
 but Replicate's build of the model is not bit-identical to LocalAI, so images differ from the local ones.
+
+klein-text and klein-edit (#143) try FLUX.2 klein 4B (base and distilled) instead: the LoRA candidates' prompts,
+and edits of chosen candidates (other pose, state, parts, new motifs styled only by reference pictures).
+They write to ../143-style-lora/klein/.
 """
 
 import argparse
 import base64
 import concurrent.futures
+import io
 import json
 import math
 import pathlib
@@ -399,7 +404,59 @@ TEXT_JOBS["lora"] |= {
     }.items()
 }
 
-JOBS = (*TEXT_JOBS, "karte-a")
+# Issue #143: FLUX.2 klein 4B (Apache 2.0) instead of Z-Image Turbo? Base is the undistilled model LoRAs are
+# trained on (CFG, about 50 steps); the distilled model runs in 4 steps. Both edit images from up to 5 references.
+KLEIN_BASE = "2289efa5ebba21f5322ba1b73ac92bb6fec9f34bafc08e0c26f465dac6f8b465"  # black-forest-labs/flux-2-klein-4b-base
+KLEIN = "8e9c42d77b10a2a41af823ac4500f7545be6ebc4e745830fc3f3de10de200542"  # black-forest-labs/flux-2-klein-4b
+KLEIN_MODELS = {"base": KLEIN_BASE, "schnell": KLEIN}
+KLEIN_DIR = HERE.parent / "143-style-lora" / "klein"
+CANDIDATES = HERE.parent / "143-style-lora" / "kandidaten"
+# klein-text: the prompts of the LoRA candidates, compared with the chosen Z-Image picture of each motif.
+KLEIN_TEXT = {
+    "golem": "golem-22",
+    "golem-gross": "golem-gross-22",
+    "monster-skorpion": "monster-skorpion-11",
+    "monster-panzerkaefer": "monster-panzerkaefer-22",
+    "turm-pfeil": "turm-pfeil-11",
+    "turm-magier": "turm-magier-22",
+    "baustein-fernrohr": "baustein-fernrohr-11",
+    "baum": "baum-22",
+    "felsen": "felsen-22",
+    "lichtung3": "lichtung3-22",
+    "boden-wiese": "boden-wiese-22",
+}
+KEEP = "Keep the exact same character design, proportions, colors and hand-painted watercolor cartoon style. Plain white background."
+KEEP_TOWER = "Keep the exact same tower design, colors and hand-painted watercolor cartoon style. Plain white background."
+# klein-edit: (result name, reference pictures of kandidaten/, instruction). Poses, states, parts for animation,
+# and new motifs that only get their style from the references (instead of a LoRA).
+KLEIN_EDITS = (
+    ("golem-links", ("golem-22",), f"The same paper golem walking to the left, seen exactly from the side. {KEEP}"),
+    ("golem-angriff", ("golem-22",), f"The same paper golem in an attack pose, punching forward with both arms. {KEEP}"),
+    ("golem-ruecken", ("golem-22",), f"The same paper golem seen from behind, walking away from the viewer. {KEEP}"),
+    ("golem-getroffen", ("golem-22",), f"The same paper golem knocked back by a hit, leaning backwards, a torn corner. {KEEP}"),
+    ("golem-gross-angriff", ("golem-gross-22",), f"The same book golem raising both arms above its head to smash down. {KEEP}"),
+    ("skorpion-links", ("monster-skorpion-11",), f"The same ink scorpion monster walking to the left, seen exactly from the side. {KEEP}"),
+    ("skorpion-angriff", ("monster-skorpion-11",), f"The same ink scorpion monster striking forward with its tail stinger, claws open. {KEEP}"),
+    ("kaefer-links", ("monster-panzerkaefer-22",), f"The same ink beetle monster walking to the left, seen exactly from the side. {KEEP}"),
+    ("kaefer-zerfall", ("monster-panzerkaefer-22",), f"The same ink beetle monster melting and dissolving into a puddle of black ink. {KEEP}"),
+    ("turm-pfeil-beschaedigt", ("turm-pfeil-11",), f"The same tower, heavily damaged: cracks, missing stones, a broken crenellation. {KEEP_TOWER}"),
+    ("turm-pfeil-stufe2", ("turm-pfeil-11",), f"The same tower upgraded: one storey taller with a wooden roof and a small red banner. {KEEP_TOWER}"),
+    ("golem-teile", ("golem-22",), "The same paper golem taken apart into separate pieces laid out side by side with gaps between them: "
+     f"body with face, left arm, right arm, left leg, right leg. {KEEP}"),
+    ("skorpion-teile", ("monster-skorpion-11",), "The same ink scorpion monster taken apart into separate pieces laid out side by side "
+     f"with gaps between them: body, tail, left claw, right claw, legs. {KEEP}"),
+    ("stil-spinne", ("golem-22", "monster-skorpion-11", "turm-pfeil-11"), "A new game enemy in exactly the same hand-painted "
+     "watercolor cartoon style as the reference images: a menacing monster of glossy black ink shaped like a spider, with a few "
+     "bright neon magenta and acid green spots. Single object, centered, plain white background."),
+    ("stil-eisturm", ("turm-pfeil-11", "turm-magier-22", "baum-22"), "A new tower in exactly the same hand-painted watercolor "
+     "cartoon style as the reference images: a tower of pale blue ice blocks with frost crystals on top. Single object, centered, "
+     "plain white background."),
+    ("stil-brunnen", ("fass-22", "felsen-22", "baum-22"), "A new map prop in exactly the same hand-painted watercolor cartoon "
+     "style as the reference images: a small round stone well with a wooden roof. Single object, centered, plain white background."),
+)
+KLEIN_SEEDS = (11, 22)
+
+JOBS = (*TEXT_JOBS, "karte-a", "klein-text", "klein-edit")
 # Rounds 5 to 7 get their own folders, the LoRA candidates go to the experiment of #143; everything else is round 4.
 FOLDERS = {
     "karte-5": "runde5",
@@ -613,6 +670,61 @@ def refine_jobs(maps: list[dict]) -> list[tuple[pathlib.Path, str, dict]]:
     return jobs
 
 
+# --- klein-text, klein-edit: FLUX.2 klein 4B ------------------------------------------------------
+
+
+def jpeg_uri(path: pathlib.Path) -> str:
+    """References as JPEG data URIs: a 1024 px PNG is too big to send inline."""
+    buffer = io.BytesIO()
+    Image.open(path).convert("RGB").save(buffer, "JPEG", quality=92)
+    return "data:image/jpeg;base64," + base64.b64encode(buffer.getvalue()).decode()
+
+
+def klein_inputs(model: str, prompt: str, seed: int, refs: tuple[str, ...] = ()) -> dict:
+    inputs = {"prompt": prompt, "seed": seed, "output_format": "png", "output_megapixels": "1"}
+    if refs:
+        inputs |= {"images": [jpeg_uri(CANDIDATES / f"{ref}.png") for ref in refs], "aspect_ratio": "match_input_image"}
+    if model == "base":
+        inputs["guidance"] = 4
+    return inputs
+
+
+def klein_text_jobs() -> list[tuple[pathlib.Path, str, dict]]:
+    return [
+        (KLEIN_DIR / f"{motif}-{model}-{seed}.png", version, klein_inputs(model, TEXT_JOBS["lora"][motif][0], seed))
+        for motif in KLEIN_TEXT
+        for model, version in KLEIN_MODELS.items()
+        for seed in SEEDS
+    ]
+
+
+def klein_edit_jobs() -> list[tuple[pathlib.Path, str, dict]]:
+    return [
+        (KLEIN_DIR / f"{name}-{model}-{seed}.png", version, klein_inputs(model, prompt, seed, refs))
+        for name, refs, prompt in KLEIN_EDITS
+        for model, version in KLEIN_MODELS.items()
+        for seed in KLEIN_SEEDS
+    ]
+
+
+def klein_sheets() -> None:
+    """One row per motif or edit: the Z-Image reference(s) first, then base and schnell over the seeds."""
+    rows = [([CANDIDATES / f"{ref}.png"], motif, SEEDS) for motif, ref in KLEIN_TEXT.items()]
+    edit_rows = [([CANDIDATES / f"{ref}.png" for ref in refs], name, KLEIN_SEEDS) for name, refs, _ in KLEIN_EDITS]
+    for target, chosen in (("sheet-klein-text.jpg", rows), ("sheet-klein-edit.jpg", edit_rows)):
+        width = max(len(refs) for refs, _, _ in chosen) + 2 * len(chosen[0][2])
+        paths: list[pathlib.Path] = []
+        for refs, name, seeds in chosen:
+            results = [KLEIN_DIR / f"{name}-{model}-{seed}.png" for model in KLEIN_MODELS for seed in seeds]
+            row = refs + [p for p in results if p.exists()]
+            paths += row + [BLANK] * (width - len(row))
+        images = [Image.new("RGB", (16, 16), "white") if p == BLANK else Image.open(p).convert("RGB") for p in paths]
+        sheet(paths, KLEIN_DIR / target, width, cell=256, images=images)
+
+
+BLANK = pathlib.Path(" ")
+
+
 # --- sheets ---------------------------------------------------------------------------------------
 
 
@@ -683,6 +795,11 @@ def main() -> None:
                 results = sorted(OUT.glob(f"karte-a-*-{m['seed']}-*.png"))
                 if results:
                     sheet(results, OUT / f"sheet-karte-a-{m['seed']}.jpg", 3, images=[overlay(p, m, layout) for p in results])
+            continue
+        if name in ("klein-text", "klein-edit"):
+            KLEIN_DIR.mkdir(exist_ok=True)
+            run(klein_text_jobs() if name == "klein-text" else klein_edit_jobs(), args.dry_run)
+            klein_sheets()
             continue
         out = HERE / FOLDERS.get(name, OUT.name)
         out.mkdir(exist_ok=True)
