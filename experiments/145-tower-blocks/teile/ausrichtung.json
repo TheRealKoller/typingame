@@ -52,5 +52,113 @@
   "scale": 0.9827027027027028,
   "dx": 0.0,
   "dy": 8.856216216216216
+ },
+ "jagd-1-fenster-22": {
+  "plain": "jagd-1-11",
+  "scale": 0.9140811455847255,
+  "dx": 0.6109785202863962,
+  "dy": 43.99045346062053
+ },
+ "jagd-2-fenster-11": {
+  "plain": "jagd-2-sockel-11",
+  "scale": 1.0,
+  "dx": 0.0,
+  "dy": 0.0
+ },
+ "jagd-3-fenster-11": {
+  "plain": "jagd-3-sockel-22",
+  "scale": 0.9989462592202318,
+  "dx": 0.0,
+  "dy": 0.0
+ },
+ "eisnadel-1-fenster-22": {
+  "plain": "eisnadel-1-11",
+  "scale": 0.9760191846522781,
+  "dx": 0.0,
+  "dy": 11.664268585131893
+ },
+ "eisnadel-2-fenster-22": {
+  "plain": "eisnadel-2-sockel-11",
+  "scale": 0.9989722507708119,
+  "dx": 0.0,
+  "dy": 0.0
+ },
+ "eisnadel-3-fenster-22": {
+  "plain": "eisnadel-3-sockel-11",
+  "scale": 0.998971193415638,
+  "dx": 0.0,
+  "dy": 0.0
+ },
+ "viper-1-fenster-22": {
+  "plain": "viper-1-22",
+  "scale": 0.9572748267898384,
+  "dx": 0.0,
+  "dy": 21.875288683602772
+ },
+ "viper-2-fenster-22": {
+  "plain": "viper-2-sockel-22",
+  "scale": 0.9650423728813559,
+  "dx": 0.0,
+  "dy": 17.89830508474576
+ },
+ "viper-3-fenster-22": {
+  "plain": "viper-3-sockel-11",
+  "scale": 1.0,
+  "dx": 0.0,
+  "dy": 0.0
+ },
+ "jagd-1-viper-fenster-22": {
+  "plain": "jagd-1-11",
+  "scale": 0.8192513368983957,
+  "dx": 13.689839572192513,
+  "dy": 56.94973262032086
+ },
+ "jagd-2-viper-fenster-11": {
+  "plain": "jagd-2-sockel-11",
+  "scale": 0.965270684371808,
+  "dx": 0.0,
+  "dy": 17.781409601634323
+ },
+ "jagd-3-viper-fenster-11": {
+  "plain": "jagd-3-sockel-22",
+  "scale": 0.9063097514340345,
+  "dx": 0.0,
+  "dy": 46.99043977055449
+ },
+ "eisnadel-1-viper-fenster-22": {
+  "plain": "eisnadel-1-11",
+  "scale": 0.9260523321956768,
+  "dx": 32.03640500568828,
+  "dy": 12.232081911262798
+ },
+ "eisnadel-2-viper-fenster-22": {
+  "plain": "eisnadel-2-sockel-11",
+  "scale": 0.9979466119096508,
+  "dx": 0.0,
+  "dy": 0.0
+ },
+ "eisnadel-3-viper-fenster-22": {
+  "plain": "eisnadel-3-sockel-11",
+  "scale": 0.997944501541624,
+  "dx": 0.0,
+  "dy": 0.0
+ },
+ "viper-1-viper-fenster-22": {
+  "plain": "viper-1-22",
+  "scale": 0.9060109289617487,
+  "dx": 30.21639344262295,
+  "dy": 20.70382513661202
+ },
+ "viper-2-viper-fenster-22": {
+  "plain": "viper-2-sockel-22",
+  "scale": 0.9589473684210525,
+  "dx": 0.0,
+  "dy": 21.018947368421053
+ },
+ "viper-3-viper-fenster-22": {
+  "plain": "viper-3-sockel-11",
+  "scale": 0.9711538461538463,
+  "dx": 0.0,
+  "dy": 14.76923076923077
  }
 }

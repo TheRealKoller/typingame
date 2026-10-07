@@ -54,6 +54,14 @@ PLOTS = (
     "anywhere else, also not inside the bends of the roads."
 )
 PLOT, PLOT_EDGE = (222, 210, 186), (150, 136, 112)
+# The towers of #145 stand on round feet, so square slabs looked wrong under them: `--rund` sketches round ones,
+# a little wider than a stage I tower's foot.
+PLOTS_ROUND = (
+    " The small round beige discs are flat round stone building plots: paint them as plain round stone platforms set "
+    "into the ground, with nothing standing on them and nothing covering them. Add no other water: no pond, puddle or "
+    "stream anywhere else, also not inside the bends of the roads."
+)
+PLOT_RADIUS = 1.1  # times the half size of a site's pad
 ASH = (
     "The land is an ash field after a great fire: grey soot and ash lie over pale dry grass, the trees are burnt and "
     "bare, a few embers glow; keep it readable and not too dark."
@@ -202,6 +210,7 @@ def main() -> None:
     parser.add_argument("--takes", type=int, default=4, help="paintings per map")
     parser.add_argument("--dry-run", action="store_true", help="only draw the sketches")
     parser.add_argument("--plaetze", action="store_true", help="draw the build sites as stone slabs into the sketch")
+    parser.add_argument("--rund", action="store_true", help="with --plaetze: round slabs instead of square ones")
     parser.add_argument("--base", action="store_true", help="paint with klein 4B base instead of the distilled model")
     args = parser.parse_args()
     OUT.mkdir(exist_ok=True)
@@ -215,20 +224,25 @@ def main() -> None:
         if m.get("ash") and not m["indoor"]:
             m["key"] += "-verbrannt"
         if args.plaetze:
-            m["key"] += "-p"
+            m["key"] += "-r" if args.rund else "-p"
         template = OUT / f"skizze-{m['key']}.png"
         img = sketch(m, layout)
         if args.plaetze:
             draw, half, k = ImageDraw.Draw(img), layout["siteHalf"] * m.get("scale", 1) * DRAW, DRAW
             for site in m["sites"]:
-                draw.rectangle((site["x"] * k - half, site["y"] * k - half, site["x"] * k + half, site["y"] * k + half), fill=PLOT, outline=PLOT_EDGE, width=3)
+                x, y = site["x"] * k, site["y"] * k
+                if args.rund:
+                    r = half * PLOT_RADIUS
+                    draw.ellipse((x - r, y - r, x + r, y + r), fill=PLOT, outline=PLOT_EDGE, width=3)
+                else:
+                    draw.rectangle((x - half, y - half, x + half, y + half), fill=PLOT, outline=PLOT_EDGE, width=3)
         img.save(template)
         if m["indoor"]:
             prompt = INDOOR.format(ash=", blackened with soot where the library burnt" if m.get("ash") else "")
         else:
             prompt = OUTDOOR.format(ground=ASH if m.get("ash") else MEADOW, trees=BURNT if m.get("ash") else LEAFY)
         if args.plaetze:
-            prompt += PLOTS
+            prompt += PLOTS_ROUND if args.rund else PLOTS
         uri = jpeg_uri(template)
         for take in range(1, args.takes + 1):
             inputs = {"prompt": prompt, "seed": take, "output_format": "png", "images": [uri], "aspect_ratio": "match_input_image"}

@@ -20,19 +20,32 @@ const BASES: Record<string, readonly [string, string, string]> = {
   viper: ['viper-1-22', 'viper-2-sockel-22', 'viper-3-sockel-11'],
 };
 /**
- * »der viper« winds a snake around the whole tower, in front of it and behind it, so it is painted into a second
- * picture of each base (tuerme.py umschlungen) instead of laid on top. A living snake laid in front and a carved
- * stone snake were tried and liked less.
+ * Two words change the tower itself instead of adding a block, so each base is painted again with them
+ * (tuerme.py umschlungen, fensterturm): »der viper« winds a snake around the whole tower, in front of it and behind
+ * it, and »weite« puts a telescope looking out of a window in its wall. A living snake laid in front, a carved
+ * stone snake and a telescope on a tripod on top were tried and looked put on.
  */
-const WRAPPED: Record<string, readonly [string, string, string]> = {
-  jagd: ['jagd-1-viper-11', 'jagd-2-viper-22', 'jagd-3-viper-11'],
-  eisnadel: ['eisnadel-1-viper-11', 'eisnadel-2-viper-22', 'eisnadel-3-viper-22'],
-  viper: ['viper-1-viper-11', 'viper-2-viper-22', 'viper-3-viper-11'],
+const PAINTED: Record<'viper' | 'weite' | 'beide', Record<string, readonly [string, string, string]>> = {
+  viper: {
+    jagd: ['jagd-1-viper-11', 'jagd-2-viper-22', 'jagd-3-viper-11'],
+    eisnadel: ['eisnadel-1-viper-11', 'eisnadel-2-viper-22', 'eisnadel-3-viper-22'],
+    viper: ['viper-1-viper-11', 'viper-2-viper-22', 'viper-3-viper-11'],
+  },
+  weite: {
+    jagd: ['jagd-1-fenster-22', 'jagd-2-fenster-11', 'jagd-3-fenster-11'],
+    eisnadel: ['eisnadel-1-fenster-22', 'eisnadel-2-fenster-22', 'eisnadel-3-fenster-22'],
+    viper: ['viper-1-fenster-22', 'viper-2-fenster-22', 'viper-3-fenster-22'],
+  },
+  beide: {
+    jagd: ['jagd-1-viper-fenster-22', 'jagd-2-viper-fenster-11', 'jagd-3-viper-fenster-11'],
+    eisnadel: ['eisnadel-1-viper-fenster-22', 'eisnadel-2-viper-fenster-22', 'eisnadel-3-viper-fenster-22'],
+    viper: ['viper-1-viper-fenster-22', 'viper-2-viper-fenster-22', 'viper-3-viper-fenster-22'],
+  },
 };
 /** Each stage stands a little taller on the map. */
 const STAGE_HEIGHT = [0.82, 1, 1.15];
 
-type Anchor = 'top' | 'topLeft' | 'topRight' | 'crown' | 'band' | 'emblem';
+type Anchor = 'top' | 'topLeft' | 'crown' | 'band' | 'emblem';
 /**
  * Where a word's block sits, how wide it is (share of the width of the tower at that point) and its layer:
  * below 0 behind the tower, above 0 in front, higher numbers over lower ones.
@@ -46,7 +59,6 @@ interface Block {
 const BLOCKS: Record<string, Block> = {
   wilde: { file: 'baustein-wilde-11', anchor: 'topLeft', width: 0.6, layer: -1 },
   schwere: { file: 'baustein-schwere-22', anchor: 'band', width: 1.04, layer: 1 },
-  weite: { file: 'baustein-weite-11', anchor: 'topRight', width: 0.55, layer: 4 },
   frostige: { file: 'baustein-frostige-22', anchor: 'crown', width: 1.02, layer: 2 },
   flammende: { file: 'baustein-flammende-11', anchor: 'top', width: 0.6, layer: 3 },
   'im morgengrauen': { file: 'baustein-im-morgengrauen-11', anchor: 'emblem', width: 0.36, layer: 2 },
@@ -120,8 +132,6 @@ function place(shape: Shape, anchor: Anchor): { x: number; y: number; across: nu
       return { x: cx, y: shape.crownRow + crown * 0.3, across: crownWidth, centre: false };
     case 'topLeft':
       return { x: cx - crownWidth * 0.32, y: shape.crownRow + crown * 0.2, across: crownWidth, centre: false };
-    case 'topRight':
-      return { x: cx + crownWidth * 0.28, y: shape.crownRow + crown * 0.2, across: crownWidth, centre: false };
     case 'crown': {
       // The icicles hang from the lower edge of the crown.
       const y = shape.crownBottom - crown * 0.15;
@@ -144,8 +154,9 @@ function drawTower(ctx: CanvasRenderingContext2D, sentence: readonly Lexeme[], x
   const base = sentence.find((lexeme) => lexeme.role === 'base');
   if (!tower || !base) return;
   const stage = (tower.level ?? 1) - 1;
-  const wrapped = sentence.some((lexeme) => lexeme.word === 'der viper');
-  // Anchors and size always come from the plain base; a wrapped one is drawn over it, lined up pixel for pixel.
+  const has = (word: string) => sentence.some((lexeme) => lexeme.word === word);
+  const variant = has('der viper') ? (has('weite') ? 'beide' : 'viper') : has('weite') ? 'weite' : undefined;
+  // Anchors and size always come from the plain base; a repainted one is drawn over it, lined up pixel for pixel.
   const shape = shapes.get(BASES[base.word]![stage]!)!;
   const scale = (height * STAGE_HEIGHT[stage]!) / (shape.bottom - shape.top);
   const originX = x - middleAt(shape, shape.bottom - 2) * scale;
@@ -161,8 +172,8 @@ function drawTower(ctx: CanvasRenderingContext2D, sentence: readonly Lexeme[], x
     ctx.drawImage(image, bx, by, width, h);
   };
   for (const block of blocks.filter((b) => b.layer < 0)) drawBlock(block);
-  if (wrapped) {
-    const file = WRAPPED[base.word]![stage]!;
+  if (variant) {
+    const file = PAINTED[variant][base.word]![stage]!;
     const image = images.get(file)!;
     const { scale: s, dx, dy } = ALIGN[file]!;
     ctx.drawImage(image, originX - (dx / s) * scale, originY - (dy / s) * scale, (image.width / s) * scale, (image.height / s) * scale);
@@ -266,7 +277,8 @@ async function renderMap(): Promise<void> {
 
 async function start(): Promise<void> {
   const bases = Object.values(BASES).flat();
-  const files = [...bases, ...Object.values(WRAPPED).flat(), ...Object.values(BLOCKS).map((block) => block.file)];
+  const painted = Object.values(PAINTED).flatMap((byKind) => Object.values(byKind).flat());
+  const files = [...bases, ...painted, ...Object.values(BLOCKS).map((block) => block.file)];
   await Promise.all(files.map(async (file) => images.set(file, await load(art[`./teile/${file}.png`]!))));
   for (const file of bases) shapes.set(file, measure(images.get(file)!));
   renderBuilder();

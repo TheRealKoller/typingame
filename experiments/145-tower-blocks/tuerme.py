@@ -57,6 +57,12 @@ FINAL = {
     "eisnadel": ("eisnadel-1-11", "eisnadel-2-sockel-11", "eisnadel-3-sockel-11"),
     "viper": ("viper-1-22", "viper-2-sockel-22", "viper-3-sockel-11"),
 }
+# The wrapped bases in use (turm.ts, WRAPPED).
+WRAPPED_CHOSEN = {
+    "jagd": ("jagd-1-viper-11", "jagd-2-viper-22", "jagd-3-viper-11"),
+    "eisnadel": ("eisnadel-1-viper-11", "eisnadel-2-viper-22", "eisnadel-3-viper-22"),
+    "viper": ("viper-1-viper-11", "viper-2-viper-22", "viper-3-viper-11"),
+}
 
 BLOCKS = {
     "wilde": "two small colorful pennant flags fluttering on thin wooden poles, crossed, an ornament",
@@ -101,12 +107,34 @@ def jobs_for(name: str) -> list[tuple[pathlib.Path, str, dict]]:
         for kind, stages in FINAL.items():
             for stage, picked in enumerate(stages, 1):
                 jobs += [job(f"{kind}-{stage}-viper", (OUT / f"{picked}.png",), prompt, seed, "match_input_image") for seed in SEEDS]
+    elif name == "fenster":
+        # »weite« as a telescope on a tripod on top looked put on; now it looks out of a window in the tower's wall,
+        # painted from each kind's stage II so the stone matches.
+        prompt = (
+            "A small arched window set in a short round piece of wall of exactly the same stone and style as this tower, "
+            "with an antique brass telescope poking out of the window diagonally up to the right. Only this piece of wall "
+            "with the window, alone, centered, plain white background, nothing else."
+        )
+        for kind, stages in FINAL.items():
+            jobs += [job(f"fenster-{kind}", (OUT / f"{stages[1]}.png",), prompt, seed) for seed in SEEDS]
+    elif name == "fensterturm":
+        # As a block, the window came as a round plaque with a rim, which looked stuck on. So it is painted into every
+        # base, plain and wrapped by the viper (both words may stand in one sentence), like the snake.
+        prompt = (
+            "The same tower with one small arched window added in the upper right part of its wall, below the top, and "
+            "an antique brass telescope poking out of that window diagonally up to the right. Change nothing else: same "
+            "tower, design, colors and style. Single object, centered, plain white background."
+        )
+        for kind, stages in FINAL.items():
+            for stage, plain in enumerate(stages, 1):
+                for source, name_ in ((plain, f"{kind}-{stage}-fenster"), (WRAPPED_CHOSEN[kind][stage - 1], f"{kind}-{stage}-viper-fenster")):
+                    jobs += [job(name_, (OUT / f"{source}.png",), prompt, seed, "match_input_image") for seed in SEEDS]
     return jobs
 
 
 def main() -> None:
     parser = argparse.ArgumentParser()
-    parser.add_argument("jobs", nargs="+", choices=["stufe1", "stufe2", "stufe3", "bausteine", "umschlungen"])
+    parser.add_argument("jobs", nargs="+", choices=["stufe1", "stufe2", "stufe3", "bausteine", "umschlungen", "fenster", "fensterturm"])
     parser.add_argument("--dry-run", action="store_true")
     args = parser.parse_args()
     OUT.mkdir(exist_ok=True)

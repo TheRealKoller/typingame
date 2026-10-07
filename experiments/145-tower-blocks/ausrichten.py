@@ -1,4 +1,4 @@
-"""Cut out the towers wrapped by a viper so they line up with their plain bases (#145, »der viper«).
+"""Cut out the towers wrapped by a viper or with a telescope window so they line up with their plain bases (#145).
 
 Usage: ~/.cache/typingame-art-venv/bin/python experiments/145-tower-blocks/ausrichten.py
 klein paints the wrapped tower over the plain one in the same frame, so a pixel of the plain painting is the same
@@ -26,6 +26,25 @@ PAIRS = {
     "viper-1-viper-11": "viper-1-22",
     "viper-2-viper-22": "viper-2-sockel-22",
     "viper-3-viper-11": "viper-3-sockel-11",
+    # »weite«: a window with a telescope painted in, without and with the viper (painted over the wrapped tower).
+    "jagd-1-fenster-22": "jagd-1-11",
+    "jagd-2-fenster-11": "jagd-2-sockel-11",
+    "jagd-3-fenster-11": "jagd-3-sockel-22",
+    "eisnadel-1-fenster-22": "eisnadel-1-11",
+    "eisnadel-2-fenster-22": "eisnadel-2-sockel-11",
+    "eisnadel-3-fenster-22": "eisnadel-3-sockel-11",
+    "viper-1-fenster-22": "viper-1-22",
+    "viper-2-fenster-22": "viper-2-sockel-22",
+    "viper-3-fenster-22": "viper-3-sockel-11",
+    "jagd-1-viper-fenster-22": "jagd-1-11",
+    "jagd-2-viper-fenster-11": "jagd-2-sockel-11",
+    "jagd-3-viper-fenster-11": "jagd-3-sockel-22",
+    "eisnadel-1-viper-fenster-22": "eisnadel-1-11",
+    "eisnadel-2-viper-fenster-22": "eisnadel-2-sockel-11",
+    "eisnadel-3-viper-fenster-22": "eisnadel-3-sockel-11",
+    "viper-1-viper-fenster-22": "viper-1-22",
+    "viper-2-viper-fenster-22": "viper-2-sockel-22",
+    "viper-3-viper-fenster-22": "viper-3-sockel-11",
 }
 
 
