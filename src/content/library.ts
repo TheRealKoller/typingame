@@ -37,7 +37,8 @@ export interface BattleMap {
   readonly indoor: boolean;
   /** Floor tile of indoor maps. */
   readonly floor?: 'stone' | 'slab';
-  readonly path: readonly Point[];
+  /** Ways in for the enemies, see `Level.paths`. */
+  readonly paths: readonly (readonly Point[])[];
   readonly sites: readonly BuildSite[];
   readonly props: readonly Prop[];
   /** Banners and torches on the back wall of an indoor map, by x. */
@@ -67,7 +68,7 @@ export const READING_ROOM: BattleMap = {
   indoor: true,
   floor: 'stone',
   scale: MAP_SCALE,
-  path: [
+  paths: [[
     { x: -40, y: 270 },
     { x: 230, y: 270 },
     { x: 230, y: 420 },
@@ -78,7 +79,7 @@ export const READING_ROOM: BattleMap = {
     { x: 980, y: 420 },
     { x: 980, y: 300 },
     { x: 1176, y: 300 },
-  ],
+  ]],
   sites: [
     { id: 'a', x: 70, y: 210 },
     { id: 'b', x: 200, y: 220 },
@@ -107,7 +108,7 @@ export const ARCHIVE: BattleMap = {
   indoor: true,
   floor: 'slab',
   scale: MAP_SCALE,
-  path: [
+  paths: [[
     { x: -40, y: 420 },
     { x: 200, y: 420 },
     { x: 200, y: 260 },
@@ -118,7 +119,7 @@ export const ARCHIVE: BattleMap = {
     { x: 950, y: 260 },
     { x: 950, y: 400 },
     { x: 1176, y: 400 },
-  ],
+  ]],
   sites: [
     { id: 'a', x: 100, y: 360 },
     { id: 'b', x: 250, y: 210 },
@@ -146,7 +147,7 @@ export const COURTYARD: BattleMap = {
   name: 'Innenhof',
   indoor: false,
   scale: MAP_SCALE,
-  path: [
+  paths: [[
     { x: -40, y: 200 },
     { x: 170, y: 200 },
     { x: 170, y: 380 },
@@ -157,7 +158,7 @@ export const COURTYARD: BattleMap = {
     { x: 880, y: 380 },
     { x: 880, y: 180 },
     { x: 1176, y: 180 },
-  ],
+  ]],
   sites: [
     { id: 'a', x: 90, y: 150 },
     { id: 'b', x: 280, y: 330 },
@@ -226,5 +227,5 @@ export function practiceLevel(section: number, map: BattleMap = READING_ROOM): L
   const last = map.sites.length - 1;
   const sites =
     section === 1 ? Array.from({ length: FIRST_SECTION_SITES }, (_, i) => map.sites[Math.round((i * last) / (FIRST_SECTION_SITES - 1))]!) : map.sites;
-  return { id: `practice-${section}-${map.id}`, path: map.path, sites, ward: 10, ink: 100, waves, scale: map.scale };
+  return { id: `practice-${section}-${map.id}`, paths: map.paths, sites, ward: 10, ink: 100, waves, scale: map.scale };
 }

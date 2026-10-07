@@ -163,9 +163,9 @@ export class WorldMapScene extends Phaser.Scene {
   /** Sand roads between linked points, and the road east over the bridge into the hidden land. */
   #drawRoads(): void {
     const style = { texture: GRASS_TILESET, frame: SAND_FRAME, edgeColor: SAND_EDGE, tileScale: TILE_SCALE, width: ROAD_WIDTH, depth: 1 };
-    for (const [a, b] of WORLD_LINKS) layPath(this, road(worldPoint(a), worldPoint(b)), style);
     const last = WORLD_POINTS[WORLD_POINTS.length - 1]!;
-    layPath(this, [{ x: last.x, y: EXIT_Y }, { x: this.scale.width + 20, y: EXIT_Y }], style);
+    const exit = [{ x: last.x, y: EXIT_Y }, { x: this.scale.width + 20, y: EXIT_Y }];
+    layPath(this, [...WORLD_LINKS.map(([a, b]) => road(worldPoint(a), worldPoint(b))), exit], style);
     this.add.image(RIVER.x, EXIT_Y, GRASS_TILESET, BRIDGE_FRAME).setScale(TILE_SCALE).setDepth(1);
   }
 
