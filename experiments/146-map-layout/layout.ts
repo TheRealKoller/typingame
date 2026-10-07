@@ -22,6 +22,8 @@ const RANGE = 160;
 const SITES = 7;
 const SITE_REACH = 110;
 const SITE_SPACING = 150;
+/** Share of the path every site must reach; `?min=0.12` tries another. */
+const MIN_COVERAGE = Number(params.get('min') ?? 0.1);
 const MIN_TURN = 130;
 const GRID = 10;
 /** Words keep their screen size, so in the world they grow as the map zooms out. */
@@ -126,7 +128,10 @@ function chooseSites(random: Random, routes: readonly (readonly Point[])[]): Sit
       if (!fits) continue;
       const inRange = allPoints.filter((p) => Math.hypot(p.x - x, p.y - y) <= RANGE).length;
       const closest = mainPoints.reduce((best, p, i) => (Math.hypot(p.x - x, p.y - y) < Math.hypot(mainPoints[best]!.x - x, mainPoints[best]!.y - y) ? i : best), 0);
-      spots.push({ x, y, coverage: inRange / allPoints.length, progress: closest / mainPoints.length });
+      const coverage = inRange / allPoints.length;
+      // #146: no site may be weak; a tower anywhere must reach at least this share of the path.
+      if (coverage < MIN_COVERAGE) continue;
+      spots.push({ x, y, coverage, progress: closest / mainPoints.length });
     }
   }
   if (spots.length === 0) return null;
@@ -183,9 +188,9 @@ function roundCorners(points: readonly Point[], radius: number): Point[] {
   return out;
 }
 
-function generate(): { routes: Point[][]; sites: Site[] } {
-  const random = seededRandom(SEED);
-  for (let attempt = 0; attempt < 300; attempt++) {
+function generate(seed: number): { routes: Point[][]; sites: Site[]; attempts: number } {
+  const random = seededRandom(seed);
+  for (let attempt = 1; attempt <= 300; attempt++) {
     const main = mainPath(random);
     const routes = [main];
     if (PATHS > 1) {
@@ -194,9 +199,28 @@ function generate(): { routes: Point[][]; sites: Site[] } {
       routes.push(branch);
     }
     const sites = chooseSites(random, routes);
-    if (sites) return { routes, sites };
+    if (sites) return { routes, sites, attempts: attempt };
   }
-  throw new Error(`seed ${SEED}: no map with ${PATHS} paths and ${SITES} sites`);
+  throw new Error(`seed ${seed}: no map with ${PATHS} paths and ${SITES} sites`);
+}
+
+/** `?statistik`: how many tries maps of 30 seeds need under the current rules, instead of drawing one. */
+function statistics(): void {
+  const rows = Array.from({ length: 30 }, (_, i) => {
+    const started = performance.now();
+    const { sites, attempts } = generate(i + 1);
+    return { attempts, weakest: Math.min(...sites.map((s) => s.coverage)), ms: performance.now() - started };
+  });
+  const mean = (values: number[]) => values.reduce((a, b) => a + b, 0) / values.length;
+  const pre = document.createElement('pre');
+  pre.style.color = '#eee';
+  pre.textContent = [
+    `Maßstab ${SCALE}, ${PATHS} Weg(e), Mindestabdeckung ${MIN_COVERAGE * 100} %, 30 Seeds`,
+    `Versuche je Karte: Mittel ${mean(rows.map((r) => r.attempts)).toFixed(1)}, höchstens ${Math.max(...rows.map((r) => r.attempts))}`,
+    `schwächster Platz: Mittel ${(mean(rows.map((r) => r.weakest)) * 100).toFixed(1)} %`,
+    `Rechenzeit je Karte: Mittel ${mean(rows.map((r) => r.ms)).toFixed(0)} ms`,
+  ].join('\n');
+  document.body.append(pre);
 }
 
 const ENEMIES = [
@@ -219,7 +243,7 @@ class LayoutScene extends Phaser.Scene {
       if (!('new' in link.dataset)) target.set('seed', String(SEED));
       link.search = target.toString();
     }
-    const { routes, sites } = generate();
+    const { routes, sites } = generate(SEED);
     const s = SCALE;
     const screen = (p: Point) => ({ x: p.x * s, y: p.y * s });
     const rounded = routes.map((route) => roundCorners(route, 70).map(screen));
@@ -312,11 +336,15 @@ class LayoutScene extends Phaser.Scene {
   }
 }
 
-new Phaser.Game({
-  type: Phaser.AUTO,
-  width: SCREEN.width,
-  height: SCREEN.height,
-  backgroundColor: '#efe6cf',
-  scale: { mode: Phaser.Scale.FIT, autoCenter: Phaser.Scale.CENTER_BOTH },
-  scene: LayoutScene,
-});
+if (params.has('statistik')) {
+  statistics();
+} else {
+  new Phaser.Game({
+    type: Phaser.AUTO,
+    width: SCREEN.width,
+    height: SCREEN.height,
+    backgroundColor: '#efe6cf',
+    scale: { mode: Phaser.Scale.FIT, autoCenter: Phaser.Scale.CENTER_BOTH },
+    scene: LayoutScene,
+  });
+}
