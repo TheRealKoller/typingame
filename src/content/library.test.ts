@@ -25,6 +25,11 @@ it('starts each section with tougher golems than the one before', () => {
 
 describe('practice maps', () => {
   it('take turns, starting with the reading room', () => {
-    expect([0, 1, 2, 3].map((round) => practiceMap(round).id)).toEqual(['reading-room', 'archive', 'courtyard', 'reading-room']);
+    expect([0, 1, 2, 3].map((round) => practiceMap(round).map.id)).toEqual(['reading-room', 'archive', 'courtyard', 'reading-room']);
+  });
+
+  it('show another painting each time a map comes round again', () => {
+    const files = [0, 3, 6].map((round) => practiceMap(round).painting.file);
+    expect(new Set(files).size).toBe(files.length);
   });
 });

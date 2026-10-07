@@ -2,7 +2,8 @@ import type { EnemyKind, Level, Spell } from '../battle/level';
 import type { Grammar } from '../battle/sentence';
 import { MAP_SCALE, wallShelves, type BattleMap } from './library';
 import { GRAMMAR } from './lexicon';
-import { generateAshMap, generateWaves, type Foes, type Random } from './mapgen';
+import { generateAshMap, generateWaves, seededRandom, type Foes, type Random } from './mapgen';
+import { paintings, type PaintedMap, type Painting } from './paintedMaps';
 import { SILENT_FIREBUG, SILENT_SCORPION } from './raid';
 import { INK_RAIN } from './spells';
 
@@ -16,11 +17,11 @@ export interface WorldPoint {
   readonly y: number;
   /** 1 for the first place; the waves grow with it. */
   readonly difficulty: number;
-  /** A fixed map for special places; the others get a fresh one each time. */
+  /** A fixed map for special places; the others are generated, one map for each of their paintings (`placeMap`). */
   readonly map?: BattleMap;
   /**
-   * Ways in on a fresh map, 1 if omitted; the same at every visit. From the second chapter some places have two,
-   * late ones three, never all places of a chapter (#147). A fixed map brings its own.
+   * Ways in on a generated map, 1 if omitted; the same in every painting. From the second chapter some places have
+   * two, late ones three, never all places of a chapter (#147). A fixed map brings its own.
    */
   readonly paths?: number;
   /** Found when the place is freed the first time; kept for every later battle. */
@@ -238,8 +239,7 @@ export function worldPoint(id: string): WorldPoint {
 }
 
 /** A battle at a place of the world map: where it is fought, what comes, which words build towers, which spells can be cast. */
-export interface JourneyBattle {
-  readonly map: BattleMap;
+export interface JourneyBattle extends PaintedMap {
   readonly level: Level;
   readonly grammar: Grammar;
   readonly spells: readonly Spell[];
@@ -265,17 +265,34 @@ export function knownWords(freed: ReadonlySet<string>): Set<string> {
 }
 
 /**
- * The battle at `point`: its fixed map or a fresh one, fresh waves for its
- * difficulty, the words known and every spell from a scroll found at the
- * places in `freed`.
+ * The map `painting` shows at `point`: its fixed map, or the map generated from the painting's seed as it was when
+ * painted (`paintedMaps.test.ts` checks it still is).
  */
-export function journeyBattle(point: WorldPoint, random: Random, freed: ReadonlySet<string>): JourneyBattle {
-  const map = point.map ?? generateAshMap(random, point.id, point.name, point.paths ?? 1);
+export function placeMap(point: WorldPoint, painting: Painting): BattleMap {
+  if (point.map) return point.map;
+  if (painting.seed === null) throw new Error(`painting ${painting.file} of the generated place ${point.id} has no seed`);
+  return generateAshMap(seededRandom(painting.seed), point.id, point.name, point.paths ?? 1);
+}
+
+/**
+ * The battle at `point` on `painting`, or on one of the place's paintings picked by `random`: its map, fresh waves
+ * for its difficulty, the words known and every spell from a scroll found at the places in `freed`.
+ */
+export function journeyBattle(point: WorldPoint, random: Random, freed: ReadonlySet<string>, painting?: Painting): JourneyBattle {
+  const shown = paintings(point.map?.id ?? point.id);
+  const fought = painting ?? shown[Math.floor(random() * shown.length)]!;
+  const map = placeMap(point, fought);
   const waves = generateWaves(random, point.difficulty, ASH_FOES, map.paths.length);
   const known = knownWords(freed);
   const grammar = { ...GRAMMAR, lexicon: GRAMMAR.lexicon.filter((lexeme) => known.has(lexeme.word)) };
   const spells = rewardsFor(freed).flatMap((reward) => (reward.spell ? [reward.spell] : []));
-  return { map, grammar, spells, level: { id: `journey-${point.id}`, paths: map.paths, sites: map.sites, ward: 10, ink: START_INK, waves, scale: map.scale } };
+  return {
+    map,
+    painting: fought,
+    grammar,
+    spells,
+    level: { id: `journey-${point.id}`, paths: map.paths, sites: map.sites, ward: 10, ink: START_INK, waves, scale: map.scale },
+  };
 }
 
 /** Freed points are won; open ones can be fought next; the rest stay locked. */

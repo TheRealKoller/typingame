@@ -1,11 +1,12 @@
 #!/usr/bin/env python3
-"""Draws the library props and paper golems for the tutorial (issue #83).
+"""Draws the burnt bookshelves and the paper golems (issue #83).
 
 Deterministic: every random choice comes from a seeded ``random.Random``,
 so running the script again writes byte-identical PNGs.
 
-Props are drawn at 32 px per tile and scaled ×2 (nearest neighbour) so their
-pixel density matches the Foozle "Lucifer" tiles, which the game shows at ×2.
+The burnt shelves stand beside the library ruin on the world map; battles
+show painted maps instead (#151). They are drawn at 32 px per tile and scaled
+×2 (nearest neighbour) like the Foozle "Lucifer" tiles.
 The paper golems are drawn at native 64 × 64 per frame like the Spire enemies
 (9 rows: idle, walk, death × down, up, side; side faces right).
 
@@ -24,8 +25,6 @@ from PIL import Image, ImageDraw
 
 ROOT = Path(__file__).resolve().parents[2]
 OUT = ROOT / "src" / "assets" / "library"
-LUCIFER = ROOT / "src" / "assets" / "lucifer"
-TRAPS = ROOT / "src" / "assets" / "traps"
 CONTACT = ROOT / "docs" / "images" / "bibliothek-entwurf.png"
 
 Color = tuple[int, int, int, int]
@@ -38,7 +37,7 @@ def hexc(value: str) -> Color:
 
 # --- Palettes ---------------------------------------------------------------
 
-# Lucifer props: near-black outline and the brown wood of the tileset doors.
+# Lucifer-style shelves: near-black outline and the brown wood of the tileset doors.
 PROP_OUTLINE = hexc("0f0d0c")
 WOOD_DARK = hexc("28221f")
 WOOD = hexc("413325")
@@ -47,13 +46,7 @@ WOOD_HIGH = hexc("82633b")
 SHELF_BACK = hexc("1a1715")
 PAPER = hexc("e8dfc8")
 PAPER_MID = hexc("c4b796")
-PAPER_DARK = hexc("8f8064")
-INK = hexc("3a3242")
 GOLD = hexc("d1ca80")
-RED = hexc("922c26")
-FLAME_OUT = hexc("e0602a")
-FLAME_MID = hexc("f2a33a")
-FLAME_CORE = hexc("ffe07a")
 
 # Book colours as (light, base, dark).
 BOOKS = [
@@ -132,13 +125,6 @@ class Part:
             for x in range(x0, x1 + 1):
                 self.put(x, y, c)
 
-    def shaded(self, x0, y0, x1, y1, light, base, dark) -> None:
-        self.rect(x0, y0, x1, y1, base)
-        self.rect(x0, y0, x1, y0, light)
-        self.rect(x0, y0, x0, y1, light)
-        self.rect(x0, y1, x1, y1, dark)
-        self.rect(x1, y0, x1, y1, dark)
-
     def done(self, line: Color | None) -> None:
         img = outline(self.img, line) if line else self.img
         self.canvas.alpha_composite(img)
@@ -148,7 +134,7 @@ def scale(img: Image.Image, factor: int = 2) -> Image.Image:
     return img.resize((img.width * factor, img.height * factor), Image.NEAREST)
 
 
-# --- Props (32 px grid, scaled ×2) -----------------------------------------
+# --- Bookshelves (32 px grid, scaled ×2) -----------------------------------
 
 
 def draw_book_row(p: Part, rng: random.Random, x0: int, x1: int, floor: int, top: int) -> None:
@@ -251,139 +237,6 @@ def burn(p: Part, rng: random.Random, top_ragged: bool) -> None:
         x, y = rng.randrange(p.w), rng.randrange(p.h)
         if p.px[x, y][3] and p.px[x, y] != CHAR_DARK:
             p.px[x, y] = EMBER_HOT if rng.random() < 0.35 else EMBER
-
-
-def lectern() -> Image.Image:
-    img = new(32, 32)
-    back = Part(img)
-    # Foot and post.
-    back.shaded(9, 27, 22, 29, WOOD_LIGHT, WOOD, WOOD_DARK)
-    back.shaded(14, 15, 17, 27, WOOD_LIGHT, WOOD, WOOD_DARK)
-    back.done(PROP_OUTLINE)
-    top = Part(img)
-    # Slanted reading board seen from the front: wider at the bottom edge.
-    for i, y in enumerate(range(8, 17)):
-        inset = max(0, 2 - i // 3)
-        top.rect(5 + inset, y, 26 - inset, y, WOOD)
-    top.rect(5, 15, 26, 16, WOOD_DARK)
-    top.rect(7, 8, 24, 8, WOOD_LIGHT)
-    top.done(PROP_OUTLINE)
-    book = Part(img)
-    # Open book: two pages and a spine, lines of text, red ribbon.
-    book.rect(7, 5, 15, 13, PAPER)
-    book.rect(16, 5, 24, 13, PAPER)
-    book.rect(15, 5, 16, 13, PAPER_MID)
-    book.rect(7, 13, 24, 13, PAPER_DARK)
-    for y in (7, 9, 11):
-        book.rect(9, y, 13, y, PAPER_DARK)
-        book.rect(18, y, 22 if y != 11 else 20, y, PAPER_DARK)
-    book.rect(6, 6, 6, 14, RED)  # cover peeking out
-    book.rect(25, 6, 25, 14, RED)
-    book.rect(19, 14, 19, 17, RED)  # ribbon
-    book.done(PROP_OUTLINE)
-    return img
-
-
-def candle(p: Part, x: int, y: int) -> None:
-    """Candle with its base at (x, y); 2 px wide."""
-    p.rect(x, y - 4, x + 1, y, PAPER)
-    p.rect(x + 1, y - 4, x + 1, y, PAPER_MID)
-    p.rect(x - 1, y, x + 2, y, GOLD)
-    p.put(x, y - 5, FLAME_MID)
-    p.put(x, y - 6, FLAME_CORE)
-    p.put(x + 1, y - 5, FLAME_OUT)
-
-
-def reading_desk() -> Image.Image:
-    img = new(64, 32)
-    desk = Part(img)
-    desk.shaded(3, 20, 6, 30, WOOD_LIGHT, WOOD, WOOD_DARK)  # legs
-    desk.shaded(57, 20, 60, 30, WOOD_LIGHT, WOOD, WOOD_DARK)
-    desk.rect(1, 9, 62, 17, WOOD_LIGHT)  # top surface
-    desk.rect(1, 9, 62, 9, WOOD_HIGH)
-    for x in range(4, 60, 9):
-        desk.rect(x, 12, x + 4, 12, WOOD)  # grain
-    desk.rect(1, 18, 62, 20, WOOD)  # front edge
-    desk.rect(1, 20, 62, 20, WOOD_DARK)
-    desk.done(PROP_OUTLINE)
-    stuff = Part(img)
-    # Book stack (left).
-    for i, (light, base, dark) in enumerate((BOOKS[2], BOOKS[0], BOOKS[3])):
-        y = 14 - i * 3
-        x = 4 + (i % 2)
-        stuff.rect(x, y - 2, x + 11, y, base)
-        stuff.rect(x, y - 2, x + 11, y - 2, light)
-        stuff.rect(x + 11, y - 1, x + 11, y, PAPER_MID)
-        stuff.rect(x, y, x + 10, y, dark)
-    stuff.done(PROP_OUTLINE)
-    papers = Part(img)
-    # Open book (middle) and a loose sheet.
-    papers.rect(23, 8, 30, 15, PAPER)
-    papers.rect(31, 8, 38, 15, PAPER)
-    papers.rect(30, 8, 31, 15, PAPER_MID)
-    papers.rect(23, 15, 38, 15, PAPER_DARK)
-    for y in (10, 12):
-        papers.rect(25, y, 28, y, PAPER_DARK)
-        papers.rect(33, y, 36, y, PAPER_DARK)
-    papers.rect(41, 12, 47, 16, PAPER_MID)
-    papers.rect(42, 13, 46, 13, PAPER_DARK)
-    papers.rect(42, 15, 45, 15, PAPER_DARK)
-    papers.done(PROP_OUTLINE)
-    extras = Part(img)
-    # Inkpot with quill, candle on the right.
-    extras.rect(49, 11, 52, 14, INK)
-    extras.rect(49, 11, 52, 11, hexc("5a5068"))
-    extras.put(53, 9, PAPER)
-    extras.put(54, 8, PAPER)
-    extras.put(55, 7, PAPER_MID)
-    candle(extras, 57, 13)
-    extras.done(PROP_OUTLINE)
-    return img
-
-
-def book_pile(seed: int) -> Image.Image:
-    rng = random.Random(seed)
-    img = new(32, 32)
-    y = 27
-    count = rng.randint(4, 5)
-    for i in range(count):
-        p = Part(img)
-        light, base, dark = rng.choice(BOOKS)
-        width = rng.randint(14, 20)
-        x = 16 - width // 2 + rng.randint(-2, 2)
-        p.rect(x, y - 3, x + width - 1, y, base)
-        p.rect(x, y - 3, x + width - 1, y - 3, light)
-        p.rect(x + width - 1, y - 2, x + width - 1, y, PAPER)  # page block
-        p.rect(x, y, x + width - 2, y, dark)
-        p.rect(x + 2, y - 1, x + 3, y - 1, GOLD)
-        p.done(PROP_OUTLINE)
-        y -= 4
-    if seed % 2:
-        top = Part(img)
-        candle(top, 15, y + 3)
-        top.done(PROP_OUTLINE)
-    return img
-
-
-def scroll() -> Image.Image:
-    img = new(32, 32)
-    sheet = Part(img)
-    sheet.rect(7, 12, 24, 21, PAPER)
-    sheet.rect(7, 21, 24, 21, PAPER_MID)
-    for y, end in ((14, 21), (16, 19), (18, 22)):
-        sheet.rect(10, y, end, y, PAPER_DARK)
-    sheet.done(PROP_OUTLINE)
-    rolls = Part(img)
-    for x in (4, 25):
-        rolls.rect(x, 10, x + 2, 23, PAPER_MID)
-        rolls.rect(x, 10, x, 23, PAPER)
-        rolls.rect(x + 2, 10, x + 2, 23, PAPER_DARK)
-        rolls.rect(x + 1, 9, x + 1, 9, WOOD)
-        rolls.rect(x + 1, 24, x + 1, 24, WOOD)
-    rolls.rect(15, 21, 16, 23, RED)  # seal ribbon
-    rolls.put(15, 22, hexc("c4503f"))
-    rolls.done(PROP_OUTLINE)
-    return img
 
 
 # --- Paper golem (native 64 × 64 frames) -----------------------------------
@@ -661,95 +514,15 @@ def golem_sheet(large: bool) -> Image.Image:
 # --- Contact sheet ----------------------------------------------------------
 
 
-def load(path: Path) -> Image.Image:
-    return Image.open(path).convert("RGBA")
-
-
-def tile_floor(dst: Image.Image, box: tuple[int, int, int, int], dungeon: Image.Image, seed: int) -> None:
-    rng = random.Random(seed)
-    plain = scale(dungeon.crop((0, 160, 32, 192)))
-    variants = [plain, plain, plain, scale(dungeon.crop((0, 192, 32, 224))), scale(dungeon.crop((32, 160, 64, 192)))]
-    x0, y0, x1, y1 = box
-    for y in range(y0, y1, 64):
-        for x in range(x0, x1, 64):
-            dst.alpha_composite(rng.choice(variants).crop((0, 0, min(64, x1 - x), min(64, y1 - y))), (x, y))
-
-
-def wall_strip(dst: Image.Image, x0: int, x1: int, y: int, rows: int, dungeon: Image.Image) -> None:
-    brick = scale(dungeon.crop((32, 32, 64, 64)))
-    edge = scale(dungeon.crop((136, 56, 168, 64)))
-    for r in range(rows):
-        for x in range(x0, x1, 64):
-            dst.alpha_composite(brick.crop((0, 0, min(64, x1 - x), 64)), (x, y + r * 64))
-    for x in range(x0, x1, 64):
-        dst.alpha_composite(edge.crop((0, 0, min(64, x1 - x), 16)), (x, y + rows * 64 - 4))
-
-
 def label(dst: Image.Image, xy: tuple[int, int], text: str) -> None:
     ImageDraw.Draw(dst).text(xy, text, fill=(230, 220, 200, 255))
 
 
-def darken(img: Image.Image, factor: float, tint: tuple[int, int, int]) -> Image.Image:
-    overlay = Image.new("RGBA", img.size, (*tint, int(255 * factor)))
-    out = img.copy()
-    out.alpha_composite(overlay)
-    return out
-
-
-def room(props: dict[str, Image.Image], dungeon: Image.Image, lava_dir: Path, burnt: bool,
-         golem: Image.Image | None) -> Image.Image:
-    w, h = 640, 448
-    img = Image.new("RGBA", (w, h), (0, 0, 0, 255))
-    tile_floor(img, (0, 128, w, h), dungeon, 3)
-    wall_strip(img, 0, w, 0, 2, dungeon)
-    torch = scale(load(lava_dir / "torch.png").crop((0, 0, 32, 32)))
-    # Dungeon-tileset banners: intact on the wall, torn on a stand after the raid.
-    flag = scale(dungeon.crop((480, 132, 512, 192) if burnt else (480, 70, 512, 124)))
-    shelves = props["shelves_burnt" if burnt else "shelves"]
-    # Shelves stand against the wall.
-    for k, x in enumerate((24, 88, 152, 408, 472, 536)):
-        img.alpha_composite(shelves.crop(((k % 3) * 64, 0, (k % 3) * 64 + 64, 128)), (x, 40))
-    img.alpha_composite(torch, (288, 56))
-    img.alpha_composite(flag, (232, 30) if not burnt else (216, 120))
-    img.alpha_composite(flag, (344, 30) if not burnt else (570, 150))
-    img.alpha_composite(props["desk"], (256, 216))
-    img.alpha_composite(props["lectern"], (96, 232))
-    img.alpha_composite(props["pile"].crop((0, 0, 64, 64)), (480, 210))
-    img.alpha_composite(props["pile"].crop((64, 0, 128, 64)), (548, 300))
-    img.alpha_composite(props["scroll"], (180, 330))
-    if golem is not None:
-        if burnt:
-            # Corpse scraps, burning floor.
-            img.alpha_composite(golem.crop((7 * 64, 6 * 64, 8 * 64, 7 * 64)), (300, 330))
-        else:
-            img.alpha_composite(golem.crop((2 * 64, 3 * 64, 3 * 64, 4 * 64)), (380, 300))
-            img.alpha_composite(golem.crop((5 * 64, 5 * 64, 6 * 64, 6 * 64)), (200, 250))
-    if burnt:
-        img = darken(img, 0.35, (40, 10, 0))
-        fire1 = load(TRAPS / "fire-trap-level-1.png")
-        fire3 = load(TRAPS / "fire-trap-level-3.png")
-        spots = [(40, 110, fire3, 5), (130, 120, fire1, 5), (430, 112, fire3, 6), (540, 130, fire1, 4),
-                 (230, 300, fire1, 4), (560, 330, fire3, 6), (360, 230, fire1, 5)]
-        for x, y, sheet, frame in spots:
-            img.alpha_composite(scale(sheet.crop((frame * 32, 0, frame * 32 + 32, 64))), (x, y))
-    return img
-
-
-def contact_sheet(props: dict[str, Image.Image], golem: Image.Image, large: Image.Image) -> Image.Image:
-    dungeon = load(LUCIFER / "dungeon" / "dungeon-tileset.png")
-    lava_dir = LUCIFER / "lava"
-    sheet = Image.new("RGBA", (1340, 660 + 2 * (6 * 128 + 30)), (24, 20, 30, 255))
-    label(sheet, (20, 6), "Bibliothek (Lucifer-Kacheln x2 + eigene Requisiten)")
-    sheet.alpha_composite(room(props, dungeon, lava_dir, False, golem), (20, 24))
-    label(sheet, (680, 6), "Ueberfall: verbrannte Regale + Fire-Trap-Flammen")
-    sheet.alpha_composite(room(props, dungeon, lava_dir, True, golem), (680, 24))
-    y = 490
-    label(sheet, (20, y), "Requisiten (Spielgroesse)")
-    x = 20
-    for key in ("shelves", "shelves_burnt", "lectern", "desk", "pile", "scroll"):
-        sheet.alpha_composite(props[key], (x, y + 18))
-        x += props[key].width + 16
-    y = 660
+def contact_sheet(shelves_burnt: Image.Image, golem: Image.Image, large: Image.Image) -> Image.Image:
+    sheet = Image.new("RGBA", (1340, 170 + 2 * (6 * 128 + 30)), (24, 20, 30, 255))
+    label(sheet, (20, 6), "Verbrannte Regale (Spielgroesse)")
+    sheet.alpha_composite(shelves_burnt, (20, 24))
+    y = 170
     for name, img in (("Papiergolem", golem), ("Papiergolem gross", large)):
         label(sheet, (20, y), f"{name}: Zeilen idle/walk/death x unten/oben/seite, x2")
         big = scale(img)
@@ -763,38 +536,21 @@ def contact_sheet(props: dict[str, Image.Image], golem: Image.Image, large: Imag
 
 def main() -> None:
     OUT.mkdir(parents=True, exist_ok=True)
-    shelves = new(96, 64)
     shelves_burnt = new(96, 64)
     for k in range(3):
-        shelves.alpha_composite(bookshelf(11 + k), (k * 32, 0))
         shelves_burnt.alpha_composite(bookshelf(11 + k, burnt=True), (k * 32, 0))
-    piles = new(64, 32)
-    piles.alpha_composite(book_pile(4), (0, 0))
-    piles.alpha_composite(book_pile(5), (32, 0))
-    props = {
-        "shelves": scale(shelves),
-        "shelves_burnt": scale(shelves_burnt),
-        "lectern": scale(lectern()),
-        "desk": scale(reading_desk()),
-        "pile": scale(piles),
-        "scroll": scale(scroll()),
-    }
-    files = {
-        "bookshelf.png": props["shelves"],
-        "bookshelf-burnt.png": props["shelves_burnt"],
-        "lectern.png": props["lectern"],
-        "reading-desk.png": props["desk"],
-        "book-pile.png": props["pile"],
-        "scroll.png": props["scroll"],
-    }
+    shelves_burnt = scale(shelves_burnt)
     golem = golem_sheet(large=False)
     large = golem_sheet(large=True)
-    files["paper-golem.png"] = golem
-    files["paper-golem-large.png"] = large
+    files = {
+        "bookshelf-burnt.png": shelves_burnt,
+        "paper-golem.png": golem,
+        "paper-golem-large.png": large,
+    }
     for name, img in files.items():
         img.save(OUT / name, optimize=False)
     CONTACT.parent.mkdir(parents=True, exist_ok=True)
-    contact_sheet(props, golem, large).convert("RGB").save(CONTACT, optimize=False)
+    contact_sheet(shelves_burnt, golem, large).convert("RGB").save(CONTACT, optimize=False)
 
 
 if __name__ == "__main__":

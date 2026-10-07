@@ -5,6 +5,7 @@
     "module": "ESNext",
     "moduleResolution": "bundler",
     "types": ["vite/client"],
+    "resolveJsonModule": true,
     "noEmit": true,
     "isolatedModules": true,
     "skipLibCheck": true,
